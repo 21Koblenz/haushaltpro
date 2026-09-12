@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="dark light">
   <title>HaushaltPro</title>
   <link rel="stylesheet" href="/assets/style.css">
+  <link rel="stylesheet" href="/assets/ui-enhancements.css">
 </head>
 <body>
   <main class="shell">
@@ -295,11 +296,26 @@ docker compose up -d --build</pre><p class="muted">Für eine öffentliche Domain
         </article>
       </section>
     </section>
-    <footer class="app-footer"><span>HaushaltPro</span><span id="appVersion">Version –</span><span><a href="https://github.com/21Koblenz/haushaltpro" target="_blank" rel="noopener noreferrer">Quellcode · AGPL-3.0+</a></span></footer>
+    <footer class="app-footer">
+      <div class="app-footer-meta">
+        <span>HaushaltPro</span><span id="appVersion">Version –</span><span><a href="https://github.com/21Koblenz/haushaltpro" target="_blank" rel="noopener noreferrer">Quellcode · AGPL-3.0+</a></span>
+      </div>
+      <div class="app-footer-v4v">
+        <div class="app-footer-v4v-copy">
+          <strong>Value for Value</strong>
+          <span>Wenn HaushaltPro dir einen Wert liefert, kannst du Sats zurückgeben.</span>
+          <a class="lightning-address" href="lightning:creamowl25@primal.net">⚡ creamowl25@primal.net</a>
+        </div>
+        <a class="footer-qr-link" href="lightning:creamowl25@primal.net" aria-label="Lightning QR-Code öffnen">
+          <img class="footer-lightning-qr" src="/assets/lightning-qr-black.svg" alt="Lightning QR-Code für Value for Value">
+        </a>
+      </div>
+    </footer>
   </main>
 
   <dialog id="modal"><form method="dialog" id="modalForm"><div id="modalContent"></div><div class="dialog-actions"><button id="modalCancel" type="button" class="ghost">Abbrechen</button><button id="modalSave" type="submit">Speichern</button></div></form></dialog>
   <div id="toast"></div>
   <script src="/assets/app.js"></script>
+  <script src="/assets/ui-enhancements.js"></script>
 </body>
 </html>

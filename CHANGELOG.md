@@ -6,6 +6,12 @@
 
 - Docker/Portainer builds now support both `linux/amd64` and `linux/arm64` by switching from the x86-only `sqlcipher3-binary==0.6.0` package to `sqlcipher3==0.6.2`.
 - CI now builds the Docker image for both architectures and verifies that SQLCipher 4 starts successfully inside each image.
+- New and corrected account balances can now be entered reliably as negative values on mobile devices; signed balance fields support decimal comma/point input and an explicit `±` control.
+
+### Added
+
+- Value-for-Value footer with the Lightning address `creamowl25@primal.net`.
+- Theme-aware local Lightning QR code for dark and light mode.
 
 ## v0.21.0 - 2026-09-12
 
