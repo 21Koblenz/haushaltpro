@@ -15,12 +15,6 @@
 
 ### Added
 
-- Value-for-Value footer with `lightning:creamowl25@primal.net`.
-- Theme-aware Lightning QR presentation for dark and light mode.
-- New and corrected account balances can now be entered reliably as negative values on mobile devices; signed balance fields support decimal comma/point input and an explicit `±` control.
-
-### Added
-
 - Value-for-Value footer with the Lightning address `creamowl25@primal.net`.
 - Theme-aware local Lightning QR code for dark and light mode.
 
