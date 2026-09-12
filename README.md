@@ -29,6 +29,7 @@ HaushaltPro verwaltet Finanzdaten auf dem eigenen Server. Konten, Buchungen, int
 - verschlüsselte portable Backups und interne Snapshot-Rotation
 - responsive Smartphone-Ansicht
 
+
 ### Weitere Hinweise
 
 CSV-Importdateien werden nicht dauerhaft gespeichert; importiert werden nur die daraus erzeugten Buchungen und lokalen Dublettenmerkmale.

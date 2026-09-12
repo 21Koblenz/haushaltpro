@@ -35,6 +35,7 @@ Verified expected values:
 - independent 12-month reference balance: 23,840.00 EUR;
 - German CSV decimal import and duplicate detection: PASS.
 
+
 ## Final v0.21.0 result
 
 After the version, documentation, UI source-link and release-test changes were applied, the complete application suite was executed again:
