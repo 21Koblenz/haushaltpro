@@ -1,4 +1,4 @@
-name: Prepare mid-month opening balance fix
+name: Prepare HaushaltPro v0.21.2
 
 on:
   push:
@@ -8,40 +8,59 @@ permissions:
   contents: write
 
 jobs:
-  patch:
+  prepare:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: fix/midmonth-opening-dashboard
           fetch-depth: 0
-      - name: Patch monthly series and add regression test
+      - name: Prepare v0.21.2 metadata
         shell: bash
         run: |
           python - <<'PY'
-          import base64
           from pathlib import Path
 
-          p=Path('app/main.py')
-          s=p.read_text(encoding='utf-8')
-          old='''def monthly_account_series(c, account_id: int, month: str | None = None) -> list[dict]:\n    start,end=month_bounds(month)\n    opening=_month_opening_balance(c,account_id,start)\n    movements=defaultdict(int)\n    for r in c.execute(\n'''
-          new='''def monthly_account_series(c, account_id: int, month: str | None = None) -> list[dict]:\n    start,end=month_bounds(month)\n    opening=_month_opening_balance(c,account_id,start)\n    movements=defaultdict(int)\n\n    # If an account starts after the first day of the selected month, the\n    # month opens at zero and the account's opening balance becomes effective\n    # exactly on its start date. A month-opening override deliberately takes\n    # precedence and must not be combined with the original opening balance.\n    account=c.execute(\"SELECT start_date,opening_balance FROM accounts WHERE id=? AND active=1\",(account_id,)).fetchone()\n    exact_override=c.execute(\n        \"SELECT 1 FROM account_month_overrides WHERE account_id=? AND month=?\",\n        (account_id,start.strftime(\"%Y-%m\")),\n    ).fetchone()\n    if account:\n        account_start=date.fromisoformat(account[\"start_date\"])\n        if start < account_start <= end and not exact_override:\n            movements[account_start.isoformat()]+=int(account[\"opening_balance\"])\n\n    for r in c.execute(\n'''
-          if old not in s:
-              raise SystemExit('monthly_account_series patch anchor not found')
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          main=Path('app/main.py')
+          s=main.read_text(encoding='utf-8')
+          if 'APP_VERSION = "0.21.1"' not in s:
+              raise SystemExit('Expected APP_VERSION 0.21.1 not found')
+          main.write_text(s.replace('APP_VERSION = "0.21.1"','APP_VERSION = "0.21.2"',1),encoding='utf-8')
 
-          encoded='aW1wb3J0IHNxbGl0ZTMKaW1wb3J0IHN5cwppbXBvcnQgdGVtcGZpbGUKaW1wb3J0IHR5cGVzCmZyb20gZGF0ZXRpbWUgaW1wb3J0IGRhdGUgYXMgcmVhbF9kYXRlCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAoKc2hpbSA9IHR5cGVzLk1vZHVsZVR5cGUoInNxbGNpcGhlcjMiKQpzaGltLmRiYXBpMiA9IHNxbGl0ZTMKc3lzLm1vZHVsZXNbInNxbGNpcGhlcjMiXSA9IHNoaW0Kcm9vdCA9IFBhdGgoX19maWxlX18pLnJlc29sdmUoKS5wYXJlbnRzWzFdClBhdGgoIi9hcHAiKS5ta2RpcihleGlzdF9vaz1UcnVlKQpzdGF0aWNfbW91bnQgPSBQYXRoKCIvYXBwL3N0YXRpYyIpCmlmIHN0YXRpY19tb3VudC5pc19zeW1saW5rKCkgYW5kIHN0YXRpY19tb3VudC5yZXNvbHZlKCkgIT0gKHJvb3QgLyAic3RhdGljIikucmVzb2x2ZSgpOgogICAgc3RhdGljX21vdW50LnVubGluaygpCmlmIG5vdCBzdGF0aWNfbW91bnQuZXhpc3RzKCk6CiAgICBzdGF0aWNfbW91bnQuc3ltbGlua190byhyb290IC8gInN0YXRpYyIsIHRhcmdldF9pc19kaXJlY3Rvcnk9VHJ1ZSkKc3lzLnBhdGguaW5zZXJ0KDAsIHN0cihyb290KSkKCmZyb20gYXBwIGltcG9ydCBkYgpmZCwgdG1wID0gdGVtcGZpbGUubWtzdGVtcChzdWZmaXg9Ii5kYiIpClBhdGgodG1wKS51bmxpbmsobWlzc2luZ19vaz1UcnVlKQpjID0gc3FsaXRlMy5jb25uZWN0KHRtcCwgY2hlY2tfc2FtZV90aHJlYWQ9RmFsc2UpCmMucm93X2ZhY3RvcnkgPSBzcWxpdGUzLlJvdwphLmV4ZWN1dGUoIlBSQUdNQSBmb3JlaWduX2tleXM9T04iKQpkYi5fY29ubiA9IGMKZGIuREJfUEFUSCA9IFBhdGgodG1wKQpkYi5pbml0X3NjaGVtYShjKQoKZnJvbSBhcHAgaW1wb3J0IG1haW4KbWFpbi5kYi5fY29ubiA9IGMKbWFpbi5zZXNzaW9uID0gbGFtYmRhIHJlcXVlc3QsIHdyaXRlPUZhbHNlOiAoInRlc3QiLCAxLCAiY3NyZiIsIDApCgpjbGFzcyBGaXhlZERhdGUocmVhbF9kYXRlKToKICAgIEBjbGFzc21ldGhvZAogICAgZGVmIHRvZGF5KGNscyk6CiAgICAgICAgcmV0dXJuIGNscygyMDI2LCA5LCAyMCkKCm1haW4uZGF0ZSA9IEZpeGVkRGF0ZQoKZnJvbSBmYXN0YXBpLnRlc3RjbGllbnQgaW1wb3J0IFRlc3RDbGllbnQKY2xpZW50ID0gVGVzdENsaWVudChtYWluLmFwcCkKCnBheWxvYWQgPSB7CiAgICAibmFtZSI6ICJEaXNwbyBhYiBNb25hdHNtaXR0ZSIsCiAgICAidHlwZSI6ICJjaGVja2luZyIsCiAgICAib3BlbmluZ19iYWxhbmNlIjogIi0xMjM0LjU2IiwKICAgICJjdXJyZW5jeSI6ICJFVVIiLAogICAgInN0YXJ0X2RhdGUiOiAiMjAyNi0wOS0xMiIsCn0KciA9IGNsaWVudC5wb3N0KCIvYXBpL2FjY291bnRzIiwganNvbj1wYXlsb2FkKQphc3NlcnQgci5zdGF0dXNfY29kZSA9PSAyMDAsIChyLnN0YXR1c19jb2RlLCByLnRleHQpCmFjY291bnRfaWQgPSByLmpzb24oKVsiaWQiXQoKc2VyaWVzID0gbWFpbi5tb250aGx5X2FjY291bnRfc2VyaWVzKGMsIGFjY291bnRfaWQsICIyMDI2LTA5IikKYnlfZGF0ZSA9IHtwWyJkYXRlIl06IHBbImJhbGFuY2UiXSBmb3IgcCBpbiBzZXJpZXN9CmFzc2VydCBzZXJpZXNbMF1bIm9wZW5pbmdfYmFsYW5jZSJdID09IDAuMCwgc2VyaWVzWzBdCmFzc2VydCBieV9kYXRlWyIyMDI2LTA5LTExIl0gPT0gMC4wLCBieV9kYXRlWyIyMDI2LTA5LTExIl0KYXNzZXJ0IGJ5X2RhdGVbIjIwMjYtMDktMTIiXSA9PSAtMTIzNC41NiwgYnlfZGF0ZVsiMjAyNi0wOS0xMiJdCmFzc2VydCBieV9kYXRlWyIyMDI2LTA5LTMwIl0gPT0gLTEyMzQuNTYsIGJ5X2RhdGVbIjIwMjYtMDktMzAiXQoKYWNjb3VudHMgPSBjbGllbnQuZ2V0KCIvYXBpL2FjY291bnRzP21vbnRoPTIwMjYtMDkiKQphc3NlcnQgYWNjb3VudHMuc3RhdHVzX2NvZGUgPT0gMjAwLCBhY2NvdW50cy50ZXh0CmFjY291bnQgPSBuZXh0KHggZm9yIHggaW4gYWNjb3VudHMuanNvbigpIGlmIHhbImlkIl0gPT0gYWNjb3VudF9pZCkKYXNzZXJ0IGFjY291bnRbIm1vbnRoX3N0YXJ0X2JhbGFuY2UiXSA9PSAwLjAsIGFjY291bnQKYXNzZXJ0IGFjY291bnRbImJhbGFuY2UiXSA9PSAtMTIzNC41NiwgYWNjb3VudAphc3NlcnQgYWNjb3VudFsibW9udGhfZW5kX2JhbGFuY2UiXSA9PSAtMTIzNC41NiwgYWNjb3VudAoKZGFzaCA9IGNsaWVudC5nZXQoIi9hcGkvZGFzaGJvYXJkP21vbnRoPTIwMjYtMDkiKQphc3NlcnQgZGFzaC5zdGF0dXNfY29kZSA9PSAyMDAsIGRhc2gudGV4dApkYXRhID0gZGFzaC5qc29uKCkKYXNzZXJ0IGRhdGFbImN1dG9mZiJdID09ICIyMDI2LTA5LTIwIiwgZGF0YVsiY3V0b2ZmIl0KYXNzZXJ0IGRhdGFbInRvdGFsX2JhbGFuY2UiXSA9PSAtMTIzNC41NiwgZGF0YQphc3NlcnQgZGF0YVsibW9udGhfZW5kX2JhbGFuY2UiXSA9PSAtMTIzNC41NiwgZGF0YQphc3NlcnQgZGF0YVsicGVuZGluZ19vdXRmbG93cyJdID09IDAuMCwgZGF0YQphc3NlcnQgZGF0YVsiYWNjb3VudHMiXVswXVsibW9udGhfc3RhcnRfYmFsYW5jZSJdID09IDAuMCwgZGF0YVsiYWNjb3VudHMiXVswXQphc3NlcnQgZGF0YVsiYWNjb3VudHMiXVswXVsiYmFsYW5jZSJdID09IC0xMjM0LjU2LCBkYXRhWyJhY2NvdW50cyJdWzBdCgpyID0gY2xpZW50LnB1dCgKICAgIGYiL2FwaS9hY2NvdW50cy97YWNjb3VudF9pZH0vbW9udGgtb3BlbmluZyIsCiAgICBqc29uPXsibW9udGgiOiAiMjAyNi0wOSIsICJvcGVuaW5nX2JhbGFuY2UiOiAiLTIwMDAuMDAiLCAibm90ZSI6ICJLb3JyZWt0dXIifSwKKQphc3NlcnQgci5zdGF0dXNfY29kZSA9PSAyMDAsIChyLnN0YXR1c19jb2RlLCByLnRleHQpCmRhc2gyID0gY2xpZW50LmdldCgiL2FwaS9kYXNoYm9hcmQ/bW9udGg9MjAyNi0wOSIpLmpzb24oKQphc3NlcnQgZGFzaDJbInRvdGFsX2JhbGFuY2UiXSA9PSAtMjAwMC4wLCBkYXNoMgphc3NlcnQgZGFzaDJbIm1vbnRoX2VuZF9iYWxhbmNlIl0gPT0gLTIwMDAuMCwgZGFzaDIKCnByaW50KCJtaWQtbW9udGggb3BlbmluZyBiYWxhbmNlIGRhc2hib2FyZCByZWdyZXNzaW9uOiBQQVNTIikKYy5jbG9zZSgpClBhdGgodG1wKS51bmxpbmsobWlzc2luZ19vaz1UcnVlKQo='
-          Path('tests/test_midmonth_opening_dashboard.py').write_bytes(base64.b64decode(encoded))
+          install=Path('docs/INSTALLATION.md')
+          s=install.read_text(encoding='utf-8')
+          s=s.replace('# Installation / Deployment - v0.21.1','# Installation / Deployment - v0.21.2',1)
+          install.write_text(s,encoding='utf-8')
+
+          changelog=Path('CHANGELOG.md')
+          s=changelog.read_text(encoding='utf-8')
+          marker='## Unreleased\n\n### Fixed\n'
+          replacement='## Unreleased\n\n## v0.21.2 - 2026-09-13\n\n### Fixed\n'
+          if marker not in s:
+              raise SystemExit('Unreleased changelog marker not found')
+          changelog.write_text(s.replace(marker,replacement,1),encoding='utf-8')
+
+          for p in sorted(Path('tests').glob('test_*.py')):
+              text=p.read_text(encoding='utf-8')
+              old=text
+              text=text.replace("('APP_VERSION = \\\"0.21.0\\\"' in main or 'APP_VERSION = \\\"0.21.1\\\"' in main)","('APP_VERSION = \\\"0.21.0\\\"' in main or 'APP_VERSION = \\\"0.21.1\\\"' in main or 'APP_VERSION = \\\"0.21.2\\\"' in main)")
+              text=text.replace("'APP_VERSION = \\\"0.21.1\\\"' in main","('APP_VERSION = \\\"0.21.1\\\"' in main or 'APP_VERSION = \\\"0.21.2\\\"' in main)")
+              text=text.replace("main.APP_VERSION in {'0.21.0','0.21.1'}","main.APP_VERSION in {'0.21.0','0.21.1','0.21.2'}")
+              text=text.replace('main.APP_VERSION in {"0.21.0","0.21.1"}','main.APP_VERSION in {"0.21.0","0.21.1","0.21.2"}')
+              if p.name == 'test_v211_release.py':
+                  text=text.replace("assert '# Installation / Deployment - v0.21.1' in install","assert '# Installation / Deployment - v0.21.2' in install")
+              if text != old:
+                  p.write_text(text,encoding='utf-8')
           PY
-      - name: Commit and push patch branch
+      - name: Commit and push release branch
         shell: bash
         run: |
           git config user.name "Einundzwanzig Koblenz"
           git config user.email "koblenzeinundzwanzig@proton.me"
-          git add app/main.py tests/test_midmonth_opening_dashboard.py
+          git add app/main.py docs/INSTALLATION.md CHANGELOG.md tests
           if git diff --cached --quiet; then
-            echo "No patch changes needed"
+            echo "No release metadata changes needed"
             exit 0
           fi
-          git commit -m "fix: apply opening balance on mid-month account start"
+          git commit -m "release: prepare HaushaltPro v0.21.2"
           git push origin HEAD:fix/midmonth-opening-dashboard
