@@ -1,4 +1,4 @@
-name: Prepare HaushaltPro v0.21.2
+name: Fix v0.21.2 legacy version assertions
 
 on:
   push:
@@ -8,59 +8,56 @@ permissions:
   contents: write
 
 jobs:
-  prepare:
+  fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: fix/midmonth-opening-dashboard
           fetch-depth: 0
-      - name: Prepare v0.21.2 metadata
+      - name: Extend legacy test version assertions
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          main=Path('app/main.py')
-          s=main.read_text(encoding='utf-8')
-          if 'APP_VERSION = "0.21.1"' not in s:
-              raise SystemExit('Expected APP_VERSION 0.21.1 not found')
-          main.write_text(s.replace('APP_VERSION = "0.21.1"','APP_VERSION = "0.21.2"',1),encoding='utf-8')
-
-          install=Path('docs/INSTALLATION.md')
-          s=install.read_text(encoding='utf-8')
-          s=s.replace('# Installation / Deployment - v0.21.1','# Installation / Deployment - v0.21.2',1)
-          install.write_text(s,encoding='utf-8')
-
-          changelog=Path('CHANGELOG.md')
-          s=changelog.read_text(encoding='utf-8')
-          marker='## Unreleased\n\n### Fixed\n'
-          replacement='## Unreleased\n\n## v0.21.2 - 2026-09-13\n\n### Fixed\n'
-          if marker not in s:
-              raise SystemExit('Unreleased changelog marker not found')
-          changelog.write_text(s.replace(marker,replacement,1),encoding='utf-8')
-
+          changed=[]
           for p in sorted(Path('tests').glob('test_*.py')):
-              text=p.read_text(encoding='utf-8')
-              old=text
-              text=text.replace("('APP_VERSION = \\\"0.21.0\\\"' in main or 'APP_VERSION = \\\"0.21.1\\\"' in main)","('APP_VERSION = \\\"0.21.0\\\"' in main or 'APP_VERSION = \\\"0.21.1\\\"' in main or 'APP_VERSION = \\\"0.21.2\\\"' in main)")
-              text=text.replace("'APP_VERSION = \\\"0.21.1\\\"' in main","('APP_VERSION = \\\"0.21.1\\\"' in main or 'APP_VERSION = \\\"0.21.2\\\"' in main)")
-              text=text.replace("main.APP_VERSION in {'0.21.0','0.21.1'}","main.APP_VERSION in {'0.21.0','0.21.1','0.21.2'}")
-              text=text.replace('main.APP_VERSION in {"0.21.0","0.21.1"}','main.APP_VERSION in {"0.21.0","0.21.1","0.21.2"}')
-              if p.name == 'test_v211_release.py':
-                  text=text.replace("assert '# Installation / Deployment - v0.21.1' in install","assert '# Installation / Deployment - v0.21.2' in install")
-              if text != old:
-                  p.write_text(text,encoding='utf-8')
+              s=p.read_text(encoding='utf-8')
+              old=s
+              # Historical allow-lists that ended at v0.21.1.
+              s=s.replace("'0.21.1'}", "'0.21.1','0.21.2'}")
+              s=s.replace('"0.21.1"}', '"0.21.1","0.21.2"}')
+              s=s.replace("'0.21.1']", "'0.21.1','0.21.2']")
+              s=s.replace('"0.21.1"]', '"0.21.1","0.21.2"]')
+              # Historical exact-current-version checks.
+              s=s.replace(
+                  "assert main.APP_VERSION == '0.21.1'",
+                  "assert main.APP_VERSION in {'0.21.1','0.21.2'}",
+              )
+              s=s.replace(
+                  'assert main.APP_VERSION == "0.21.1"',
+                  'assert main.APP_VERSION in {"0.21.1","0.21.2"}',
+              )
+              s=s.replace(
+                  "assert 'APP_VERSION = \\\"0.21.1\\\"' in main",
+                  "assert ('APP_VERSION = \\\"0.21.1\\\"' in main or 'APP_VERSION = \\\"0.21.2\\\"' in main)",
+              )
+              if s != old:
+                  p.write_text(s,encoding='utf-8')
+                  changed.append(str(p))
+          print('updated files:')
+          print('\n'.join(changed) if changed else '(none)')
           PY
-      - name: Commit and push release branch
+      - name: Commit and push
         shell: bash
         run: |
-          git config user.name "Einundzwanzig Koblenz"
-          git config user.email "koblenzeinundzwanzig@proton.me"
-          git add app/main.py docs/INSTALLATION.md CHANGELOG.md tests
-          if git diff --cached --quiet; then
-            echo "No release metadata changes needed"
+          if [ -z "$(git status --porcelain tests)" ]; then
+            echo "No legacy version assertions needed changes"
             exit 0
           fi
-          git commit -m "release: prepare HaushaltPro v0.21.2"
+          git config user.name "Einundzwanzig Koblenz"
+          git config user.email "koblenzeinundzwanzig@proton.me"
+          git add tests
+          git commit -m "test: support v0.21.2 in legacy version assertions"
           git push origin HEAD:fix/midmonth-opening-dashboard
