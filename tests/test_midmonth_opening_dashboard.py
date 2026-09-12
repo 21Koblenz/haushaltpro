@@ -22,7 +22,7 @@ fd, tmp = tempfile.mkstemp(suffix=".db")
 Path(tmp).unlink(missing_ok=True)
 c = sqlite3.connect(tmp, check_same_thread=False)
 c.row_factory = sqlite3.Row
-a.execute("PRAGMA foreign_keys=ON")
+c.execute("PRAGMA foreign_keys=ON")
 db._conn = c
 db.DB_PATH = Path(tmp)
 db.init_schema(c)
