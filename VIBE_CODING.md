@@ -1,20 +1,18 @@
 # Vibe Coding / AI-assisted development
 
-HaushaltPro is developed with substantial AI assistance. The project therefore explicitly identifies itself as **Vibe Coding / AI-assisted development**.
+HaushaltPro is explicitly developed as a **Vibe Coding / AI-assisted project**.
 
-## What this means
+AI may assist with architecture, implementation, refactoring, tests, documentation and review. AI output is treated as a proposal, never as proof of correctness.
 
-AI may be used for architecture drafts, implementation, refactoring, tests, documentation and review assistance. AI output is treated as a proposal, not as proof of correctness.
+## Project rules
 
-## Requirements for contributions
+1. Financial calculations require deterministic tests or independently calculated reference values.
+2. Security-sensitive changes require explicit review of authentication, authorization, secrets, uploads and exposed network surfaces.
+3. Changes must remain reviewable in Git history.
+4. Real household data, bank exports, credentials, secrets and private backups must never be committed.
+5. A release may only claim tests that were actually executed against the exact release source state.
+6. Contributors remain responsible for reviewing AI-assisted code they submit.
 
-1. Changes must remain reviewable in Git history.
-2. Non-trivial calculation changes should include deterministic tests.
-3. Financial calculations should use fixed demo data with independently calculated expected values.
-4. Security-sensitive changes require an explicit review of authentication, authorization, secrets, input validation and exposed network surfaces.
-5. Generated dependencies, binaries, credentials and private household data must not be committed.
-6. A release must not claim a passed test that was not actually executed against that exact source state.
+## Deutsch
 
-## Kennzeichnung auf Deutsch
-
-HaushaltPro ist ein **Vibe-Coding-/KI-unterstütztes Projekt**. KI-generierter Code gilt nicht automatisch als korrekt. Relevante Berechnungen und Änderungen sollen mit reproduzierbaren Tests und nachvollziehbaren Commits abgesichert werden.
+KI-gestützter Code gilt nicht automatisch als korrekt. Relevante Berechnungen, Migrationen und Sicherheitsfunktionen sollen reproduzierbar getestet und nachvollziehbar dokumentiert werden.

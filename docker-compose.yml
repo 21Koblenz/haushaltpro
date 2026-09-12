@@ -1,0 +1,61 @@
+services:
+  haushaltpro:
+    build:
+      context: .
+    image: haushaltpro:0.21.0
+    container_name: haushaltpro
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${HAUSHALTPRO_BIND_IP:-127.0.0.1}:8080:8080"
+    environment:
+      DB_PATH: /data/haushaltpro.db
+      AUTH_PATH: /data/auth.json
+      BACKUP_DIR: /data/backups
+      BOOKS_DIR: /data/books
+      HAUSHALTPRO_MODE: "${HAUSHALTPRO_MODE:-lan}"
+      SESSION_TTL_MINUTES: "${SESSION_TTL_MINUTES:-720}"
+      TRUSTED_SESSION_TTL_DAYS: "${TRUSTED_SESSION_TTL_DAYS:-30}"
+      SECURE_COOKIES: "${SECURE_COOKIES:-false}"
+      TRUST_PROXY_HEADERS: "${TRUST_PROXY_HEADERS:-false}"
+      ENFORCE_HTTPS: "${ENFORCE_HTTPS:-false}"
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-}"
+      ALLOW_SELF_REGISTRATION: "${ALLOW_SELF_REGISTRATION:-true}"
+      PUBLIC_SETUP_TOKEN: "${PUBLIC_SETUP_TOKEN:-}"
+      HSTS_INCLUDE_SUBDOMAINS: "${HSTS_INCLUDE_SUBDOMAINS:-false}"
+      MAX_REQUEST_BYTES: "${MAX_REQUEST_BYTES:-26214400}"
+      MAX_UPLOAD_BYTES: "20971520"
+      MAX_ATTACHMENT_BYTES: "5242880"
+      MAX_ATTACHMENT_TOTAL_BYTES: "104857600"
+      MAX_ATTACHMENTS_PER_TX: "10"
+      MAX_BACKUP_STORAGE_BYTES: "2147483648"
+    volumes:
+      - haushaltpro_data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: 512m
+    cpus: 1.0
+    ulimits:
+      nofile:
+        soft: 2048
+        hard: 4096
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  haushaltpro_data:
