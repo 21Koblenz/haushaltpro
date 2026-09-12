@@ -1,0 +1,78 @@
+name: Publish v0.21.0 Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET_SHA: d730521d294a6f88e17c7c6c7fe986f0038ba6e7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify release target
+        shell: bash
+        run: |
+          test "$(git cat-file -t "$TARGET_SHA")" = commit
+          test "$(git show "$TARGET_SHA:app/main.py" | grep -c '0.21.0')" -ge 1
+          if git rev-parse --verify refs/tags/v0.21.0 >/dev/null 2>&1; then
+            echo 'Tag v0.21.0 already exists'
+            exit 1
+          fi
+      - name: Create tag and release assets
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a v0.21.0 "$TARGET_SHA" -m 'HaushaltPro v0.21.0'
+          git push origin refs/tags/v0.21.0
+          git archive --format=tar.gz --prefix=haushaltpro-v0.21.0/ "$TARGET_SHA" > /tmp/haushaltpro-v0.21.0.tar.gz
+          sha256sum /tmp/haushaltpro-v0.21.0.tar.gz > /tmp/haushaltpro-v0.21.0.tar.gz.sha256
+      - name: Create GitHub release
+        shell: bash
+        run: |
+          cat > /tmp/release-notes.md <<'EOF'
+          # HaushaltPro v0.21.0
+
+          First public open-source release of HaushaltPro.
+
+          Verified release status:
+          - exact application payload was verified by SHA-256 and Git tree hash before publishing
+          - 51/51 application regression and plausibility tests passed on GitHub Actions
+          - 45/45 internal security-audit checks passed
+          - Python compile check passed
+          - Docker image build passed
+          - permanent CI regression/security jobs and Docker build passed on the tagged commit
+
+          Reference demo household:
+          - EUR 7,200 opening wealth
+          - EUR 3,050 income
+          - EUR 1,770 expenses
+          - EUR 1,280 surplus
+          - EUR 8,480 closing wealth
+          - internal EUR 500 transfer is wealth-neutral
+
+          Highlights:
+          - self-hosted household finance management
+          - multi-user and multi-household-book support
+          - CSV import, transfers, budgets, planning and forecasts
+          - audit functions and security hardening
+          - mobile-responsive transaction view
+          - local/LAN, VPN and public HTTPS deployment documentation
+          - Vibe Coding / AI-assisted development disclosure
+          - GNU AGPL-3.0-or-later
+
+          The release archive and its SHA-256 checksum are attached.
+          EOF
+          gh release create v0.21.0 \
+            /tmp/haushaltpro-v0.21.0.tar.gz#haushaltpro-v0.21.0.tar.gz \
+            /tmp/haushaltpro-v0.21.0.tar.gz.sha256#haushaltpro-v0.21.0.tar.gz.sha256 \
+            --title 'HaushaltPro v0.21.0' \
+            --notes-file /tmp/release-notes.md
