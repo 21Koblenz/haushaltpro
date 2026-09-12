@@ -1625,6 +1625,21 @@ def monthly_account_series(c, account_id: int, month: str | None = None) -> list
     start,end=month_bounds(month)
     opening=_month_opening_balance(c,account_id,start)
     movements=defaultdict(int)
+
+    # If an account starts after the first day of the selected month, the
+    # month opens at zero and the account's opening balance becomes effective
+    # exactly on its start date. A month-opening override deliberately takes
+    # precedence and must not be combined with the original opening balance.
+    account=c.execute("SELECT start_date,opening_balance FROM accounts WHERE id=? AND active=1",(account_id,)).fetchone()
+    exact_override=c.execute(
+        "SELECT 1 FROM account_month_overrides WHERE account_id=? AND month=?",
+        (account_id,start.strftime("%Y-%m")),
+    ).fetchone()
+    if account:
+        account_start=date.fromisoformat(account["start_date"])
+        if start < account_start <= end and not exact_override:
+            movements[account_start.isoformat()]+=int(account["opening_balance"])
+
     for r in c.execute(
         """SELECT booking_date,COALESCE(SUM(CASE WHEN direction='expense' THEN -ABS(amount) WHEN direction='income' THEN ABS(amount) ELSE amount END),0) amount
            FROM transactions WHERE account_id=? AND status<>'cancelled' AND booking_date BETWEEN ? AND ?
