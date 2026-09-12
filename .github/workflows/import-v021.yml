@@ -25,12 +25,12 @@ env:
     76cea021635adc6c0d8eeedd204d202840dc2aae 7bf94881bb18c789a06086dfd36206ec563c8083
     4e98381bc4d65edb34df41ca29dcfb5b3583f57c e0abac773217cbb41d4a9c85b6adaa26e712cc0f
     28ba515c19085c0639e736ceb4d3ef459240a9f8 ef6a904ed990103eed4c0ea599e140a40ad3d1f2
-    f723b9cccb6848ac3aa44538e17152e31aa726d6 7d0721e255eb0a1c264dfeef5b5c3f5ab080bb97
-    1fa72faf4795808e62269dff30fed9fcb674a04a 2e8b3cf89c925267ae18ac62672ea23edfe86b8b
-    a5561f578ee4cd627b9e932612badb9d572b23da 994ee69b702bedbc13664b615b44bf056c3b6d23
-    15b9e1d3c015b38674d665f13f5da1e3280b7325 d362db8392be2143d987381accefbd22e04198e0
-    50b2d4fefb638a439e56ed426e29bd7595006cfc 31dc6cb54abf4f65cb51cae43a0abd89474b5905
-    19eb4271cc2e4baaae41c727321b02c23ac3169e
+    26dc6575555e386b8e8365ff09a0058b19566c53 f723b9cccb6848ac3aa44538e17152e31aa726d6
+    7d0721e255eb0a1c264dfeef5b5c3f5ab080bb97 1fa72faf4795808e62269dff30fed9fcb674a04a
+    2e8b3cf89c925267ae18ac62672ea23edfe86b8b a5561f578ee4cd627b9e932612badb9d572b23da
+    994ee69b702bedbc13664b615b44bf056c3b6d23 15b9e1d3c015b38674d665f13f5da1e3280b7325
+    d362db8392be2143d987381accefbd22e04198e0 50b2d4fefb638a439e56ed426e29bd7595006cfc
+    31dc6cb54abf4f65cb51cae43a0abd89474b5905 19eb4271cc2e4baaae41c727321b02c23ac3169e
 
 jobs:
   import-release:
@@ -62,14 +62,18 @@ jobs:
                       payload = json.load(response)
                   out.write(base64.b64decode(payload['content']))
           PY
+          echo "Base64 chars: $(wc -c < /tmp/release.b64)"
           test "$(wc -c < /tmp/release.b64)" -eq 233800
           base64 --decode /tmp/release.b64 > /tmp/haushaltpro-v0.21.0.tar.gz
+          sha256sum /tmp/haushaltpro-v0.21.0.tar.gz
           echo "$EXPECTED_ARCHIVE_SHA256  /tmp/haushaltpro-v0.21.0.tar.gz" | sha256sum -c -
           mkdir -p /tmp/release /tmp/release-git
           tar -xzf /tmp/haushaltpro-v0.21.0.tar.gz -C /tmp/release --strip-components=1
           git --git-dir=/tmp/release-git init -q
           git --git-dir=/tmp/release-git --work-tree=/tmp/release add -A
-          test "$(git --git-dir=/tmp/release-git --work-tree=/tmp/release write-tree)" = "$EXPECTED_TREE"
+          ACTUAL_TREE="$(git --git-dir=/tmp/release-git --work-tree=/tmp/release write-tree)"
+          echo "Release tree: $ACTUAL_TREE"
+          test "$ACTUAL_TREE" = "$EXPECTED_TREE"
 
       - name: Install dependencies
         run: python -m pip install -r /tmp/release/requirements.txt
@@ -98,7 +102,9 @@ jobs:
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -a /tmp/release/. .
           git add -A
-          test "$(git write-tree)" = "$EXPECTED_TREE"
+          ACTUAL_TREE="$(git write-tree)"
+          echo "Staged tree: $ACTUAL_TREE"
+          test "$ACTUAL_TREE" = "$EXPECTED_TREE"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'release: publish HaushaltPro v0.21.0'
