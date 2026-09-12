@@ -1,0 +1,73 @@
+name: Prepare v0.21.1
+
+on:
+  push:
+    branches:
+      - release/v0.21.1-prep
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/v0.21.1-prep
+      - name: Apply v0.21.1 release changes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          main = Path('app/main.py')
+          text = main.read_text(encoding='utf-8')
+          text = text.replace('APP_VERSION = "0.21.0"', 'APP_VERSION = "0.21.1"')
+          main.write_text(text, encoding='utf-8')
+
+          compose = Path('docker-compose.yml')
+          text = compose.read_text(encoding='utf-8')
+          text = text.replace('    image: haushaltpro:0.21.0\n', '')
+          compose.write_text(text, encoding='utf-8')
+
+          install = Path('docs/INSTALLATION.md')
+          text = install.read_text(encoding='utf-8')
+          text = text.replace('# Installation / Deployment - v0.21.0', '# Installation / Deployment - v0.21.1')
+          marker = '### Kontrolle\n'
+          portainer = '''### Portainer / Git-Stack\n\nWenn HaushaltPro in Portainer direkt aus diesem Git-Repository gebaut wird, darf kein unqualifiziertes lokales Image wie `haushaltpro:latest` als Pull-Quelle verwendet werden. Sonst versucht Portainer `docker.io/library/haushaltpro:latest` aus Docker Hub zu laden und endet mit `pull access denied`.\n\nEmpfohlen ist ein Build direkt aus dem Release-Tag, z. B.:\n\n```yaml\nservices:\n  haushaltpro:\n    build:\n      context: https://github.com/21Koblenz/haushaltpro.git#v0.21.1\n    container_name: haushaltpro\n    restart: unless-stopped\n```\n\nWichtig in Portainer: **nicht** „Re-pull image“ / „Pull latest image“ für ein lokal gebautes HaushaltPro-Image verwenden. Für ein Update den Git-Tag im Build-Kontext auf die gewünschte Version ändern und den Stack neu bauen/deployen. Das Daten-Volume `haushaltpro_data` dabei nicht löschen.\n\n'''
+          if '### Portainer / Git-Stack' not in text:
+              text = text.replace(marker, portainer + marker)
+          install.write_text(text, encoding='utf-8')
+
+          changelog = Path('CHANGELOG.md')
+          text = changelog.read_text(encoding='utf-8')
+          old = '''## Unreleased\n\n### Fixed\n\n- Docker/Portainer builds now support both `linux/amd64` and `linux/arm64` by switching from the x86-only `sqlcipher3-binary==0.6.0` package to `sqlcipher3==0.6.2`.\n- CI now builds the Docker image for both architectures and verifies that SQLCipher 4 starts successfully inside each image.\n'''
+          new = '''## Unreleased\n\n## v0.21.1 - 2026-09-12\n\n### Fixed\n\n- New accounts now accept negative opening balances reliably, including on mobile devices. Signed-money fields accept decimal comma or decimal point and include an explicit `±` control.\n- Added a regression test that verifies `-1234.56` is stored as `-123456` cents and remains negative across account balance calculations.\n- Portainer documentation now explains why `haushaltpro:latest` must not be re-pulled from Docker Hub for a locally built Git stack.\n- Removed the local `image: haushaltpro:0.21.0` declaration from the repository Compose file so build-based deployments do not accidentally look like registry-pull deployments.\n- Docker/Portainer builds support both `linux/amd64` and `linux/arm64` by using `sqlcipher3==0.6.2`.\n- CI builds the Docker image for both architectures and verifies that SQLCipher 4 starts successfully inside each image.\n\n### Added\n\n- Value-for-Value footer with `lightning:creamowl25@primal.net`.\n- Theme-aware Lightning QR presentation for dark and light mode.\n'''
+          if old in text:
+              text = text.replace(old, new)
+          elif '## v0.21.1 - 2026-09-12' not in text:
+              text = text.replace('## Unreleased\n', new, 1)
+          changelog.write_text(text, encoding='utf-8')
+
+          release_test = Path('tests/test_v210_release_plausibility.py')
+          text = release_test.read_text(encoding='utf-8')
+          text = text.replace("assert main.APP_VERSION == '0.21.0'", "assert main.APP_VERSION.startswith('0.21.')")
+          release_test.write_text(text, encoding='utf-8')
+
+          v211 = Path('tests/test_v211_release.py')
+          v211.write_text('''from pathlib import Path\n\nroot = Path(__file__).resolve().parents[1]\nmain = (root / "app/main.py").read_text(encoding="utf-8")\ncompose = (root / "docker-compose.yml").read_text(encoding="utf-8")\ninstall = (root / "docs/INSTALLATION.md").read_text(encoding="utf-8")\nchangelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")\n\nassert 'APP_VERSION = "0.21.1"' in main\nassert 'image: haushaltpro:' not in compose\nassert '# Installation / Deployment - v0.21.1' in install\nassert 'docker.io/library/haushaltpro:latest' in install\nassert '## v0.21.1 - 2026-09-12' in changelog\nassert 'creamowl25@primal.net' in changelog\nprint('v0.21.1 release metadata + Portainer regression: PASS')\n''', encoding='utf-8')
+          PY
+      - name: Commit release preparation
+        shell: bash
+        run: |
+          if git diff --quiet && git status --porcelain | grep -q '^??' ; then :; fi
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "Einundzwanzig Koblenz"
+          git config user.email "koblenzeinundzwanzig@proton.me"
+          git add app/main.py docker-compose.yml docs/INSTALLATION.md CHANGELOG.md tests/test_v210_release_plausibility.py tests/test_v211_release.py
+          git commit -m "release: prepare HaushaltPro v0.21.1"
+          git push origin HEAD:release/v0.21.1-prep
