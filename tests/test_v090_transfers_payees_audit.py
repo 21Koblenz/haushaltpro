@@ -65,6 +65,6 @@ current=entry['details']['current']; assert current['name']=='Einkauf' and curre
 trentry=next(x for x in audit['items'] if x['action']=='transfer.update')
 assert trentry['details']['current']['from_account_name']=='Giro' and trentry['details']['current']['to_account_name']=='Bargeld'
 
-assert main.APP_VERSION in {'0.9.0','0.10.0','0.10.1','0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.1'}
+assert main.APP_VERSION in {'0.9.0','0.10.0','0.10.1','0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.1','0.21.2'}
 print('v0.9.0 transfers/payees/audit plausibility: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

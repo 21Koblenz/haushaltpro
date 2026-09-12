@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.21.2 - 2026-09-13
+
+### Fixed
+
+- Accounts that begin after the first day of a month now contribute their opening balance exactly on the account start date. This fixes Dashboard `Aktueller Kontostand` and `Prognose Monatsende` showing `0,00 €` for newly created mid-month accounts, including negative opening balances.
+- Month-opening corrections remain authoritative and are not combined with the original account opening balance.
+
 ## v0.21.1 - 2026-09-12
 
 ### Fixed
