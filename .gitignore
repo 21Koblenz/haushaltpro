@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Local data / databases
+*.db
+*.sqlite
+*.sqlite3
+data/
+backups/
+
+# Logs
+*.log
+logs/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Temporary
+*.tmp
+*.bak
+*.swp
