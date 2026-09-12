@@ -14,11 +14,8 @@
 .lightning-address{color:var(--accent);font-weight:800;text-decoration:none;overflow-wrap:anywhere}
 .lightning-address:hover{text-decoration:underline}
 .footer-qr-link{display:inline-grid;place-items:center;flex:0 0 auto;padding:7px;border:1px solid var(--line);border-radius:12px;background:#0b0f14}
-.footer-lightning-qr{display:block;width:86px;height:86px}
-.theme-light-only{display:none}
-.theme-dark-only{display:block}
-html[data-theme="light"] .theme-dark-only{display:none}
-html[data-theme="light"] .theme-light-only{display:block}
+.footer-lightning-qr{display:block;width:86px;height:86px;filter:invert(1)}
+html[data-theme="light"] .footer-lightning-qr{filter:none}
 html[data-theme="light"] .footer-qr-link{background:#fff}
 @media(max-width:600px){
   .app-footer-v4v{align-items:flex-start;justify-content:space-between}
