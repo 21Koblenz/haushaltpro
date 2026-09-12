@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Docker/Portainer builds now support both `linux/amd64` and `linux/arm64` by switching from the x86-only `sqlcipher3-binary==0.6.0` package to `sqlcipher3==0.6.2`.
+- CI now builds the Docker image for both architectures and verifies that SQLCipher 4 starts successfully inside each image.
+
 ## v0.21.0 - 2026-09-12
 
 First public open-source release prepared for `21Koblenz/haushaltpro`.
