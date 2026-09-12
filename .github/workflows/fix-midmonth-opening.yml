@@ -1,4 +1,4 @@
-name: Fix v0.21.2 legacy version assertions
+name: Fix v0.21.2 source version assertions
 
 on:
   push:
@@ -15,35 +15,19 @@ jobs:
         with:
           ref: fix/midmonth-opening-dashboard
           fetch-depth: 0
-      - name: Extend legacy test version assertions
+      - name: Extend source version assertions
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
 
           changed=[]
+          needle='\'APP_VERSION = "0.21.1"\' in main'
+          replacement='(\'APP_VERSION = "0.21.1"\' in main or \'APP_VERSION = "0.21.2"\' in main)'
           for p in sorted(Path('tests').glob('test_*.py')):
               s=p.read_text(encoding='utf-8')
-              old=s
-              # Historical allow-lists that ended at v0.21.1.
-              s=s.replace("'0.21.1'}", "'0.21.1','0.21.2'}")
-              s=s.replace('"0.21.1"}', '"0.21.1","0.21.2"}')
-              s=s.replace("'0.21.1']", "'0.21.1','0.21.2']")
-              s=s.replace('"0.21.1"]', '"0.21.1","0.21.2"]')
-              # Historical exact-current-version checks.
-              s=s.replace(
-                  "assert main.APP_VERSION == '0.21.1'",
-                  "assert main.APP_VERSION in {'0.21.1','0.21.2'}",
-              )
-              s=s.replace(
-                  'assert main.APP_VERSION == "0.21.1"',
-                  'assert main.APP_VERSION in {"0.21.1","0.21.2"}',
-              )
-              s=s.replace(
-                  "assert 'APP_VERSION = \\\"0.21.1\\\"' in main",
-                  "assert ('APP_VERSION = \\\"0.21.1\\\"' in main or 'APP_VERSION = \\\"0.21.2\\\"' in main)",
-              )
-              if s != old:
+              if needle in s and 'APP_VERSION = "0.21.2"' not in s:
+                  s=s.replace(needle,replacement)
                   p.write_text(s,encoding='utf-8')
                   changed.append(str(p))
           print('updated files:')
@@ -53,11 +37,11 @@ jobs:
         shell: bash
         run: |
           if [ -z "$(git status --porcelain tests)" ]; then
-            echo "No legacy version assertions needed changes"
+            echo "No source version assertions needed changes"
             exit 0
           fi
           git config user.name "Einundzwanzig Koblenz"
           git config user.email "koblenzeinundzwanzig@proton.me"
           git add tests
-          git commit -m "test: support v0.21.2 in legacy version assertions"
+          git commit -m "test: support v0.21.2 in source version assertions"
           git push origin HEAD:fix/midmonth-opening-dashboard
