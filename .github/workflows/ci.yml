@@ -17,12 +17,13 @@ jobs:
           python-version: '3.12'
           cache: pip
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt httpx2==2.12.0
       - name: Compile
         run: python -m compileall -q app tests
       - name: Regression suite
         run: |
           set -e
+          sudo install -d -o "$(id -u)" -g "$(id -g)" /app
           for t in tests/test_*.py; do
             echo "== $t =="
             python "$t"
