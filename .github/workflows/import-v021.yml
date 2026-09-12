@@ -3,19 +3,40 @@ name: Import tested v0.21.0
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: write
 
+env:
+  EXPECTED_ARCHIVE_SHA256: 6e250bf57f6fd226ecc4a7b495624495fa513223e9b51560349d820da63a28c1
+  EXPECTED_TREE: 95cb10018b46abe39f795fdd2e93889759a005e6
+  CHUNKS: >-
+    2aab66e9c36bdefac748fc0ed055eb47e75ad265 caa147a3bf722e9325b91206e0eef3df803c86a8
+    76a88419352a287b757dd542b8e69ac518e072e4 02f50883c45162adfc0c17bdba01e75e895b4706
+    ad7a535d7d856f6fea644384dc20b0e13f02520c 90233f13a0c50866fc45eb2cd2977e2ac2ee319a
+    79e242a87d68fcdb896dc7e0f8b26f48c94c0546 c69e71505d233122fc00f954d98c4039702c2880
+    da4ada352005de812fbbc974496080e518aa3ba8 31780ba40453525b30d812ef1c98a6b9917914d7
+    166037713be7b00e509168291dc1d6bb8bb636dc 975ebd81dcb86e08a2b782adf2417bc08d74389d
+    e470e39a1e6caa704c64fbfcbf0ac1890c47bca6 308256e8ed9a4a499dfd875a779968521c8b8048
+    32eca86975fe2c0eca9bec398dbb9623a5ccaaff 2c4ac04b2a28844867ae8316d27f8823abe4318c
+    b07f5b6cdd1bacb6decf4bef0a8f4992c41c3cee 4131ba06fe7453f0cc5e87532869c13ef09a0b59
+    6cf9663d33b8547b9cb4ca69557616a260aa388f b9584e546cbd5984e98fd28de9cd0cc55e813446
+    52081fbaefe0098873c86846202fcd0f218c27c9 9fdde7a0e5764fc6c2878638a9950ef7b806724b
+    76cea021635adc6c0d8eeedd204d202840dc2aae 7bf94881bb18c789a06086dfd36206ec563c8083
+    4e98381bc4d65edb34df41ca29dcfb5b3583f57c e0abac773217cbb41d4a9c85b6adaa26e712cc0f
+    28ba515c19085c0639e736ceb4d3ef459240a9f8 ef6a904ed990103eed4c0ea599e140a40ad3d1f2
+    f723b9cccb6848ac3aa44538e17152e31aa726d6 7d0721e255eb0a1c264dfeef5b5c3f5ab080bb97
+    1fa72faf4795808e62269dff30fed9fcb674a04a 2e8b3cf89c925267ae18ac62672ea23edfe86b8b
+    a5561f578ee4cd627b9e932612badb9d572b23da 994ee69b702bedbc13664b615b44bf056c3b6d23
+    15b9e1d3c015b38674d665f13f5da1e3280b7325 d362db8392be2143d987381accefbd22e04198e0
+    50b2d4fefb638a439e56ed426e29bd7595006cfc 31dc6cb54abf4f65cb51cae43a0abd89474b5905
+    19eb4271cc2e4baaae41c727321b02c23ac3169e
+
 jobs:
   import-release:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'chore: import tested v0.21.0 source'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      EXPECTED_ARCHIVE_SHA256: 6e250bf57f6fd226ecc4a7b495624495fa513223e9b51560349d820da63a28c1
-      EXPECTED_TREE: 95cb10018b46abe39f795fdd2e93889759a005e6
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,72 +47,21 @@ jobs:
           python-version: '3.12'
           cache: pip
 
-      - name: Reconstruct verified release archive
+      - name: Reconstruct and verify archive
         shell: bash
         run: |
           python - <<'PY'
           import base64, json, os, urllib.request
-
-          shas = [
-              '2aab66e9c36bdefac748fc0ed055eb47e75ad265',
-              'caa147a3bf722e9325b91206e0eef3df803c86a8',
-              '76a88419352a287b757dd542b8e69ac518e072e4',
-              '02f50883c45162adfc0c17bdba01e75e895b4706',
-              'ad7a535d7d856f6fea644384dc20b0e13f02520c',
-              '90233f13a0c50866fc45eb2cd2977e2ac2ee319a',
-              '79e242a87d68fcdb896dc7e0f8b26f48c94c0546',
-              'c69e71505d233122fc00f954d98c4039702c2880',
-              'da4ada352005de812fbbc974496080e518aa3ba8',
-              '31780ba40453525b30d812ef1c98a6b9917914d7',
-              '166037713be7b00e509168291dc1d6bb8bb636dc',
-              '975ebd81dcb86e08a2b782adf2417bc08d74389d',
-              'e470e39a1e6caa704c64fbfcbf0ac1890c47bca6',
-              '308256e8ed9a4a499dfd875a779968521c8b8048',
-              '32eca86975fe2c0eca9bec398dbb9623a5ccaaff',
-              '2c4ac04b2a28844867ae8316d27f8823abe4318c',
-              'b07f5b6cdd1bacb6decf4bef0a8f4992c41c3cee',
-              '4131ba06fe7453f0cc5e87532869c13ef09a0b59',
-              '6cf9663d33b8547b9cb4ca69557616a260aa388f',
-              'b9584e546cbd5984e98fd28de9cd0cc55e813446',
-              '52081fbaefe0098873c86846202fcd0f218c27c9',
-              '9fdde7a0e5764fc6c2878638a9950ef7b806724b',
-              '76cea021635adc6c0d8eeedd204d202840dc2aae',
-              '7bf94881bb18c789a06086dfd36206ec563c8083',
-              '4e98381bc4d65edb34df41ca29dcfb5b3583f57c',
-              'e0abac773217cbb41d4a9c85b6adaa26e712cc0f',
-              '28ba515c19085c0639e736ceb4d3ef459240a9f8',
-              'ef6a904ed990103eed4c0ea599e140a40ad3d1f2',
-              'f723b9cccb6848ac3aa44538e17152e31aa726d6',
-              '7d0721e255eb0a1c264dfeef5b5c3f5ab080bb97',
-              '1fa72faf4795808e62269dff30fed9fcb674a04a',
-              '2e8b3cf89c925267ae18ac62672ea23edfe86b8b',
-              'a5561f578ee4cd627b9e932612badb9d572b23da',
-              '994ee69b702bedbc13664b615b44bf056c3b6d23',
-              '15b9e1d3c015b38674d665f13f5da1e3280b7325',
-              'd362db8392be2143d987381accefbd22e04198e0',
-              '50b2d4fefb638a439e56ed426e29bd7595006cfc',
-              '31dc6cb54abf4f65cb51cae43a0abd89474b5905',
-              '19eb4271cc2e4baaae41c727321b02c23ac3169e',
-          ]
-
           repo = os.environ['GITHUB_REPOSITORY']
           token = os.environ['GH_TOKEN']
-          headers = {
-              'Authorization': f'Bearer {token}',
-              'Accept': 'application/vnd.github+json',
-              'X-GitHub-Api-Version': '2022-11-28',
-          }
+          headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json'}
           with open('/tmp/release.b64', 'wb') as out:
-              for sha in shas:
-                  req = urllib.request.Request(
-                      f'https://api.github.com/repos/{repo}/git/blobs/{sha}',
-                      headers=headers,
-                  )
+              for sha in os.environ['CHUNKS'].split():
+                  req = urllib.request.Request(f'https://api.github.com/repos/{repo}/git/blobs/{sha}', headers=headers)
                   with urllib.request.urlopen(req) as response:
                       payload = json.load(response)
                   out.write(base64.b64decode(payload['content']))
           PY
-
           test "$(wc -c < /tmp/release.b64)" -eq 233800
           base64 --decode /tmp/release.b64 > /tmp/haushaltpro-v0.21.0.tar.gz
           echo "$EXPECTED_ARCHIVE_SHA256  /tmp/haushaltpro-v0.21.0.tar.gz" | sha256sum -c -
@@ -99,22 +69,16 @@ jobs:
           tar -xzf /tmp/haushaltpro-v0.21.0.tar.gz -C /tmp/release --strip-components=1
           git --git-dir=/tmp/release-git init -q
           git --git-dir=/tmp/release-git --work-tree=/tmp/release add -A
-          ACTUAL_TREE="$(git --git-dir=/tmp/release-git --work-tree=/tmp/release write-tree)"
-          echo "Release tree: $ACTUAL_TREE"
-          test "$ACTUAL_TREE" = "$EXPECTED_TREE"
+          test "$(git --git-dir=/tmp/release-git --work-tree=/tmp/release write-tree)" = "$EXPECTED_TREE"
 
       - name: Install dependencies
         run: python -m pip install -r /tmp/release/requirements.txt
 
-      - name: Compile
-        working-directory: /tmp/release
-        run: python -m compileall -q app tests
-
-      - name: Run all 51 regression and plausibility tests
-        working-directory: /tmp/release
+      - name: Compile and test
         shell: bash
         run: |
-          set -euo pipefail
+          cd /tmp/release
+          python -m compileall -q app tests
           count=0
           for t in tests/test_*.py; do
             echo "== $t =="
@@ -123,10 +87,7 @@ jobs:
           done
           echo "Tests executed: $count"
           test "$count" -eq 51
-
-      - name: Run security audit
-        working-directory: /tmp/release
-        run: python tests/security_audit.py
+          python tests/security_audit.py
 
       - name: Build Docker image
         run: docker build --pull -t haushaltpro:0.21.0 /tmp/release
@@ -137,15 +98,13 @@ jobs:
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -a /tmp/release/. .
           git add -A
-          ACTUAL_TREE="$(git write-tree)"
-          echo "Staged tree: $ACTUAL_TREE"
-          test "$ACTUAL_TREE" = "$EXPECTED_TREE"
+          test "$(git write-tree)" = "$EXPECTED_TREE"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'release: publish HaushaltPro v0.21.0'
           git push origin HEAD:main
 
-      - name: Create v0.21.0 tag and GitHub release
+      - name: Tag and release v0.21.0
         shell: bash
         run: |
           git tag -a v0.21.0 -m 'HaushaltPro v0.21.0'
@@ -167,8 +126,6 @@ jobs:
           - mobile-responsive transaction view
           - Vibe Coding / AI-assisted development disclosure
           - GNU AGPL-3.0-or-later
-
-          The attached tarball is the exact archive reconstructed and tested by this release workflow. Its SHA-256 is published alongside it.
           EOF
           gh release create v0.21.0 \
             /tmp/haushaltpro-v0.21.0.tar.gz#haushaltpro-v0.21.0.tar.gz \
