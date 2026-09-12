@@ -1,11 +1,9 @@
 from pathlib import Path
-
-root = Path(__file__).resolve().parents[1]
-main = (root / "app/main.py").read_text(encoding="utf-8")
-compose = (root / "docker-compose.yml").read_text(encoding="utf-8")
-install = (root / "docs/INSTALLATION.md").read_text(encoding="utf-8")
-changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
-
+root=Path(__file__).resolve().parents[1]
+main=(root/"app/main.py").read_text(encoding="utf-8")
+compose=(root/"docker-compose.yml").read_text(encoding="utf-8")
+install=(root/"docs/INSTALLATION.md").read_text(encoding="utf-8")
+changelog=(root/"CHANGELOG.md").read_text(encoding="utf-8")
 assert 'APP_VERSION = "0.21.1"' in main
 assert 'image: haushaltpro:' not in compose
 assert '# Installation / Deployment - v0.21.1' in install
