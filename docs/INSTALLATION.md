@@ -1,22 +1,10 @@
-# Installation / Deployment
+# Installation / Deployment - v0.21.0
 
-This guide documents the three intended deployment models for HaushaltPro. Commands that depend on the final v0.21.0 source tree must be verified against the imported application before the release is tagged.
+## Deutsch
 
----
+### Voraussetzungen
 
-# Deutsch
-
-## 1. Voraussetzungen
-
-Für die Docker-basierte Installation werden benötigt:
-
-- Linux-Host oder VM
-- Docker Engine
-- Docker Compose Plugin (`docker compose`)
-- Git
-- ausreichend freier Speicher für Anwendung, Datenbank und Backups
-
-Prüfen:
+Benötigt werden ein Linux-Host oder eine VM, Docker Engine, Docker Compose Plugin und Git.
 
 ```bash
 docker --version
@@ -24,165 +12,141 @@ docker compose version
 git --version
 ```
 
-Repository klonen:
+Repository installieren:
 
 ```bash
 git clone https://github.com/21Koblenz/haushaltpro.git
 cd haushaltpro
 ```
 
-> Die endgültigen Startbefehle, Environment-Variablen und Ports werden mit dem v0.21.0-Quellstand validiert. Bis dieser Quellstand importiert ist, bitte keine Beispielwerte als Produktionskonfiguration übernehmen.
-
-## 2. Lokal / LAN
-
-Empfohlen, wenn HaushaltPro nur im Heimnetz benötigt wird.
-
-Grundprinzip:
-
-1. Anwendung auf dem eigenen Server/der eigenen VM starten.
-2. Nur den erforderlichen Anwendungsport im lokalen Netz erreichbar machen.
-3. Keine Portweiterleitung im Router einrichten.
-4. Datenverzeichnis und Datenbank regelmäßig sichern.
-
-Nach Import des Quellstands wird dieser Abschnitt die exakten `docker compose`-Befehle, Portbelegung und Healthchecks enthalten.
-
-## 3. Zugriff über VPN
-
-Für Zugriff von unterwegs ist VPN gegenüber direkter Internetfreigabe die bevorzugte Variante.
-
-Geeignete Architektur:
-
-```text
-Client ── VPN ── Heimnetz/VPS ── HaushaltPro
-```
-
-Dabei bleibt HaushaltPro selbst nur lokal bzw. im VPN erreichbar. Möglich sind beispielsweise WireGuard-basierte VPNs. Entscheidend ist, dass der Anwendungsport nicht zusätzlich öffentlich freigegeben wird.
-
-Prüfpunkte:
-
-- VPN-Client erhält eine erreichbare Route zum HaushaltPro-Host.
-- Firewall erlaubt den Zugriff nur aus LAN/VPN.
-- DNS/Hostname wird intern oder über das VPN aufgelöst.
-- Keine Router-Portweiterleitung auf den HaushaltPro-Webport.
-
-## 4. Online / öffentlich erreichbar
-
-Nur verwenden, wenn ein öffentlicher Zugriff wirklich erforderlich ist.
-
-Empfohlene Architektur:
-
-```text
-Internet
-   │
- HTTPS :443
-   │
-Reverse Proxy
-   │
-interner Docker-/Host-Port
-   │
-HaushaltPro
-```
-
-Mindestanforderungen:
-
-- HTTPS/TLS
-- gepflegter Reverse Proxy
-- starke Authentifizierung
-- kein direkter Zugriff auf Datenbank oder interne Verwaltungsports
-- Firewall: nur notwendige Ports offen
-- regelmäßige Updates
-- getestete Backups
-- keine Secrets im Git-Repository
-
-Die Anwendung sollte nicht über einen Entwicklungsserver direkt ins Internet gestellt werden.
-
-## 5. Update
-
-Nach Veröffentlichung eines validierten Releases soll ein Update grundsätzlich nach diesem Muster erfolgen:
+### Variante A - nur lokal auf dem Server
 
 ```bash
-git fetch --tags
-git checkout <release-tag>
+cp .env.example .env
+docker compose build --pull
+docker compose up -d
+docker compose ps
+```
+
+Standard: `HAUSHALTPRO_BIND_IP=127.0.0.1`. Die Anwendung ist damit nur auf dem Docker-Host unter `http://127.0.0.1:8080` erreichbar.
+
+### Variante B - LAN
+
+Wenn Geräte im vertrauenswürdigen Heimnetz zugreifen sollen:
+
+```bash
+cp .env.example .env
+sed -i 's/HAUSHALTPRO_BIND_IP=127.0.0.1/HAUSHALTPRO_BIND_IP=0.0.0.0/' .env
+docker compose up -d --build
+```
+
+Danach: `http://SERVER-IP:8080`.
+
+**Keine Router-Portweiterleitung auf 8080 einrichten.**
+
+### Variante C - VPN
+
+Für Zugriff von unterwegs wird VPN empfohlen. HaushaltPro bleibt dabei im privaten Netz und muss nicht öffentlich exponiert werden.
+
+Architektur:
+
+```text
+Notebook/Smartphone -> WireGuard/VPN -> Heimnetz -> HaushaltPro:8080
+```
+
+Wenn der VPN-Server auf demselben Host oder im selben LAN läuft, kann HaushaltPro wie in der LAN-Variante an die private Netzschnittstelle gebunden werden. Die Firewall sollte Port 8080 nur aus LAN/VPN erlauben.
+
+Beispiel-Prüfung vom VPN-Client:
+
+```bash
+curl -I http://SERVER-IP:8080/
+```
+
+### Variante D - öffentlich / Online
+
+Nur verwenden, wenn öffentlicher Zugriff wirklich erforderlich ist. HaushaltPro selbst bleibt auf `127.0.0.1:8080`; ein Reverse Proxy übernimmt TLS auf Port 443.
+
+```bash
+cp .env.public.example .env
+openssl rand -hex 32
+```
+
+Den erzeugten Wert als `PUBLIC_SETUP_TOKEN` eintragen und `ALLOWED_HOSTS` auf den echten Hostnamen setzen.
+
+Caddy-Beispiel:
+
+```caddyfile
+haushalt.example.de {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8080
+}
+```
+
+Dann:
+
+```bash
 docker compose build --pull
 docker compose up -d
 ```
 
-Vorher Datenbank/Anwendungsdaten sichern. Release-spezifische Migrationshinweise haben Vorrang.
+Wichtig: 8080 nicht per Router/NAT direkt veröffentlichen. Nur 443 zum Reverse Proxy freigeben. `TRUST_PROXY_HEADERS=true` ist nur sicher, wenn der App-Port nicht direkt aus dem Internet erreichbar ist.
 
-## 6. Backup
+Weitere Details stehen in `PUBLIC-DEPLOYMENT.md`.
 
-Ein Backup muss mindestens alle persistenten Daten enthalten, die nicht aus dem Git-Repository neu erzeugt werden können. Der konkrete v0.21.0-Pfad wird nach Import des Quellstands dokumentiert.
+### Kontrolle
 
-Ein Backup gilt erst dann als belastbar, wenn ein Restore testweise funktioniert hat.
+```bash
+docker compose ps
+docker compose logs --tail=100 haushaltpro
+curl http://127.0.0.1:8080/healthz
+```
+
+Erwartet:
+
+```json
+{"status":"ok"}
+```
+
+### Backup vor Updates
+
+Vor Updates ein portables verschlüsseltes Backup herunterladen und außerhalb des Hosts sichern. Das Docker-Volume nicht löschen.
+
+### Update
+
+```bash
+git fetch --tags
+docker compose build --pull
+docker compose up -d
+```
 
 ---
 
-# English
+## English
 
-## 1. Requirements
+### Requirements
 
-For the Docker-based deployment:
-
-- Linux host or VM
-- Docker Engine
-- Docker Compose plugin (`docker compose`)
-- Git
-- sufficient storage for application data, database and backups
-
-Check:
-
-```bash
-docker --version
-docker compose version
-git --version
-```
-
-Clone:
+Linux host/VM, Docker Engine, Docker Compose plugin and Git.
 
 ```bash
 git clone https://github.com/21Koblenz/haushaltpro.git
 cd haushaltpro
-```
-
-The exact ports, environment variables and startup commands must be validated against the imported v0.21.0 source tree before release.
-
-## 2. Local / LAN
-
-Recommended when HaushaltPro is only needed inside the home network. Do not configure router port forwarding. Expose only the required application service inside the trusted LAN and maintain regular backups.
-
-## 3. VPN access
-
-Recommended for remote access without exposing the application directly to the Internet.
-
-```text
-Client ── VPN ── private network ── HaushaltPro
-```
-
-Allow the application only from LAN/VPN networks and do not expose the same application port publicly.
-
-## 4. Public online deployment
-
-If public access is required, place a maintained HTTPS reverse proxy in front of HaushaltPro.
-
-Minimum requirements:
-
-- TLS/HTTPS
-- strong authentication
-- minimal firewall exposure
-- no public database/admin ports
-- regular updates
-- tested backups
-- no secrets in Git
-
-## 5. Updates
-
-Target workflow after a validated release exists:
-
-```bash
-git fetch --tags
-git checkout <release-tag>
+cp .env.example .env
 docker compose build --pull
 docker compose up -d
 ```
 
-Always back up persistent data first and follow release-specific migration notes.
+The secure default binds to `127.0.0.1:8080`.
+
+### Local / LAN
+
+For trusted LAN access set `HAUSHALTPRO_BIND_IP=0.0.0.0` in `.env`. Do not configure Internet router forwarding to port 8080.
+
+### VPN
+
+VPN is the preferred method for remote private access. Route the client into the private network and allow port 8080 only from LAN/VPN ranges.
+
+### Public Internet
+
+Use `.env.public.example`, a concrete `ALLOWED_HOSTS`, a strong `PUBLIC_SETUP_TOKEN` and an HTTPS reverse proxy. Keep HaushaltPro itself bound to `127.0.0.1:8080`; expose only HTTPS/443 at the proxy.
+
+See `PUBLIC-DEPLOYMENT.md` for Caddy/nginx examples and public-mode security requirements.
