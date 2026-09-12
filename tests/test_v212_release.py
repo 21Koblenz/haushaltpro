@@ -1,6 +1,6 @@
 from pathlib import Path
 
-# Final release invariants for the v0.21.2 dashboard opening-balance fix.
+# Final validated release invariants for the v0.21.2 dashboard opening-balance fix.
 root = Path(__file__).resolve().parents[1]
 main = (root / "app/main.py").read_text(encoding="utf-8")
 changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
