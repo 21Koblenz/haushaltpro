@@ -2,10 +2,21 @@
 
 ## Unreleased
 
+## v0.21.1 - 2026-09-12
+
 ### Fixed
 
-- Docker/Portainer builds now support both `linux/amd64` and `linux/arm64` by switching from the x86-only `sqlcipher3-binary==0.6.0` package to `sqlcipher3==0.6.2`.
-- CI now builds the Docker image for both architectures and verifies that SQLCipher 4 starts successfully inside each image.
+- New accounts now accept negative opening balances reliably, including on mobile devices. Signed-money fields accept decimal comma or decimal point and include an explicit `±` control.
+- Added a regression test that verifies `-1234.56` is stored as `-123456` cents and remains negative across account balance calculations.
+- Portainer documentation now explains why `haushaltpro:latest` must not be re-pulled from Docker Hub for a locally built Git stack.
+- Removed the local `image: haushaltpro:0.21.0` declaration from the repository Compose file so build-based deployments do not accidentally look like registry-pull deployments.
+- Docker/Portainer builds support both `linux/amd64` and `linux/arm64` by using `sqlcipher3==0.6.2`.
+- CI builds the Docker image for both architectures and verifies that SQLCipher 4 starts successfully inside each image.
+
+### Added
+
+- Value-for-Value footer with `lightning:creamowl25@primal.net`.
+- Theme-aware Lightning QR presentation for dark and light mode.
 - New and corrected account balances can now be entered reliably as negative values on mobile devices; signed balance fields support decimal comma/point input and an explicit `±` control.
 
 ### Added

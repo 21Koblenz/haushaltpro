@@ -1,4 +1,4 @@
-# Installation / Deployment - v0.21.0
+# Installation / Deployment - v0.21.1
 
 ## Deutsch
 
@@ -92,6 +92,23 @@ docker compose up -d
 Wichtig: 8080 nicht per Router/NAT direkt veröffentlichen. Nur 443 zum Reverse Proxy freigeben. `TRUST_PROXY_HEADERS=true` ist nur sicher, wenn der App-Port nicht direkt aus dem Internet erreichbar ist.
 
 Weitere Details stehen in `PUBLIC-DEPLOYMENT.md`.
+
+### Portainer / Git-Stack
+
+Wenn HaushaltPro in Portainer direkt aus diesem Git-Repository gebaut wird, darf kein unqualifiziertes lokales Image wie `haushaltpro:latest` als Pull-Quelle verwendet werden. Sonst versucht Portainer `docker.io/library/haushaltpro:latest` aus Docker Hub zu laden und endet mit `pull access denied`.
+
+Empfohlen ist ein Build direkt aus dem Release-Tag, z. B.:
+
+```yaml
+services:
+  haushaltpro:
+    build:
+      context: https://github.com/21Koblenz/haushaltpro.git#v0.21.1
+    container_name: haushaltpro
+    restart: unless-stopped
+```
+
+Wichtig in Portainer: **nicht** „Re-pull image“ / „Pull latest image“ für ein lokal gebautes HaushaltPro-Image verwenden. Für ein Update den Git-Tag im Build-Kontext auf die gewünschte Version ändern und den Stack neu bauen/deployen. Das Daten-Volume `haushaltpro_data` dabei nicht löschen.
 
 ### Kontrolle
 

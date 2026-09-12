@@ -48,6 +48,6 @@ start=js.index('async function loadRecurring()')
 block=js[start:js.index('\nfunction ',start+1) if '\nfunction ' in js[start+1:] else start+5000]
 assert "api('/api/recurring')" in block
 assert 'selectedMonth' not in block
-assert main.APP_VERSION in {'0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0'}
+assert main.APP_VERSION in {'0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.1'}
 print('v0.10.4 recurring list independent of selected month: PASS')
 shutil.rmtree(base,ignore_errors=True)

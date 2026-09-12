@@ -40,7 +40,7 @@ def ok(r):
 def close(a, b, eps=0.00001):
     assert abs(float(a)-float(b)) <= eps, (a, b)
 
-assert main.APP_VERSION == '0.21.0'
+assert main.APP_VERSION.startswith('0.21.')
 
 # Fixed independent demo dataset documented for the v0.21.0 release.
 giro = ok(client.post('/api/accounts', json={'name':'Girokonto','type':'checking','opening_balance':'2000.00','currency':'EUR','start_date':'2026-01-01'}))['id']

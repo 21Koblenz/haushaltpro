@@ -2,7 +2,6 @@ services:
   haushaltpro:
     build:
       context: .
-    image: haushaltpro:0.21.0
     container_name: haushaltpro
     restart: unless-stopped
     init: true
