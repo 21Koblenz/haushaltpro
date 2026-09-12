@@ -1,0 +1,70 @@
+name: Publish v0.21.1
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify release target
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_SHA="71715ffd46fbe7bee74d36245845abc16bc51ff0"
+          git cat-file -e "${RELEASE_SHA}^{commit}"
+          git show "${RELEASE_SHA}:app/main.py" | grep -F 'APP_VERSION = "0.21.1"'
+          if git ls-remote --exit-code --tags origin refs/tags/v0.21.1 >/dev/null 2>&1; then
+            echo "Tag v0.21.1 already exists; refusing to move an existing release tag."
+            exit 1
+          fi
+
+      - name: Create tag and release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_SHA="71715ffd46fbe7bee74d36245845abc16bc51ff0"
+          git config user.name "Einundzwanzig Koblenz"
+          git config user.email "koblenzeinundzwanzig@proton.me"
+          git tag -a v0.21.1 "$RELEASE_SHA" -m "HaushaltPro v0.21.1"
+          git push origin v0.21.1
+          git archive --format=tar.gz --prefix=haushaltpro-v0.21.1/ -o haushaltpro-v0.21.1.tar.gz "$RELEASE_SHA"
+          sha256sum haushaltpro-v0.21.1.tar.gz > haushaltpro-v0.21.1.tar.gz.sha256
+          cat > release-notes.md <<'EOF'
+          ## HaushaltPro v0.21.1
+
+          Patch release with account-balance, Value-for-Value and Portainer deployment improvements.
+
+          ### Fixed
+          - Negative opening balances now work reliably for new accounts, including mobile input.
+          - Signed balance fields accept decimal comma or decimal point and provide an explicit ± control.
+          - Added a regression test verifying `-1234.56` is stored as `-123456` cents and remains negative through account balance calculations.
+          - Portainer/Git deployments no longer declare a local `image: haushaltpro:*` in the repository Compose file, preventing accidental Docker Hub pulls of `docker.io/library/haushaltpro:latest`.
+          - Docker builds support both `linux/amd64` and `linux/arm64`; CI verifies SQLCipher 4 at runtime on both architectures.
+
+          ### Added
+          - Value-for-Value footer with Lightning address `creamowl25@primal.net`.
+          - Local theme-aware Lightning QR presentation for dark and light mode.
+
+          ### Validation
+          - Full regression suite: passed.
+          - Static security audit: passed.
+          - Docker build + SQLCipher runtime: passed on amd64 and arm64.
+
+          Upgrade note for Portainer: rebuild from the Git tag `v0.21.1`; do not use **Re-pull image / Pull latest image** for a locally built HaushaltPro image, and keep the existing `haushaltpro_data` volume.
+          EOF
+          gh release create v0.21.1 \
+            haushaltpro-v0.21.1.tar.gz \
+            haushaltpro-v0.21.1.tar.gz.sha256 \
+            --title "HaushaltPro v0.21.1" \
+            --notes-file release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
