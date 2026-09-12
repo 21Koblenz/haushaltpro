@@ -1,4 +1,6 @@
 from pathlib import Path
+
+# Release-level invariants for the v0.21.1 patch release.
 root=Path(__file__).resolve().parents[1]
 main=(root/"app/main.py").read_text(encoding="utf-8")
 compose=(root/"docker-compose.yml").read_text(encoding="utf-8")
