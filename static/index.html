@@ -1,321 +1,346 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="de">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="dark light">
-  <title>HaushaltPro</title>
-  <link rel="stylesheet" href="/assets/style.css">
-  <link rel="stylesheet" href="/assets/ui-enhancements.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="dark light" name="color-scheme"/>
+<title>HaushaltPro</title>
+<link href="/assets/style.css?v=0.21.3" rel="stylesheet"/>
+<link href="/assets/ui-enhancements.css?v=0.21.3" rel="stylesheet"/>
 </head>
 <body>
-  <main class="shell">
-    <section id="auth" class="auth-card">
-      <div class="brand">HaushaltPro</div>
-      <p id="authSubtitle">Verschlüsseltes Haushaltsbuch</p>
-      <form id="authForm">
-        <label>Benutzername<input id="username" autocomplete="username" required maxlength="64"></label>
-        <label>Passwort<input id="password" type="password" autocomplete="current-password" required minlength="10"></label>
-        <label id="setupTokenLabel" hidden>Setup-Token<input id="setupToken" type="password" autocomplete="off" maxlength="256" placeholder="Nur im Public-Modus bei Ersteinrichtung"></label><label class="check"><input id="trusted" type="checkbox"> Autolock auf diesem Gerät deaktivieren</label>
-        <button id="authSubmit" type="submit">Anmelden</button>
-        <button id="registerBtn" type="button" class="ghost">Neuen Nutzer anlegen</button>
-      </form>
-      <p id="authMsg" class="message"></p>
-    </section>
-
-    <section id="register" class="auth-card" hidden>
-      <div class="brand">HaushaltPro</div>
-      <h1>Neuen Nutzer anlegen</h1>
-      <p class="muted">Der neue Nutzer erhält erst nach Freigabe durch einen berechtigten Benutzer Zugriff auf die Haushaltsdaten.</p>
-      <form id="registerForm">
-        <label>Benutzername<input id="registerUsername" autocomplete="username" required maxlength="64"></label>
-        <label>Passwort<input id="registerPassword" type="password" autocomplete="new-password" required minlength="10"></label>
-        <label>Passwort wiederholen<input id="registerPasswordConfirm" type="password" autocomplete="new-password" required minlength="10"></label>
-        <button id="registerSubmit" type="submit">Nutzer anlegen</button>
-        <button id="registerBack" type="button" class="ghost">Zurück zur Anmeldung</button>
-      </form>
-      <p id="registerMsg" class="message"></p>
-    </section>
-
-    <section id="app" hidden>
-      <header class="topbar">
-        <div class="topbar-identity"><div class="brand">HaushaltPro</div><div class="identity-row"><small id="userLabel"></small><select id="bookSwitcher" aria-label="Haushaltsbuch" title="Haushaltsbuch wechseln"></select></div></div>
-        <button id="mobileNavToggle" class="ghost mobile-nav-toggle" type="button" aria-controls="mainNav" aria-expanded="false">☰ Menü</button>
-        <nav id="mainNav">
-          <button class="nav active" data-view="dashboard">Dashboard</button>
-          <button class="nav" data-view="accounts-page">Konten</button>
-          <button class="nav" data-view="transactions">Buchungen</button>
-          <button class="nav" data-view="budgets">Budgets</button><button class="nav" data-view="reports">Auswertung</button>
-          <button class="nav" data-view="planning">Planung & Prognose</button>
-          <button class="nav" data-view="finance-check">Finanz-Check</button>
-          <button class="nav" data-view="investments" id="navInvestments" hidden>Investments</button>
-          <button class="nav" data-view="help">Hilfe</button>
-          <button class="nav" data-view="settings">Einstellungen</button>
-        </nav>
-        <button id="logout" class="ghost">Logout</button>
-      </header>
-
-      <section id="view-dashboard" class="view">
-        <div class="hero-grid" id="dashboardMonthHero">
-          <article class="metric"><span>Aktueller Kontostand</span><small id="balanceHelp" class="metric-help">Stand bis zum Vergleichsstichtag des ausgewählten Monats.</small><strong id="balance">–</strong></article>
-          <article class="metric"><span>Ausstehend bis Monatsende</span><small class="metric-help">Noch fällige Ausgaben nach dem heutigen Kalendertag im ausgewählten Monat bis Monatsende.</small><strong id="pending">–</strong></article>
-          <article class="metric accent"><span>Prognose Monatsende</span><strong id="monthEnd">–</strong></article>
-        </div>
-        <div class="toolbar month-toolbar">
-          <select id="dashPeriod" aria-label="Ansicht"><option value="month">Monat</option><option value="year">Jahr</option></select>
-          <button id="dashPrevMonth" class="ghost" type="button">‹</button>
-          <select id="dashMonthName" aria-label="Monat"></select>
-          <input id="dashYear" type="number" min="2000" max="2100" aria-label="Jahr">
-          <button id="dashNextMonth" class="ghost" type="button">›</button>
-          <button id="dashToday" class="ghost" type="button">Aktueller Monat</button>
-          <span class="spacer"></span>
-          <button id="quickAccount">+ Konto</button>
-          <button id="quickTx">+ Buchung</button>
-        </div>
-        <section id="dashboardYearView" hidden>
-          <div class="hero-grid">
-            <article class="metric"><span>Einnahmen Ist Jahr</span><strong id="dashYearIncome">–</strong></article>
-            <article class="metric"><span>Ausgaben Ist Jahr</span><strong id="dashYearExpense">–</strong></article>
-            <article class="metric"><span>Sparen Ist Jahr</span><strong id="dashYearSavings">–</strong></article>
-            <article class="metric accent"><span>Prognose Jahresende</span><strong id="dashYearEnd">–</strong></article>
-          </div>
-          <article class="panel dashboard-year-panel">
-            <div class="section-head"><div><h2>Jahresübersicht</h2><p class="muted">Monatliche Einnahmen, Ausgaben, Sparen und prognostizierte Monatsendstände.</p></div></div>
-            <div class="planning-year-chart-wrap"><canvas id="dashboardYearChart"></canvas></div>
-            <div id="dashboardYearSummary" class="planning-year-list"></div>
-          </article>
-        </section>
-
-        <article class="panel chart-panel" id="dashboardMonthChart"><canvas id="chart" height="240"></canvas></article>
-        <div class="two-col" id="dashboardMonthPanels">
-          <article class="panel"><h2>Konten</h2><div id="accounts"></div></article>
-          <article class="panel"><h2>Nächste Zahlungen im ausgewählten Monat</h2><p class="muted compact-note" id="upcomingHint"></p><div id="recurringDash"></div></article>
-        </div>
-        <section class="analysis-block" id="dashboardMonthAnalysis">
-          <div class="section-head"><div><h1>Analyse</h1><p class="muted">Kennzahlen bis heute im ausgewählten Monat sowie die Monatsprognose und Entwicklung der letzten zwölf Monate.</p></div></div>
-          <div class="analysis-grid">
-            <article class="metric"><span>Einnahmen bis heute</span><strong id="analysisIncome">–</strong></article>
-            <article class="metric"><span>Ausgaben bis heute</span><strong id="analysisExpense">–</strong></article>
-            <article class="metric accent"><span>Kontostand bis heute</span><strong id="analysisNet">–</strong></article>
-            <article class="metric"><span>Sparquote Monat</span><strong id="analysisSavingsRate">–</strong></article>
-            <article class="metric"><span>Sparquote Jahr <small class="metric-help">Kalenderjahr inkl. bekannter zukünftiger Buchungen</small></span><strong id="analysisAnnualSavingsRate">–</strong></article>
-            <article class="metric"><span>Gespart im Jahr <small class="metric-help">Explizites Sparen plus nicht ausgegebener Überschuss</small></span><strong id="analysisAnnualSaved">–</strong></article>
-            <article class="metric"><span>Ø Sparen pro Monat <small class="metric-help">Jahresprognose / 12 Monate</small></span><strong id="analysisAnnualAvgSaved">–</strong></article>
-            <article class="metric"><span>Ø Einnahmen pro Tag <small class="metric-help">Monatsprognose inkl. geplanter Einnahmen</small></span><strong id="analysisDailyIncome">–</strong></article><article class="metric"><span>Ø Ausgaben pro Tag <small class="metric-help">Monatsprognose inkl. geplanter Ausgaben</small></span><strong id="analysisDailyExpense">–</strong></article><article class="metric"><span>Ø Sparen pro Tag <small class="metric-help">Monatsprognose inkl. geplanter Sparbuchungen</small></span><strong id="analysisDailySavings">–</strong></article>
-            <article class="metric"><span>Noch erwartete Einnahmen</span><strong id="analysisRemainingIncome">–</strong></article>
-          </div>
-          <div class="two-col analysis-panels">
-            <article class="panel"><h2>Top-Ausgabenkategorien</h2><div id="analysisTopCategories"></div></article>
-            <article class="panel"><h2>12-Monats-Übersicht</h2><p class="muted compact-note">Einnahmen, Ausgaben, Sparen und monatliche Sparquote. Der ausgewählte Monat ist immer der letzte Monat.</p><div class="analysis-chart-wrap"><canvas id="analysisChart" height="220"></canvas></div><div id="analysisMonths" class="analysis-month-list"></div></article>
-          </div>
-        </section>
-      </section>
-
-
-      <section id="view-accounts-page" class="view" hidden>
-        <div class="section-head"><div><h1>Konten</h1><p class="muted">Kontodaten bearbeiten und Monatsanfänge korrigieren, ohne alte Buchungen zu verändern.</p></div><button id="newAccount">+ Konto</button></div>
-        <div class="toolbar month-toolbar"><select id="accountMonthName" aria-label="Monat"></select><input id="accountYear" type="number" min="2000" max="2100" aria-label="Jahr"><button id="accountReload">Anzeigen</button></div>
-        <div id="accountManager" class="account-manager-grid"></div>
-      </section>
-
-      <section id="view-transactions" class="view" hidden>
-        <div class="section-head"><div><h1>Buchungen</h1><p class="muted">Kontobewegungen, interne Transfers und wiederkehrende Serien an einer Stelle.</p></div><div class="head-actions"><button id="newTransfer" class="ghost">↔ Transfer</button><button id="newTx">+ Buchung</button></div></div>
-        <div class="segmented-tabs" role="tablist" aria-label="Buchungsansicht">
-          <button id="txTabAll" class="segment active" type="button" role="tab" aria-selected="true">Alle Buchungen</button>
-          <button id="txTabRecurring" class="segment" type="button" role="tab" aria-selected="false">Wiederkehrende Buchungen <span id="txRecurringCount" class="tab-count">0</span></button>
-        </div>
-        <div id="txAllView">
-        <div class="toolbar transaction-toolbar">
-          <select id="txPeriod" aria-label="Zeitraum"><option value="month">Monat</option><option value="year">Jahr</option><option value="all">Alle Buchungen</option></select>
-          <select id="txMonthName" aria-label="Monat"></select>
-          <input id="txYear" type="number" min="2000" max="2100" aria-label="Jahr">
-          <input id="txSearch" placeholder="Name, Empfänger, Notiz, Tag, Kategorie …">
-          <select id="txAccountFilter"></select>
-          <button id="txReload">Anzeigen</button>
-        </div>
-        <article class="panel table-wrap"><table><thead><tr><th>Datum</th><th>Name</th><th>Konto</th><th>Empfänger</th><th>Kategorie</th><th>Wiederholung</th><th class="right">Betrag</th><th></th></tr></thead><tbody id="txBody"></tbody></table></article>
-        <div class="pagination-bar">
-          <div><button id="txFirst" class="ghost" type="button">«</button><button id="txPrev" class="ghost" type="button">‹</button><span id="txPageInfo">Seite 1 / 1</span><button id="txNext" class="ghost" type="button">›</button><button id="txLast" class="ghost" type="button">»</button></div>
-          <label>Einträge pro Seite<select id="txPageSize"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option><option value="0">Alle anzeigen</option></select></label>
-        </div>
-        </div>
-        <div id="txRecurringView" hidden>
-          <div class="section-head recurring-section-head"><div><h2>Wiederkehrende Buchungen</h2><p class="muted">Aktive Serien. Neue Serien werden hier direkt angelegt; einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.</p></div><button id="newRecurringTx" class="ghost">+ Wiederkehrende Buchung</button></div>
-          <article class="panel table-wrap"><table><thead><tr><th>Nächster Termin</th><th>Name</th><th>Konto</th><th>Intervall</th><th>Ende</th><th class="right">Betrag</th><th></th></tr></thead><tbody id="recBody"></tbody></table></article>
-        </div>
-      </section>
-
-      <section id="view-budgets" class="view" hidden>
-        <div class="section-head"><div><h1>Budgets</h1><p class="muted">Monatliche Ausgabenlimits und eine passende Budgetstrategie festlegen.</p></div><button id="newBudget">+ Budget</button></div>
-        <div class="toolbar"><select id="budgetMonthName" aria-label="Monat"></select><input id="budgetYear" type="number" min="2000" max="2100" aria-label="Jahr"><button id="budgetReload">Anzeigen</button></div>
-        <article class="panel budget-strategy-panel">
-          <div class="budget-strategy-grid"><label>Strategie<select id="budgetStrategy"><option value="hybrid">Hybrid</option><option value="zero_based">Zero-Based Budgeting</option><option value="envelope">Envelope / Umschlag</option><option value="50_30_20">50/30/20-Regel</option><option value="pay_yourself_first">Pay Yourself First</option></select></label><div><h3 id="budgetStrategyTitle">Hybrid</h3><p id="budgetStrategyDescription" class="muted"></p><div id="budgetStrategyMetrics" class="budget-metrics"></div></div></div>
-        </article>
-        <div class="hero-grid budget-summary"><article class="metric"><span>Erwartete Einnahmen</span><strong id="budgetIncome">–</strong></article><article class="metric"><span>Geplante Kategorien</span><strong id="budgetAllocated">–</strong></article><article class="metric accent"><span>Gebuchte Ausgaben</span><strong id="budgetSpent">–</strong></article></div>
-        <article class="panel" id="budgetList"></article>
-      </section>
-
-
-      <section id="view-reports" class="view" hidden>
-        <div class="section-head"><h1>Monats- & Jahresübersicht</h1><button id="newCategory">+ Kategorie</button></div>
-        <div class="toolbar"><select id="reportPeriod"><option value="month">Monat</option><option value="year">Jahr</option></select><select id="reportMonthName" aria-label="Monat"></select><input id="reportYear" type="number" min="2000" max="2100"><button id="reportReload">Anzeigen</button></div>
-        <div class="hero-grid"><article class="metric"><span>Einnahmen</span><strong id="reportIncome">–</strong></article><article class="metric"><span>Ausgaben</span><strong id="reportExpense">–</strong></article><article class="metric"><span>Sparen</span><strong id="reportSavings">–</strong></article><article class="metric accent"><span>Saldo</span><strong id="reportNet">–</strong></article><article class="metric" id="reportSavingsRateCard" hidden><span>Sparquote Jahr</span><strong id="reportSavingsRate">–</strong></article><article class="metric" id="reportAvgSavingsCard" hidden><span>Ø Sparen pro Monat</span><strong id="reportAvgSavings">–</strong></article></div>
-        <div class="report-donut-grid">
-          <article class="panel donut-card"><div class="section-head"><div><h2>Ausgabenverteilung</h2><p class="muted">Summe und Anteil je Kategorie im gewählten Zeitraum.</p></div></div><div class="donut-layout"><canvas id="expenseDonut" width="280" height="280"></canvas><div id="expenseDonutLegend" class="donut-legend"></div></div></article>
-          <article class="panel donut-card"><div class="section-head"><div><h2>Einnahmen / Eingänge</h2><p class="muted">Summe und Anteil je Einnahmekategorie im gewählten Zeitraum.</p></div></div><div class="donut-layout"><canvas id="incomeDonut" width="280" height="280"></canvas><div id="incomeDonutLegend" class="donut-legend"></div></div></article>
-        </div>
-        <div class="three-col report-summary-grid"><article class="panel report-card"><h2>Ausgaben nach Kategorie</h2><div id="reportExpenses"></div></article><article class="panel report-card"><h2>Einnahmen nach Kategorie</h2><div id="reportIncomes"></div></article><article class="panel report-card"><h2>Sparen nach Kategorie</h2><div id="reportSavingsList"></div></article></div>
-        <article class="panel report-categories"><h2>Kategorien</h2><div id="categoryList"></div></article>
-      </section>
-
-
-
-      <section id="view-planning" class="view" hidden>
-        <div class="section-head"><div><h1>Planung & Prognose</h1><p class="muted">Plan/Ist, Liquiditätsrisiken, Fixkosten, freies Geld und langfristige Monatsendstände.</p></div><button id="planningReload">Aktualisieren</button></div>
-        <div class="toolbar month-toolbar"><select id="planningPeriod" aria-label="Ansicht"><option value="month">Monat</option><option value="year">Jahr</option></select><select id="planningMonthName" aria-label="Monat"></select><input id="planningYear" type="number" min="2000" max="2100" aria-label="Jahr"></div>
-        <section id="planningYearView" hidden>
-          <div class="hero-grid">
-            <article class="metric"><span>Geplante Einnahmen Jahr</span><strong id="planningYearIncome">–</strong></article>
-            <article class="metric"><span>Geplante Ausgaben Jahr</span><strong id="planningYearExpense">–</strong></article>
-            <article class="metric"><span>Geplantes Sparen Jahr</span><strong id="planningYearSavings">–</strong></article>
-            <article class="metric accent"><span>Prognose Jahresende</span><strong id="planningYearEnd">–</strong></article>
-          </div>
-          <article class="panel planning-year-panel">
-            <div class="section-head"><div><h2>Jahresübersicht Planung & Prognose</h2><p class="muted">Alle zwölf Monate des gewählten Jahres mit Plan, Ist und prognostiziertem Monatsendstand.</p></div></div>
-            <div class="planning-year-chart-wrap"><canvas id="planningYearChart"></canvas></div>
-            <div id="planningYearSummary" class="planning-year-list"></div>
-          </article>
-        </section>
-
-        <div id="planningMonthView">
+<main class="shell">
+<section class="auth-card" id="auth">
+<div class="brand">HaushaltPro</div>
+<p data-i18n="auth.subtitle" id="authSubtitle">Verschlüsseltes Haushaltsbuch</p>
+<form id="authForm">
+<label>Benutzername<input autocomplete="username" id="username" maxlength="64" required=""/></label>
+<label>Passwort<input autocomplete="current-password" id="password" minlength="10" required="" type="password"/></label>
+<label hidden="" id="setupTokenLabel">Setup-Token<input autocomplete="off" id="setupToken" maxlength="256" placeholder="Nur im Public-Modus bei Ersteinrichtung" type="password"/></label><label class="check"><input id="trusted" type="checkbox"/> Autolock auf diesem Gerät deaktivieren</label>
+<button data-i18n="auth.login" id="authSubmit" type="submit">Anmelden</button>
+<button class="ghost" data-i18n="auth.registerNew" id="registerBtn" type="button">Neuen Nutzer anlegen</button>
+</form>
+<p class="message" id="authMsg"></p>
+</section>
+<section class="auth-card" hidden="" id="register">
+<div class="brand">HaushaltPro</div>
+<h1>Neuen Nutzer anlegen</h1>
+<p class="muted">Der neue Nutzer erhält erst nach Freigabe durch einen berechtigten Benutzer Zugriff auf die Haushaltsdaten.</p>
+<form id="registerForm">
+<label>Benutzername<input autocomplete="username" id="registerUsername" maxlength="64" required=""/></label>
+<label>Passwort<input autocomplete="new-password" id="registerPassword" minlength="10" required="" type="password"/></label>
+<label>Passwort wiederholen<input autocomplete="new-password" id="registerPasswordConfirm" minlength="10" required="" type="password"/></label>
+<button id="registerSubmit" type="submit">Nutzer anlegen</button>
+<button class="ghost" id="registerBack" type="button">Zurück zur Anmeldung</button>
+</form>
+<p class="message" id="registerMsg"></p>
+</section>
+<section hidden="" id="app">
+<header class="topbar">
+<div class="topbar-identity"><div class="brand">HaushaltPro</div><div class="identity-row"><small id="userLabel"></small><select aria-label="Haushaltsbuch" id="bookSwitcher" title="Haushaltsbuch wechseln"></select></div></div>
+<button aria-controls="mainNav" aria-expanded="false" class="ghost mobile-nav-toggle" data-i18n="nav.menu" id="mobileNavToggle" type="button">☰ Menü</button>
+<nav id="mainNav">
+<button class="nav active" data-i18n="nav.dashboard" data-view="dashboard">Dashboard</button>
+<button class="nav" data-i18n="nav.accounts" data-view="accounts-page">Konten</button>
+<button class="nav" data-i18n="nav.transactions" data-view="transactions">Buchungen</button>
+<button class="nav" data-i18n="nav.budgets" data-view="budgets">Budgets</button><button class="nav" data-i18n="nav.reports" data-view="reports">Auswertung</button>
+<button class="nav" data-i18n="nav.planning" data-view="planning">Planung & Prognose</button>
+<button class="nav" data-i18n="nav.financeCheck" data-view="finance-check">Finanz-Check</button>
+<button class="nav" data-i18n="nav.investments" data-view="investments" hidden="" id="navInvestments">Investments</button>
+<button class="nav" data-i18n="nav.help" data-view="help">Hilfe</button>
+<button class="nav" data-i18n="nav.settings" data-view="settings">Einstellungen</button>
+</nav>
+<div class="topbar-actions"><button class="ghost theme-toggle" id="themeToggle" type="button" data-i18n="theme.switchLight" data-i18n-aria-label="theme.switchLabel" data-i18n-title="theme.switchLabel" aria-label="Farbschema wechseln" title="Farbschema wechseln">☀ Hell</button><button class="ghost" data-i18n="nav.logout" id="logout">Logout</button></div>
+</header>
+<section class="view" id="view-dashboard">
+<div class="hero-grid" id="dashboardMonthHero">
+<article class="metric"><span data-i18n="dashboard.currentBalance">Aktueller Kontostand</span><small class="metric-help" data-i18n="dashboard.currentBalanceHelp" id="balanceHelp">Stand bis zum Vergleichsstichtag des ausgewählten Monats.</small><strong id="balance">–</strong></article>
+<article class="metric"><span data-i18n="dashboard.pending">Ausstehend bis Monatsende</span><small class="metric-help" data-i18n="dashboard.pendingHelp">Noch fällige Ausgaben nach dem heutigen Kalendertag im ausgewählten Monat bis Monatsende.</small><strong id="pending">–</strong></article>
+<article class="metric accent"><span data-i18n="dashboard.monthEnd">Prognose Monatsende</span><strong id="monthEnd">–</strong></article>
+</div>
+<div class="toolbar month-toolbar">
+<select aria-label="Ansicht" id="dashPeriod"><option data-i18n="common.month" value="month">Monat</option><option data-i18n="common.year" value="year">Jahr</option></select>
+<button class="ghost" id="dashPrevMonth" type="button">‹</button>
+<select aria-label="Monat" id="dashMonthName"></select>
+<input aria-label="Jahr" id="dashYear" max="2100" min="2000" type="number"/>
+<button class="ghost" id="dashNextMonth" type="button">›</button>
+<button class="ghost" data-i18n="dashboard.currentMonth" id="dashToday" type="button">Aktueller Monat</button>
+<span class="spacer"></span>
+<button data-i18n="dashboard.addAccount" id="quickAccount">+ Konto</button>
+<button data-i18n="dashboard.addTransaction" id="quickTx">+ Buchung</button>
+</div>
+<section hidden="" id="dashboardYearView">
 <div class="hero-grid">
-          <article class="metric"><span>Fixkostenquote</span><strong id="planningFixedRatio">–</strong><small id="planningFixedAmount"></small></article>
-          <article class="metric accent"><span>Freies Geld</span><strong id="planningFreeMoney">–</strong><small>nach geplanten Ausgaben und Sparen</small></article>
-          <article class="metric"><span>Plan/Ist Abweichung</span><strong id="planningVariance">–</strong><small>Ausgaben im ausgewählten Monat</small></article>
-        </div>
-        <article id="cashflowWarningCard" class="panel cashflow-warning-card" hidden>
-          <div class="section-head"><div><h2>Cashflow-Warnung</h2><p class="muted">Monatliche Einnahmen im Verhältnis zu Ausgaben und Sparen.</p></div><span id="cashflowWarningBadge" class="badge">Hinweis</span></div>
-          <div id="cashflowWarningBody"></div>
-        </article>
-        <div class="two-col">
-          <article class="panel"><h2>Plan / Ist</h2><div id="planningPlanActual"></div></article>
-          <article class="panel"><h2>Liquiditätswarnungen</h2><div id="planningWarnings"></div></article>
-        </div>
-        <article class="panel chart-panel"><div class="section-head"><div><h2>3 / 6 / 12 Monate</h2><p class="muted">Monatsendstände aus bekannten Buchungen und Serien.</p></div><select id="forecastHorizon"><option value="3">3 Monate</option><option value="6">6 Monate</option><option value="12" selected>12 Monate</option></select></div><div class="chart-wrap"><canvas id="planningChart"></canvas></div><div id="planningForecastList" class="analysis-month-list"></div></article>
-
-        <div class="two-col">
-          <article class="panel"><h2>Prognose-Sicherheit</h2><p class="muted">Konservativ: alle bekannten Ausgaben, aber nur feste Einnahmen. Optimistisch: alle bekannten Einnahmen, aber nur feste Ausgaben.</p><div id="planningScenarios"></div></article>
-          <article class="panel"><h2>Historischer Vergleich</h2><div id="planningHistory"></div><div id="planningDeviation"></div></article>
-        </div>
-        <div class="two-col planning-extra-grid">
-          <article class="panel"><h2>Plan/Ist nach Kategorie</h2><div id="planningVarianceTable"></div></article>
-          <article class="panel"><h2>Notgroschen / Liquiditätsreichweite</h2><div class="mini-metrics"><div><span>Liquide Mittel</span><strong id="runwayLiquid">–</strong></div><div><span>Ø Fixkosten/Monat</span><strong id="runwayFixed">–</strong></div><div><span>Reichweite</span><strong id="runwayMonths">–</strong></div></div></article>
-        </div>
-        <div class="two-col planning-extra-grid">
-          <article class="panel"><div class="section-head"><div><h2>Was wäre wenn?</h2><p class="muted">Nur Simulation – echte Buchungen werden nicht verändert.</p></div><button id="runScenario" type="button">Berechnen</button></div><div class="scenario-grid"><label>Einkommen/Monat ± EUR<input id="scenarioIncome" type="number" step="0.01" value="0"></label><label>Ausgaben/Monat ± EUR<input id="scenarioExpense" type="number" step="0.01" value="0"></label><label>Sparen/Monat ± EUR<input id="scenarioSavings" type="number" step="0.01" value="0"></label><label>Einmalig ± EUR<input id="scenarioOne" type="number" step="0.01" value="0"></label><label>Einmaliges Datum<input id="scenarioDate" type="date"></label><label>Horizont<select id="scenarioHorizon"><option value="3">3 Monate</option><option value="6">6 Monate</option><option value="12" selected>12 Monate</option></select></label></div><div id="scenarioResult"></div></article>
-          <article class="panel"><h2>Schwankungen letzte 12 Monate</h2><div id="variabilityStats"></div></article>
-        </div>
-        <article class="panel"><div class="section-head"><div><h2>Verträge & Fristen</h2><p class="muted">Nur Vertragsdaten und Kündigungsfristen; HaushaltPro ist kein Dokumentenarchiv.</p></div><button id="newContract" type="button">+ Vertrag</button></div><div id="contractsList"></div></article>
-        </div>
+<article class="metric"><span data-i18n="dashboard.yearIncome">Einnahmen Ist Jahr</span><strong id="dashYearIncome">–</strong></article>
+<article class="metric"><span data-i18n="dashboard.yearExpense">Ausgaben Ist Jahr</span><strong id="dashYearExpense">–</strong></article>
+<article class="metric"><span data-i18n="dashboard.yearSavings">Sparen Ist Jahr</span><strong id="dashYearSavings">–</strong></article>
+<article class="metric accent"><span data-i18n="dashboard.yearEnd">Prognose Jahresende</span><strong id="dashYearEnd">–</strong></article>
+</div>
+<article class="panel dashboard-year-panel">
+<div class="section-head"><div><h2 data-i18n="dashboard.yearOverview">Jahresübersicht</h2><p class="muted">Monatliche Einnahmen, Ausgaben, Sparen und prognostizierte Monatsendstände.</p></div></div>
+<div class="planning-year-chart-wrap"><canvas id="dashboardYearChart"></canvas></div>
+<div class="planning-year-list" id="dashboardYearSummary"></div>
+</article>
+</section>
+<article class="panel chart-panel" id="dashboardMonthChart"><canvas height="240" id="chart"></canvas></article>
+<div class="two-col" id="dashboardMonthPanels">
+<article class="panel"><h2 data-i18n="nav.accounts">Konten</h2><div id="accounts"></div></article>
+<article class="panel"><h2 data-i18n="dashboard.nextPayments">Nächste Zahlungen im ausgewählten Monat</h2><p class="muted compact-note" id="upcomingHint"></p><div id="recurringDash"></div></article>
+</div>
+<section class="analysis-block" id="dashboardMonthAnalysis">
+<div class="section-head"><div><h1 data-i18n="dashboard.analysis">Analyse</h1><p class="muted" data-i18n="dashboard.analysisHelp">Kennzahlen bis heute im ausgewählten Monat sowie die Monatsprognose und Entwicklung der letzten zwölf Monate.</p></div></div>
+<div class="analysis-grid">
+<article class="metric"><span>Einnahmen bis heute</span><strong id="analysisIncome">–</strong></article>
+<article class="metric"><span>Ausgaben bis heute</span><strong id="analysisExpense">–</strong></article>
+<article class="metric accent"><span>Kontostand bis heute</span><strong id="analysisNet">–</strong></article>
+<article class="metric"><span>Sparquote Monat</span><strong id="analysisSavingsRate">–</strong></article>
+<article class="metric"><span>Sparquote Jahr <small class="metric-help">Kalenderjahr inkl. bekannter zukünftiger Buchungen</small></span><strong id="analysisAnnualSavingsRate">–</strong></article>
+<article class="metric"><span>Gespart im Jahr <small class="metric-help">Explizites Sparen plus nicht ausgegebener Überschuss</small></span><strong id="analysisAnnualSaved">–</strong></article>
+<article class="metric"><span>Ø Sparen pro Monat <small class="metric-help">Jahresprognose / 12 Monate</small></span><strong id="analysisAnnualAvgSaved">–</strong></article>
+<article class="metric"><span>Ø Einnahmen pro Tag <small class="metric-help">Monatsprognose inkl. geplanter Einnahmen</small></span><strong id="analysisDailyIncome">–</strong></article><article class="metric"><span>Ø Ausgaben pro Tag <small class="metric-help">Monatsprognose inkl. geplanter Ausgaben</small></span><strong id="analysisDailyExpense">–</strong></article><article class="metric"><span>Ø Sparen pro Tag <small class="metric-help">Monatsprognose inkl. geplanter Sparbuchungen</small></span><strong id="analysisDailySavings">–</strong></article>
+<article class="metric"><span>Noch erwartete Einnahmen</span><strong id="analysisRemainingIncome">–</strong></article>
+</div>
+<div class="two-col analysis-panels">
+<article class="panel"><h2>Top-Ausgabenkategorien</h2><div id="analysisTopCategories"></div></article>
+<article class="panel"><h2>12-Monats-Übersicht</h2><p class="muted compact-note">Einnahmen, Ausgaben, Sparen und monatliche Sparquote. Der ausgewählte Monat ist immer der letzte Monat.</p><div class="analysis-chart-wrap"><canvas height="220" id="analysisChart"></canvas></div><div class="analysis-month-list" id="analysisMonths"></div></article>
+</div>
+</section>
+</section>
+<section class="view" hidden="" id="view-accounts-page">
+<div class="section-head"><div><h1>Konten</h1><p class="muted">Kontodaten bearbeiten und Monatsanfänge korrigieren, ohne alte Buchungen zu verändern.</p></div><button id="newAccount">+ Konto</button></div>
+<div class="toolbar month-toolbar"><select aria-label="Monat" id="accountMonthName"></select><input aria-label="Jahr" id="accountYear" max="2100" min="2000" type="number"/><button id="accountReload">Anzeigen</button></div>
+<div class="account-manager-grid" id="accountManager"></div>
+</section>
+<section class="view" hidden="" id="view-transactions">
+<div class="section-head"><div><h1>Buchungen</h1><p class="muted">Kontobewegungen, interne Transfers und wiederkehrende Serien an einer Stelle.</p></div><div class="head-actions"><button class="ghost" id="newTransfer">↔ Transfer</button><button id="newTx">+ Buchung</button></div></div>
+<div aria-label="Buchungsansicht" class="segmented-tabs" role="tablist">
+<button aria-selected="true" class="segment active" id="txTabAll" role="tab" type="button">Alle Buchungen</button>
+<button aria-selected="false" class="segment" id="txTabRecurring" role="tab" type="button">Wiederkehrende Buchungen <span class="tab-count" id="txRecurringCount">0</span></button>
+</div>
+<div id="txAllView">
+<div class="toolbar transaction-toolbar">
+<select aria-label="Zeitraum" id="txPeriod"><option value="month">Monat</option><option value="year">Jahr</option><option value="all">Alle Buchungen</option></select>
+<select aria-label="Monat" id="txMonthName"></select>
+<input aria-label="Jahr" id="txYear" max="2100" min="2000" type="number"/>
+<input id="txSearch" placeholder="Name, Empfänger, Notiz, Tag, Kategorie …"/>
+<select id="txAccountFilter"></select>
+<button id="txReload">Anzeigen</button>
+</div>
+<article class="panel table-wrap"><table><thead><tr><th>Datum</th><th>Name</th><th>Konto</th><th>Empfänger</th><th>Kategorie</th><th>Wiederholung</th><th class="right">Betrag</th><th></th></tr></thead><tbody id="txBody"></tbody></table></article>
+<div class="pagination-bar">
+<div><button class="ghost" id="txFirst" type="button">«</button><button class="ghost" id="txPrev" type="button">‹</button><span id="txPageInfo">Seite 1 / 1</span><button class="ghost" id="txNext" type="button">›</button><button class="ghost" id="txLast" type="button">»</button></div>
+<label>Einträge pro Seite<select id="txPageSize"><option value="10">10</option><option selected="" value="25">25</option><option value="50">50</option><option value="100">100</option><option value="0">Alle anzeigen</option></select></label>
+</div>
+</div>
+<div hidden="" id="txRecurringView">
+<div class="section-head recurring-section-head"><div><h2>Wiederkehrende Buchungen</h2><p class="muted">Aktive Serien. Neue Serien werden hier direkt angelegt; einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.</p></div><button class="ghost" id="newRecurringTx">+ Wiederkehrende Buchung</button></div>
+<article class="panel table-wrap"><table><thead><tr><th>Nächster Termin</th><th>Name</th><th>Konto</th><th>Intervall</th><th>Ende</th><th class="right">Betrag</th><th></th></tr></thead><tbody id="recBody"></tbody></table></article>
+</div>
+</section>
+<section class="view" hidden="" id="view-budgets">
+<div class="section-head"><div><h1>Budgets</h1><p class="muted">Monatliche Ausgabenlimits und eine passende Budgetstrategie festlegen.</p></div><button id="newBudget">+ Budget</button></div>
+<div class="toolbar"><select aria-label="Monat" id="budgetMonthName"></select><input aria-label="Jahr" id="budgetYear" max="2100" min="2000" type="number"/><button id="budgetReload">Anzeigen</button></div>
+<article class="panel budget-strategy-panel">
+<div class="budget-strategy-grid"><label>Strategie<select id="budgetStrategy"><option value="hybrid">Hybrid</option><option value="zero_based">Zero-Based Budgeting</option><option value="envelope">Envelope / Umschlag</option><option value="50_30_20">50/30/20-Regel</option><option value="pay_yourself_first">Pay Yourself First</option></select></label><div><h3 id="budgetStrategyTitle">Hybrid</h3><p class="muted" id="budgetStrategyDescription"></p><div class="budget-metrics" id="budgetStrategyMetrics"></div></div></div>
+</article>
+<div class="hero-grid budget-summary"><article class="metric"><span>Erwartete Einnahmen</span><strong id="budgetIncome">–</strong></article><article class="metric"><span>Geplante Kategorien</span><strong id="budgetAllocated">–</strong></article><article class="metric accent"><span>Gebuchte Ausgaben</span><strong id="budgetSpent">–</strong></article></div>
+<article class="panel" id="budgetList"></article>
+</section>
+<section class="view" hidden="" id="view-reports">
+<div class="section-head"><h1>Monats- & Jahresübersicht</h1><button id="newCategory">+ Kategorie</button></div>
+<div class="toolbar"><select id="reportPeriod"><option value="month">Monat</option><option value="year">Jahr</option></select><select aria-label="Monat" id="reportMonthName"></select><input id="reportYear" max="2100" min="2000" type="number"/><button id="reportReload">Anzeigen</button></div>
+<div class="hero-grid"><article class="metric"><span>Einnahmen</span><strong id="reportIncome">–</strong></article><article class="metric"><span>Ausgaben</span><strong id="reportExpense">–</strong></article><article class="metric"><span>Sparen</span><strong id="reportSavings">–</strong></article><article class="metric accent"><span>Saldo</span><strong id="reportNet">–</strong></article><article class="metric" id="reportSavingsRateCard"><span id="reportSavingsRateLabel">Sparquote Monat</span><strong id="reportSavingsRate">–</strong></article><article class="metric" id="reportAvgSavingsCard"><span id="reportAvgSavingsLabel">Ø Sparen pro Tag</span><strong id="reportAvgSavings">–</strong></article></div>
+<article class="panel report-flow-panel">
+<div class="section-head"><div><h2 data-i18n="reports.flowTitle">Geldfluss</h2><p class="muted" data-i18n="reports.flowHelp">Jede Kategorie steht vollständig lesbar über ihrem Pfeil. Pfeillänge und Pfeildicke zeigen den Größenunterschied innerhalb der jeweiligen Gruppe; kleine Kategorien bleiben trotzdem sichtbar.</p></div><div class="report-flow-period muted" id="reportFlowPeriodLabel">–</div></div>
+<div class="report-flow-layout flow-sankey-layout">
+  <section class="flow-stream flow-stream-income">
+    <div class="flow-stream-head">
+      <span class="flow-stream-kicker">Einnahmekategorien</span>
+      <div class="flow-category-stack flow-category-stack-income" id="reportFlowIncomeCategories"></div>
+    </div>
+    <div class="flow-node flow-income flow-total-node" id="reportFlowIncomeNode">
+      <span data-i18n="reports.flowIncome">Einnahmen</span>
+      <strong id="reportFlowIncome">–</strong>
+      <small id="reportFlowIncomeMeta">–</small>
+    </div>
       </section>
 
+  <section class="flow-balance-zone">
+    <div class="flow-node flow-balance" id="reportFlowBalanceCard">
+      <span data-i18n="reports.flowBalance">Guthaben / Saldo</span>
+      <strong id="reportFlowNet">–</strong>
+      <small id="reportFlowNetMeta">–</small>
+    </div>
+  </section>
 
-      <section id="view-finance-check" class="view" hidden>
-        <div class="section-head"><div><h1>Finanz-Check</h1><p class="muted">Prüft Rechenlogik, Monatsübergänge, Splits, Kontenabgleich, Audit-Kette und Speichergrenzen.</p></div><button id="runFinanceCheck">Plausibilität prüfen</button></div>
-        <div class="hero-grid finance-check-summary"><article class="metric"><span>Status</span><strong id="financeCheckStatus">–</strong></article><article class="metric"><span>Fehler</span><strong id="financeCheckErrors">–</strong></article><article class="metric"><span>Hinweise</span><strong id="financeCheckWarnings">–</strong></article></div>
-        <article class="panel finance-check-results"><div class="section-head finance-check-results-head"><div><h2>Prüfergebnisse</h2><p class="muted">Technische Kennungen werden nur zur Diagnose angezeigt; entscheidend sind Meldung und Status.</p></div></div><div id="financeCheckList"><p class="muted">Noch keine Prüfung ausgeführt.</p></div></article>
-      </section>
+  <section class="flow-outgoing-zone">
+    <div class="flow-stream flow-stream-expense">
+      <div class="flow-category-stack flow-category-stack-expense" id="reportFlowExpenseCategories"></div>
+      <div class="flow-node flow-expense flow-total-node" id="reportFlowExpenseNode">
+        <span data-i18n="reports.flowExpenses">Ausgaben</span>
+        <strong id="reportFlowExpense">–</strong>
+        <small id="reportFlowExpenseMeta">–</small>
+      </div>
+    </div>
 
-      <section id="view-investments" class="view" hidden>
-        <div class="section-head"><h1>Investments</h1><button id="newInvestment">+ Investment</button></div>
-        <div class="hero-grid">
-          <article class="metric"><span>Investiert</span><strong id="invCost">–</strong></article>
-          <article class="metric"><span>Marktwert</span><strong id="invValue">–</strong></article>
-          <article class="metric accent"><span>Performance</span><strong id="invPerf">–</strong></article>
-        </div>
-        <article class="panel table-wrap investment-table-panel"><table><thead><tr><th>Asset</th><th>Typ</th><th class="right">Menge</th><th class="right">Kaufkurs</th><th class="right">Aktueller Kurs</th><th class="right">Marktwert</th><th class="right">Entwicklung</th><th></th></tr></thead><tbody id="investmentBody"></tbody></table></article>
-      </section>
-
-
-      <section id="view-help" class="view" hidden>
-        <div class="section-head"><div><h1>Hilfe & Anleitung</h1><p class="muted">Was HaushaltPro macht, wie du sinnvoll startest und wie Dokumentation und Prognose zusammenarbeiten.</p></div></div>
-        <div class="help-grid">
-          <article class="panel help-card"><h2>1. Grundprinzip</h2><p>HaushaltPro dokumentiert echte Buchungen und berechnet aus zukünftigen Einzelbuchungen sowie wiederkehrenden Serien die Liquidität. Der Monatsanfang ist immer der Stand unmittelbar vor den Buchungen des 1. Tages.</p></article>
-          <article class="panel help-card"><h2>2. Konten einrichten</h2><p>Lege pro Bankkonto, Bargeldkonto oder Zahlungsdienst ein Konto mit Startdatum und Startsaldo an. Bei Abweichungen kannst du später für jeden Monat einen eigenen Monatsanfang korrigieren, ohne alte Buchungen umzuschreiben.</p></article>
-          <article class="panel help-card"><h2>3. Kategorien</h2><p>Kategorien bestimmen eindeutig die Art einer Buchung: Ausgabe, Einnahme oder Sparen. Dadurch bleiben Auswertung und Sparquote konsistent.</p></article>
-          <article class="panel help-card"><h2>4. Buchungen, Transfers & Serien</h2><p>Eine Buchung erhält einen Namen, optional Empfänger, Notiz und Tags. Empfänger werden nur auf Wunsch als Vorauswahl gespeichert. Interne Transfers verschieben Geld zwischen zwei eigenen Konten, ohne als Haushaltseinnahme oder -ausgabe zu zählen. Aktiviere „Wiederkehrend“ für Miete, Gehalt, Sparplan usw.</p></article>
-          <article class="panel help-card"><h2>5. Prognosen</h2><p>Dashboard und Planung verwenden bekannte zukünftige Buchungen und Serien. „Fest“, „wahrscheinlich“ und „geschätzt“ steuern konservative und optimistische Szenarien.</p></article>
-          <article class="panel help-card"><h2>6. Finanz-Check</h2><p>Der Finanz-Check prüft unter anderem SQLCipher-Integrität, Monatsübergänge, Splits, Serien, Kontenabgleich, Audit-Kette und Belegspeicher. Warnungen solltest du prüfen, Fehler zeitnah korrigieren.</p></article>
-          <article class="panel help-card"><h2>7. Belege</h2><p>Belege werden nur gespeichert, wenn du sie ausdrücklich an einer Buchung hochlädst. Standard: maximal 5 MB pro Datei, 10 Dateien pro Buchung und 100 MB insgesamt. Wird das Limit erreicht, werden nur weitere Uploads blockiert; vorhandene Daten bleiben unverändert.</p></article>
-          <article class="panel help-card"><h2>8. Backup</h2><p>„Verschlüsseltes Backup herunterladen“ erzeugt eine portable .hpb-Datei. „Internes Backup erstellen & Rotation anwenden“ legt zusätzlich einen lokalen Snapshot im Docker-Volume an und hält automatisch 7 tägliche, 4 wöchentliche und 12 monatliche Generationen.</p></article>
-          <article class="panel help-card"><h2>9. Änderungsverlauf</h2><p>Unter Einstellungen zeigt die Audit-Timeline, welcher Benutzer wann welche Änderung durchgeführt hat. Die Einträge liegen in der verschlüsselten SQLCipher-Datenbank – nicht im Docker-/Systemlog – und sind Teil einer Hashkette.</p></article>
-          <article class="panel help-card"><h2>10. Benutzer & Haushaltsbücher</h2><p>Eigentümer können Benutzer direkt in den Einstellungen anlegen, Rollen vergeben und vergessene Passwörter zurücksetzen. Rechte gelten pro Haushaltsbuch. Jedes Haushaltsbuch besitzt eine eigene SQLCipher-Datenbank; dadurch lassen sich z. B. gemeinsamer Haushalt und Kinder-Haushaltsbuch getrennt führen.</p></article>
-          <article class="panel help-card"><h2>11. Speicher & Datenpflege</h2><p>Die Einstellungen zeigen die Größe der aktuellen Datenbank und des Belegspeichers. Buchungen können nach Zeitraum oder vollständig gelöscht werden. Vor einer Massenlöschung zeigt HaushaltPro die Trefferzahl; zur endgültigen Bestätigung muss exakt „LÖSCHEN“ eingegeben werden.</p></article>
-          <article class="panel help-card help-wide"><h2>LAN/VPN-Betrieb</h2><p>HaushaltPro bindet standardmäßig nur an localhost. Für Zugriff aus deinem vertrauenswürdigen LAN/VPN:</p><pre>cp .env.example .env
+    <div class="flow-stream flow-stream-savings">
+      <div class="flow-category-stack flow-category-stack-savings" id="reportFlowSavingsCategories"></div>
+      <div class="flow-node flow-savings flow-total-node" id="reportFlowSavingsNode">
+        <span data-i18n="reports.flowSavings">Sparen</span>
+        <strong id="reportFlowSavings">–</strong>
+        <small id="reportFlowSavingsMeta">–</small>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="report-flow-summary muted" id="reportFlowSummary">–</div>
+</article>
+<div class="report-donut-grid">
+<article class="panel donut-card"><div class="section-head"><div><h2>Ausgabenverteilung</h2><p class="muted">Summe und Anteil je Kategorie im gewählten Zeitraum.</p></div></div><div class="donut-layout"><canvas height="280" id="expenseDonut" width="280"></canvas><div class="donut-legend" id="expenseDonutLegend"></div></div></article>
+<article class="panel donut-card"><div class="section-head"><div><h2>Einnahmen / Eingänge</h2><p class="muted">Summe und Anteil je Einnahmekategorie im gewählten Zeitraum.</p></div></div><div class="donut-layout"><canvas height="280" id="incomeDonut" width="280"></canvas><div class="donut-legend" id="incomeDonutLegend"></div></div></article>
+</div>
+<div class="three-col report-summary-grid"><article class="panel report-card"><h2>Ausgaben nach Kategorie</h2><div id="reportExpenses"></div></article><article class="panel report-card"><h2>Einnahmen nach Kategorie</h2><div id="reportIncomes"></div></article><article class="panel report-card"><h2>Sparen nach Kategorie</h2><div id="reportSavingsList"></div></article></div>
+<article class="panel report-categories"><h2>Kategorien</h2><div id="categoryList"></div></article>
+</section>
+<section class="view" hidden="" id="view-planning">
+<div class="section-head"><div><h1>Planung & Prognose</h1><p class="muted">Plan/Ist, Liquiditätsrisiken, Fixkosten, freies Geld und langfristige Monatsendstände.</p></div><button id="planningReload">Aktualisieren</button></div>
+<div class="toolbar month-toolbar"><select aria-label="Ansicht" id="planningPeriod"><option value="month">Monat</option><option value="year">Jahr</option></select><select aria-label="Monat" id="planningMonthName"></select><input aria-label="Jahr" id="planningYear" max="2100" min="2000" type="number"/></div>
+<section hidden="" id="planningYearView">
+<div class="hero-grid">
+<article class="metric"><span>Geplante Einnahmen Jahr</span><strong id="planningYearIncome">–</strong></article>
+<article class="metric"><span>Geplante Ausgaben Jahr</span><strong id="planningYearExpense">–</strong></article>
+<article class="metric"><span>Geplantes Sparen Jahr</span><strong id="planningYearSavings">–</strong></article>
+<article class="metric accent"><span>Prognose Jahresende</span><strong id="planningYearEnd">–</strong></article>
+</div>
+<article class="panel planning-year-panel">
+<div class="section-head"><div><h2>Jahresübersicht Planung & Prognose</h2><p class="muted">Alle zwölf Monate des gewählten Jahres mit Plan, Ist und prognostiziertem Monatsendstand.</p></div></div>
+<div class="planning-year-chart-wrap"><canvas id="planningYearChart"></canvas></div>
+<div class="planning-year-list" id="planningYearSummary"></div>
+</article>
+</section>
+<div id="planningMonthView">
+<div class="hero-grid">
+<article class="metric"><span>Fixkostenquote</span><strong id="planningFixedRatio">–</strong><small id="planningFixedAmount"></small></article>
+<article class="metric accent"><span>Freies Geld</span><strong id="planningFreeMoney">–</strong><small>nach geplanten Ausgaben und Sparen</small></article>
+<article class="metric"><span>Plan/Ist Abweichung</span><strong id="planningVariance">–</strong><small>Ausgaben im ausgewählten Monat</small></article>
+</div>
+<article class="panel cashflow-warning-card" hidden="" id="cashflowWarningCard">
+<div class="section-head"><div><h2>Cashflow-Warnung</h2><p class="muted">Monatliche Einnahmen im Verhältnis zu Ausgaben und Sparen.</p></div><span class="badge" id="cashflowWarningBadge">Hinweis</span></div>
+<div id="cashflowWarningBody"></div>
+</article>
+<div class="two-col">
+<article class="panel"><h2>Plan / Ist</h2><div id="planningPlanActual"></div></article>
+<article class="panel"><h2>Liquiditätswarnungen</h2><div id="planningWarnings"></div></article>
+</div>
+<article class="panel chart-panel"><div class="section-head"><div><h2>3 / 6 / 12 Monate</h2><p class="muted">Monatsendstände aus bekannten Buchungen und Serien.</p></div><select id="forecastHorizon"><option value="3">3 Monate</option><option value="6">6 Monate</option><option selected="" value="12">12 Monate</option></select></div><div class="chart-wrap"><canvas id="planningChart"></canvas></div><div class="analysis-month-list" id="planningForecastList"></div></article>
+<div class="two-col">
+<article class="panel"><h2>Prognose-Sicherheit</h2><p class="muted">Konservativ: alle bekannten Ausgaben, aber nur feste Einnahmen. Optimistisch: alle bekannten Einnahmen, aber nur feste Ausgaben.</p><div id="planningScenarios"></div></article>
+<article class="panel"><h2>Historischer Vergleich</h2><div id="planningHistory"></div><div id="planningDeviation"></div></article>
+</div>
+<div class="two-col planning-extra-grid">
+<article class="panel"><h2>Plan/Ist nach Kategorie</h2><div id="planningVarianceTable"></div></article>
+<article class="panel"><h2>Notgroschen / Liquiditätsreichweite</h2><div class="mini-metrics"><div><span>Liquide Mittel</span><strong id="runwayLiquid">–</strong></div><div><span>Ø Fixkosten/Monat</span><strong id="runwayFixed">–</strong></div><div><span>Reichweite</span><strong id="runwayMonths">–</strong></div></div></article>
+</div>
+<div class="two-col planning-extra-grid">
+<article class="panel"><div class="section-head"><div><h2>Was wäre wenn?</h2><p class="muted">Nur Simulation – echte Buchungen werden nicht verändert.</p></div><button id="runScenario" type="button">Berechnen</button></div><div class="scenario-grid"><label>Einkommen/Monat ± EUR<input id="scenarioIncome" step="0.01" type="number" value="0"/></label><label>Ausgaben/Monat ± EUR<input id="scenarioExpense" step="0.01" type="number" value="0"/></label><label>Sparen/Monat ± EUR<input id="scenarioSavings" step="0.01" type="number" value="0"/></label><label>Einmalig ± EUR<input id="scenarioOne" step="0.01" type="number" value="0"/></label><label>Einmaliges Datum<input id="scenarioDate" type="date"/></label><label>Horizont<select id="scenarioHorizon"><option value="3">3 Monate</option><option value="6">6 Monate</option><option selected="" value="12">12 Monate</option></select></label></div><div id="scenarioResult"></div></article>
+<article class="panel"><h2>Schwankungen letzte 12 Monate</h2><div id="variabilityStats"></div></article>
+</div>
+<article class="panel"><div class="section-head"><div><h2>Verträge & Fristen</h2><p class="muted">Nur Vertragsdaten und Kündigungsfristen; HaushaltPro ist kein Dokumentenarchiv.</p></div><button id="newContract" type="button">+ Vertrag</button></div><div id="contractsList"></div></article>
+</div>
+</section>
+<section class="view" hidden="" id="view-finance-check">
+<div class="section-head"><div><h1>Finanz-Check</h1><p class="muted">Prüft Rechenlogik, Monatsübergänge, Splits, Kontenabgleich, Audit-Kette und Speichergrenzen.</p></div><button id="runFinanceCheck">Plausibilität prüfen</button></div>
+<div class="hero-grid finance-check-summary"><article class="metric"><span>Status</span><strong id="financeCheckStatus">–</strong></article><article class="metric"><span>Fehler</span><strong id="financeCheckErrors">–</strong></article><article class="metric"><span>Hinweise</span><strong id="financeCheckWarnings">–</strong></article></div>
+<article class="panel finance-check-results"><div class="section-head finance-check-results-head"><div><h2>Prüfergebnisse</h2><p class="muted">Technische Kennungen werden nur zur Diagnose angezeigt; entscheidend sind Meldung und Status.</p></div></div><div id="financeCheckList"><p class="muted">Noch keine Prüfung ausgeführt.</p></div></article>
+</section>
+<section class="view" hidden="" id="view-investments">
+<div class="section-head"><h1>Investments</h1><button id="newInvestment">+ Investment</button></div>
+<div class="hero-grid">
+<article class="metric"><span>Investiert</span><strong id="invCost">–</strong></article>
+<article class="metric"><span>Marktwert</span><strong id="invValue">–</strong></article>
+<article class="metric accent"><span>Performance</span><strong id="invPerf">–</strong></article>
+</div>
+<article class="panel table-wrap investment-table-panel"><table><thead><tr><th>Asset</th><th>Typ</th><th class="right">Menge</th><th class="right">Kaufkurs</th><th class="right">Aktueller Kurs</th><th class="right">Marktwert</th><th class="right">Entwicklung</th><th></th></tr></thead><tbody id="investmentBody"></tbody></table></article>
+</section>
+<section class="view" hidden="" id="view-help">
+<div class="section-head"><div><h1>Hilfe & Anleitung</h1><p class="muted">Was HaushaltPro macht, wie du sinnvoll startest und wie Dokumentation und Prognose zusammenarbeiten.</p></div></div>
+<div class="help-grid">
+<article class="panel help-card"><h2>1. Grundprinzip</h2><p>HaushaltPro dokumentiert echte Buchungen und berechnet aus zukünftigen Einzelbuchungen sowie wiederkehrenden Serien die Liquidität. Der Monatsanfang ist immer der Stand unmittelbar vor den Buchungen des 1. Tages.</p></article>
+<article class="panel help-card"><h2>2. Konten einrichten</h2><p>Lege pro Bankkonto, Bargeldkonto oder Zahlungsdienst ein Konto mit Startdatum und Startsaldo an. Bei Abweichungen kannst du später für jeden Monat einen eigenen Monatsanfang korrigieren, ohne alte Buchungen umzuschreiben.</p></article>
+<article class="panel help-card"><h2>3. Kategorien</h2><p>Kategorien bestimmen eindeutig die Art einer Buchung: Ausgabe, Einnahme oder Sparen. Dadurch bleiben Auswertung und Sparquote konsistent.</p></article>
+<article class="panel help-card"><h2>4. Buchungen, Transfers & Serien</h2><p>Eine Buchung erhält einen Namen, optional Empfänger, Notiz und Tags. Empfänger werden nur auf Wunsch als Vorauswahl gespeichert. Interne Transfers verschieben Geld zwischen zwei eigenen Konten, ohne als Haushaltseinnahme oder -ausgabe zu zählen. Aktiviere „Wiederkehrend“ für Miete, Gehalt, Sparplan usw.</p></article>
+<article class="panel help-card"><h2>5. Prognosen</h2><p>Dashboard und Planung verwenden bekannte zukünftige Buchungen und Serien. „Fest“, „wahrscheinlich“ und „geschätzt“ steuern konservative und optimistische Szenarien.</p></article>
+<article class="panel help-card"><h2>6. Finanz-Check</h2><p>Der Finanz-Check prüft unter anderem SQLCipher-Integrität, Monatsübergänge, Splits, Serien, Kontenabgleich, Audit-Kette und Belegspeicher. Warnungen solltest du prüfen, Fehler zeitnah korrigieren.</p></article>
+<article class="panel help-card"><h2>7. Belege</h2><p>Belege werden nur gespeichert, wenn du sie ausdrücklich an einer Buchung hochlädst. Standard: maximal 5 MB pro Datei, 10 Dateien pro Buchung und 100 MB insgesamt. Wird das Limit erreicht, werden nur weitere Uploads blockiert; vorhandene Daten bleiben unverändert.</p></article>
+<article class="panel help-card"><h2>8. Backup</h2><p>„Verschlüsseltes Backup herunterladen“ erzeugt eine portable .hpb-Datei. „Internes Backup erstellen & Rotation anwenden“ legt zusätzlich einen lokalen Snapshot im Docker-Volume an und hält automatisch 7 tägliche, 4 wöchentliche und 12 monatliche Generationen.</p></article>
+<article class="panel help-card"><h2>9. Änderungsverlauf</h2><p>Unter Einstellungen zeigt die Audit-Timeline, welcher Benutzer wann welche Änderung durchgeführt hat. Die Einträge liegen in der verschlüsselten SQLCipher-Datenbank – nicht im Docker-/Systemlog – und sind Teil einer Hashkette.</p></article>
+<article class="panel help-card"><h2>10. Benutzer & Haushaltsbücher</h2><p>Eigentümer können Benutzer direkt in den Einstellungen anlegen, Rollen vergeben und vergessene Passwörter zurücksetzen. Rechte gelten pro Haushaltsbuch. Jedes Haushaltsbuch besitzt eine eigene SQLCipher-Datenbank; dadurch lassen sich z. B. gemeinsamer Haushalt und Kinder-Haushaltsbuch getrennt führen.</p></article>
+<article class="panel help-card"><h2>11. Speicher & Datenpflege</h2><p>Die Einstellungen zeigen die Größe der aktuellen Datenbank und des Belegspeichers. Buchungen können nach Zeitraum oder vollständig gelöscht werden. Vor einer Massenlöschung zeigt HaushaltPro die Trefferzahl; zur endgültigen Bestätigung muss exakt „LÖSCHEN“ eingegeben werden.</p></article>
+<article class="panel help-card help-wide"><h2>LAN/VPN-Betrieb</h2><p>HaushaltPro bindet standardmäßig nur an localhost. Für Zugriff aus deinem vertrauenswürdigen LAN/VPN:</p><pre>cp .env.example .env
 sed -i 's/HAUSHALTPRO_BIND_IP=127.0.0.1/HAUSHALTPRO_BIND_IP=0.0.0.0/' .env
 
 docker compose up -d --build</pre><p class="muted">Für eine öffentliche Domain solltest du Port 8080 nicht direkt freigeben, sondern einen HTTPS-Reverse-Proxy verwenden und SECURE_COOKIES=true setzen.</p></article>
-          <article class="panel help-card help-wide"><h2>Empfohlener Ablauf</h2><ol><li>Konten + korrekte Startsalden anlegen.</li><li>Kategorien festlegen.</li><li>Fixe wiederkehrende Buchungen und Einkommen erfassen.</li><li>Echte Buchungen importieren oder manuell ergänzen.</li><li>Konten regelmäßig mit dem Bankstand abgleichen.</li><li>Finanz-Check ausführen.</li><li>Backups regelmäßig extern sichern.</li></ol></article>
-        </div>
-      </section>
-
-      <section id="view-settings" class="view" hidden>
-        <div class="section-head"><h1>Einstellungen & Sicherheit</h1></div>
-        <div class="settings-grid">
-          <article class="panel settings-card user-management-card"><div class="section-head"><div><h2>Benutzer & Rechte</h2><p class="muted">Wähle pro Benutzer das Haushaltsbuch und die Rolle direkt aus – unabhängig davon, welches Haushaltsbuch gerade geöffnet ist. System-Administratoren können Passwörter zurücksetzen und Benutzer dauerhaft löschen; Eigentümer verwalten die Bücher, auf die sie selbst Eigentümerzugriff haben.</p></div><div class="head-actions"><button id="newUser" type="button">+ Benutzer</button><button id="reloadUsers" class="ghost">Aktualisieren</button></div></div><div class="role-help"><span><b>Eigentümer</b> – volle Verwaltung inkl. Benutzer, Backup und Datenpflege</span><span><b>Bearbeiter</b> – Buchungen, Transfers, Budgets und Planung bearbeiten</span><span><b>Nur Lesen</b> – Auswertungen und Daten ansehen, nichts verändern</span></div><div id="userAccessList" class="user-access-list"></div></article>
-          <article class="panel settings-card books-admin-card"><div class="section-head"><div><h2>Haushaltsbücher</h2><p class="muted">Jedes Haushaltsbuch besitzt eine eigene SQLCipher-Datenbank. Eigentümer können Bücher öffnen, umbenennen und – nach Wechsel auf ein anderes Buch – sicher löschen.</p></div></div><div class="inline-form"><input id="newBookName" maxlength="80" placeholder="z. B. Haushalt Lena"><button id="createBook" type="button">+ Haushaltsbuch</button></div><div id="bookList" class="book-list"></div></article>
-          <article class="panel settings-card"><h2>Autolock</h2><label>Nach Inaktivität<select id="autolock"><option>1</option><option>5</option><option>10</option><option selected>15</option><option>30</option><option>60</option><option value="0">Deaktiviert</option></select></label><button id="saveAutolock">Speichern</button></article>
-          <article class="panel settings-card"><h2>Darstellung</h2><p class="muted">Farbschema dieses Geräts. System folgt automatisch der Betriebssystem-Einstellung.</p><label>Modus<select id="themeMode"><option value="system">System</option><option value="light">Hell</option><option value="dark">Dunkel</option></select></label><button id="saveTheme">Übernehmen</button></article>
-          <article class="panel settings-card payee-settings"><div class="section-head"><div><h2>Gespeicherte Empfänger</h2><p class="muted">Nur Empfänger, die du beim Speichern ausdrücklich mit „merken“ bestätigt hast. Die häufigsten erscheinen zuerst in der Buchungsvorauswahl.</p></div><button id="newPayeePreset" class="ghost" type="button">+ Empfänger</button></div><div id="payeePresetList"><p class="muted">Noch keine Empfänger gespeichert.</p></div></article>
-          <article class="panel settings-card"><h2>Investment Tracking</h2><label class="check"><input id="investments" type="checkbox"> Investment-Funktionen aktivieren</label><button id="saveInvestments">Speichern</button></article>
-          <article class="panel settings-card"><h2>SQLCipher</h2><pre id="securityInfo">–</pre><button id="checkSecurity">Prüfen</button></article>
-          <article class="panel settings-card"><h2>Backup</h2><p class="muted">Download-Backup: verschlüsselte .hpb-Datei für deine externe Sicherung. Interne Backups: lokale SQLCipher-Snapshots im persistenten Docker-Volume mit Rotation 7 täglich / 4 wöchentlich / 12 monatlich.</p><input id="backupPassword" type="password" placeholder="Backup-Passwort (min. 12 Zeichen)"><button id="backupBtn">Verschlüsseltes Backup herunterladen</button><button id="rotateBackupBtn" class="ghost">Jetzt internes Backup erstellen & Rotation anwenden</button><button id="verifyBackupBtn" class="ghost">Letztes internes Backup testen</button><small id="backupStatus"></small></article>
-          <article class="panel settings-card"><h2>Wiederherstellung</h2><input id="restoreFile" type="file" accept=".hpb"><input id="restoreBackupPassword" type="password" placeholder="Backup-Passwort"><input id="restoreDbPassword" type="password" placeholder="Datenbank-Passwort des Backups"><button id="restoreBtn" class="danger">Backup wiederherstellen</button></article>
-          <article class="panel settings-card"><h2>Passwort ändern</h2><input id="oldPassword" type="password" placeholder="Aktuelles Passwort"><input id="newPassword" type="password" placeholder="Neues Passwort (min. 12 Zeichen)"><button id="passwordBtn">Passwort + SQLCipher-Key ändern</button></article>
-          <article class="panel settings-card data-maintenance-card"><div class="section-head"><div><h2>Speicher & Datenpflege</h2><p class="muted">Zeigt die Größe des aktuellen Haushaltsbuchs. Buchungen können nach Zeitraum gelöscht werden; Konten, Kategorien, Benutzer und Serien bleiben bestehen.</p></div><button id="reloadStorage" class="ghost" type="button">Aktualisieren</button></div><div class="storage-stats"><div><span>Datenbank</span><strong id="dbSize">–</strong></div><div><span>Buchungen</span><strong id="dbTxCount">–</strong></div><div><span>Belege</span><strong id="dbAttachmentSize">–</strong></div></div><div id="deleteTxControls"><hr><h3>Buchungen löschen</h3><label>Bereich<select id="deleteTxMode"><option value="range">Von – bis</option><option value="from">Ab Datum</option><option value="all">Alle Buchungen</option></select></label><div class="delete-date-row"><label>Von<input id="deleteTxFrom" type="date"></label><label>Bis<input id="deleteTxTo" type="date"></label></div><button id="previewDeleteTx" class="ghost" type="button">Treffer prüfen</button><div id="deleteTxPreview" class="danger-preview muted">Noch keine Vorschau.</div><label>Bestätigung<input id="deleteTxConfirm" placeholder="LÖSCHEN"></label><button id="executeDeleteTx" class="danger" type="button">Ausgewählte Buchungen endgültig löschen</button></div></article>
-          <article class="panel settings-card"><h2>CSV-Import</h2><select id="csvAccount"></select><input id="csvFile" type="file" accept=".csv,text/csv"><button id="csvBtn">CSV importieren</button><small id="csvResult"></small></article>
-        </div>
-        <article class="panel settings-audit-card">
-          <div class="section-head">
-            <div><h2>Änderungsverlauf</h2><p class="muted">Durchsuchbare Audit-Timeline mit Benutzer, Zeitstempel und Detaildaten. Eigentümer können einzelne Logeinträge löschen; danach wird die verbleibende Hashkette kontrolliert neu aufgebaut.</p></div>
-            <button id="auditReload" type="button">Aktualisieren</button>
-          </div>
-          <div class="audit-toolbar">
-            <input id="auditSearch" placeholder="Benutzer, Aktion, Buchung, Serie, Betrag, Text …" aria-label="Änderungsverlauf durchsuchen">
-            <button id="auditSearchBtn" class="ghost" type="button">Suchen</button>
-          </div>
-          <div class="audit-status-row">
-            <span><b id="auditCount">–</b> Einträge</span>
-            <span>Hashkette: <b id="auditChain">–</b></span>
-          </div>
-          <div id="auditTimeline" class="audit-timeline"></div>
-          <div class="pagination-bar audit-pagination">
-            <div><button id="auditFirst" class="ghost" type="button">«</button><button id="auditPrev" class="ghost" type="button">‹</button><span id="auditPageInfo">Seite 1 / 1</span><button id="auditNext" class="ghost" type="button">›</button><button id="auditLast" class="ghost" type="button">»</button></div>
-            <label>Einträge pro Seite<select id="auditPageSize"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option><option value="0">Alle anzeigen</option></select></label>
-          </div>
-        </article>
-      </section>
-    </section>
-    <footer class="app-footer">
-      <div class="app-footer-meta">
-        <span>HaushaltPro</span><span id="appVersion">Version –</span><span><a href="https://github.com/21Koblenz/haushaltpro" target="_blank" rel="noopener noreferrer">Quellcode · AGPL-3.0+</a></span>
-      </div>
-      <div class="app-footer-v4v">
-        <div class="app-footer-v4v-copy">
-          <strong>Value for Value</strong>
-          <span>Wenn HaushaltPro dir einen Wert liefert, kannst du Sats zurückgeben.</span>
-          <a class="lightning-address" href="lightning:creamowl25@primal.net">⚡ creamowl25@primal.net</a>
-        </div>
-        <a class="footer-qr-link" href="lightning:creamowl25@primal.net" aria-label="Lightning QR-Code öffnen">
-          <img class="footer-lightning-qr" src="/assets/lightning-qr-black.svg" alt="Lightning QR-Code für Value for Value">
-        </a>
-      </div>
-    </footer>
-  </main>
-
-  <dialog id="modal"><form method="dialog" id="modalForm"><div id="modalContent"></div><div class="dialog-actions"><button id="modalCancel" type="button" class="ghost">Abbrechen</button><button id="modalSave" type="submit">Speichern</button></div></form></dialog>
-  <div id="toast"></div>
-  <script src="/assets/app.js"></script>
-  <script src="/assets/ui-enhancements.js"></script>
+<article class="panel help-card help-wide"><h2>Empfohlener Ablauf</h2><ol><li>Konten + korrekte Startsalden anlegen.</li><li>Kategorien festlegen.</li><li>Fixe wiederkehrende Buchungen und Einkommen erfassen.</li><li>Echte Buchungen importieren oder manuell ergänzen.</li><li>Konten regelmäßig mit dem Bankstand abgleichen.</li><li>Finanz-Check ausführen.</li><li>Backups regelmäßig extern sichern.</li></ol></article>
+</div>
+</section>
+<section class="view" hidden="" id="view-settings">
+<div class="section-head"><h1>Einstellungen & Sicherheit</h1></div>
+<div class="settings-grid">
+<article class="panel settings-card user-management-card"><div class="section-head"><div><h2>Benutzer & Rechte</h2><p class="muted">Wähle pro Benutzer das Haushaltsbuch und die Rolle direkt aus – unabhängig davon, welches Haushaltsbuch gerade geöffnet ist. System-Administratoren können Passwörter zurücksetzen und Benutzer dauerhaft löschen; Eigentümer verwalten die Bücher, auf die sie selbst Eigentümerzugriff haben.</p></div><div class="head-actions"><button id="newUser" type="button">+ Benutzer</button><button class="ghost" id="reloadUsers">Aktualisieren</button></div></div><div class="role-help"><span><b>Eigentümer</b> – volle Verwaltung inkl. Benutzer, Backup und Datenpflege</span><span><b>Bearbeiter</b> – Buchungen, Transfers, Budgets und Planung bearbeiten</span><span><b>Nur Lesen</b> – Auswertungen und Daten ansehen, nichts verändern</span></div><div class="user-access-list" id="userAccessList"></div></article>
+<article class="panel settings-card books-admin-card"><div class="section-head"><div><h2>Haushaltsbücher</h2><p class="muted">Jedes Haushaltsbuch besitzt eine eigene SQLCipher-Datenbank. Eigentümer können Bücher öffnen, umbenennen und – nach Wechsel auf ein anderes Buch – sicher löschen.</p></div></div><div class="inline-form"><input id="newBookName" maxlength="80" placeholder="z. B. Haushalt Lena"/><button id="createBook" type="button">+ Haushaltsbuch</button></div><div class="book-list" id="bookList"></div></article>
+<article class="panel settings-card"><h2>Autolock</h2><label>Nach Inaktivität<select id="autolock"><option>1</option><option>5</option><option>10</option><option selected="">15</option><option>30</option><option>60</option><option value="0">Deaktiviert</option></select></label><button id="saveAutolock">Speichern</button></article>
+<article class="panel settings-card"><h2>Darstellung</h2><p class="muted">Farbschema dieses Geräts. System folgt automatisch der Betriebssystem-Einstellung.</p><label>Modus<select id="themeMode"><option value="system">System</option><option value="light">Hell</option><option value="dark">Dunkel</option></select></label><button id="saveTheme">Übernehmen</button></article>
+<article class="panel settings-card payee-settings"><div class="section-head"><div><h2>Gespeicherte Empfänger</h2><p class="muted">Nur Empfänger, die du beim Speichern ausdrücklich mit „merken“ bestätigt hast. Die häufigsten erscheinen zuerst in der Buchungsvorauswahl.</p></div><button class="ghost" id="newPayeePreset" type="button">+ Empfänger</button></div><div id="payeePresetList"><p class="muted">Noch keine Empfänger gespeichert.</p></div></article>
+<article class="panel settings-card"><h2>Investment Tracking</h2><label class="check"><input id="investments" type="checkbox"/> Investment-Funktionen aktivieren</label><button id="saveInvestments">Speichern</button></article>
+<article class="panel settings-card"><h2>SQLCipher</h2><pre id="securityInfo">–</pre><button id="checkSecurity">Prüfen</button></article>
+<article class="panel settings-card"><h2>Backup</h2><p class="muted">Download-Backup: verschlüsselte .hpb-Datei für deine externe Sicherung. Interne Backups: lokale SQLCipher-Snapshots im persistenten Docker-Volume mit Rotation 7 täglich / 4 wöchentlich / 12 monatlich.</p><input id="backupPassword" placeholder="Backup-Passwort (min. 12 Zeichen)" type="password"/><button id="backupBtn">Verschlüsseltes Backup herunterladen</button><button class="ghost" id="rotateBackupBtn">Jetzt internes Backup erstellen & Rotation anwenden</button><button class="ghost" id="verifyBackupBtn">Letztes internes Backup testen</button><small id="backupStatus"></small></article>
+<article class="panel settings-card"><h2>Wiederherstellung</h2><input accept=".hpb" id="restoreFile" type="file"/><input id="restoreBackupPassword" placeholder="Backup-Passwort" type="password"/><input id="restoreDbPassword" placeholder="Datenbank-Passwort des Backups" type="password"/><button class="danger" id="restoreBtn">Backup wiederherstellen</button></article>
+<article class="panel settings-card"><h2>Passwort ändern</h2><input id="oldPassword" placeholder="Aktuelles Passwort" type="password"/><input id="newPassword" placeholder="Neues Passwort (min. 12 Zeichen)" type="password"/><button id="passwordBtn">Passwort + SQLCipher-Key ändern</button></article>
+<article class="panel settings-card data-maintenance-card"><div class="section-head"><div><h2>Speicher & Datenpflege</h2><p class="muted">Zeigt die Größe des aktuellen Haushaltsbuchs. Buchungen können nach Zeitraum gelöscht werden; Konten, Kategorien, Benutzer und Serien bleiben bestehen.</p></div><button class="ghost" id="reloadStorage" type="button">Aktualisieren</button></div><div class="storage-stats"><div><span>Datenbank</span><strong id="dbSize">–</strong></div><div><span>Buchungen</span><strong id="dbTxCount">–</strong></div><div><span>Belege</span><strong id="dbAttachmentSize">–</strong></div></div><div id="deleteTxControls"><hr/><h3>Buchungen löschen</h3><label>Bereich<select id="deleteTxMode"><option value="range">Von – bis</option><option value="from">Ab Datum</option><option value="all">Alle Buchungen</option></select></label><div class="delete-date-row"><label>Von<input id="deleteTxFrom" type="date"/></label><label>Bis<input id="deleteTxTo" type="date"/></label></div><button class="ghost" id="previewDeleteTx" type="button">Treffer prüfen</button><div class="danger-preview muted" id="deleteTxPreview">Noch keine Vorschau.</div><label>Bestätigung<input id="deleteTxConfirm" placeholder="LÖSCHEN"/></label><button class="danger" id="executeDeleteTx" type="button">Ausgewählte Buchungen endgültig löschen</button></div></article>
+<article class="panel settings-card"><h2>CSV-Import</h2><select id="csvAccount"></select><input accept=".csv,text/csv" id="csvFile" type="file"/><button id="csvBtn">CSV importieren</button><small id="csvResult"></small></article>
+</div>
+<article class="panel settings-audit-card">
+<div class="section-head">
+<div><h2>Änderungsverlauf</h2><p class="muted">Durchsuchbare Audit-Timeline mit Benutzer, Zeitstempel und Detaildaten. Eigentümer können einzelne Logeinträge löschen; danach wird die verbleibende Hashkette kontrolliert neu aufgebaut.</p></div>
+<button id="auditReload" type="button">Aktualisieren</button>
+</div>
+<div class="audit-toolbar">
+<input aria-label="Änderungsverlauf durchsuchen" id="auditSearch" placeholder="Benutzer, Aktion, Buchung, Serie, Betrag, Text …"/>
+<button class="ghost" id="auditSearchBtn" type="button">Suchen</button>
+</div>
+<div class="audit-status-row">
+<span><b id="auditCount">–</b> Einträge</span>
+<span>Hashkette: <b id="auditChain">–</b></span>
+</div>
+<div class="audit-timeline" id="auditTimeline"></div>
+<div class="pagination-bar audit-pagination">
+<div><button class="ghost" id="auditFirst" type="button">«</button><button class="ghost" id="auditPrev" type="button">‹</button><span id="auditPageInfo">Seite 1 / 1</span><button class="ghost" id="auditNext" type="button">›</button><button class="ghost" id="auditLast" type="button">»</button></div>
+<label>Einträge pro Seite<select id="auditPageSize"><option value="10">10</option><option selected="" value="25">25</option><option value="50">50</option><option value="100">100</option><option value="0">Alle anzeigen</option></select></label>
+</div>
+</article>
+</section>
+</section>
+<footer class="app-footer">
+<div class="app-footer-meta">
+<span>HaushaltPro</span><span id="appVersion">Version –</span><span><a data-i18n="footer.source" href="https://github.com/21Koblenz/haushaltpro" rel="noopener noreferrer" target="_blank">Quellcode · AGPL-3.0+</a></span>
+</div>
+<div class="app-footer-v4v">
+<div class="app-footer-v4v-copy">
+<strong data-i18n="footer.v4vTitle">Value for Value</strong>
+<span data-i18n="footer.v4vText">Wenn HaushaltPro dir einen Wert liefert, kannst du Sats zurückgeben.</span>
+<a class="lightning-address" href="lightning:creamowl25@primal.net">⚡ creamowl25@primal.net</a>
+</div>
+<a aria-label="Lightning QR-Code öffnen" class="footer-qr-link" data-i18n-aria-label="footer.qrOpen" href="lightning:creamowl25@primal.net">
+<img alt="Lightning QR-Code für Value for Value" class="footer-lightning-qr" data-i18n-alt="footer.qrAlt" src="/assets/lightning-qr-black.svg"/>
+</a>
+</div>
+</footer>
+</main>
+<dialog id="modal"><form id="modalForm" method="dialog"><div id="modalContent"></div><div class="dialog-actions"><button class="ghost" id="modalCancel" type="button">Abbrechen</button><button id="modalSave" type="submit">Speichern</button></div></form></dialog>
+<div id="toast"></div>
+<script src="/assets/i18n.js?v=0.21.3"></script>
+<script src="/assets/app.js?v=0.21.3"></script>
+<script src="/assets/ui-enhancements.js?v=0.21.3"></script>
 </body>
 </html>

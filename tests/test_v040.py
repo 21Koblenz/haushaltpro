@@ -23,17 +23,25 @@ def ok(r):
     return r.json()
 acc=ok(client.post('/api/accounts',json={'name':'Giro','type':'checking','opening_balance':1000,'currency':'EUR','start_date':'2026-01-01'}))
 rec=ok(client.post('/api/recurring',json={'account_id':acc['id'],'name':'Gehalt','amount':2000,'next_date':'2026-09-10','frequency':'monthly','kind':'income','active':True}))
+c.execute("UPDATE recurring SET created_at='2026-09-01T00:00:00+00:00' WHERE id=?",(rec['id'],)); c.commit()
 # One monthly override must not mutate the series amount.
 ok(client.put(f"/api/recurring/{rec['id']}/override",json={'due_date':'2026-10-10','amount':2450,'note':'Überstunden'}))
 row=c.execute('SELECT amount FROM recurring WHERE id=?',(rec['id'],)).fetchone(); assert row['amount']==200000
 ov=c.execute('SELECT amount,note FROM recurring_overrides WHERE series_id=? AND due_date=?',(rec['id'],'2026-10-10')).fetchone(); assert ov['amount']==245000 and ov['note']=='Überstunden'
-events=main.recurring_events(c,acc['id'],main.date(2026,9,1),main.date(2026,11,30))
-vals={e['date'].isoformat():e['amount'] for e in events}
-assert vals['2026-09-10']==200000
+# Future recurring dates are materialised immediately as planned transactions.
+# The October override updates only October; the base series remains unchanged.
+rows=c.execute("SELECT booking_date,amount,status FROM transactions WHERE recurring_id=? AND booking_date BETWEEN '2026-09-01' AND '2026-11-30' ORDER BY booking_date",(rec['id'],)).fetchall()
+vals={r['booking_date']:r['amount'] for r in rows}
+assert '2026-09-10' not in vals  # created after this mistyped/past due date
 assert vals['2026-10-10']==245000
 assert vals['2026-11-10']==200000
-# Executing the overridden occurrence books the override, not the base amount.
-c.execute("INSERT OR REPLACE INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,NULL,'executed',?)",(rec['id'],'2026-09-10',main.iso(main.utcnow()))); c.commit()
+assert all(r['status']=='planned' for r in rows)
+# Executing/accessing the overridden occurrence reuses the already-materialised row.
+from datetime import date as real_date
+class DueDate(real_date):
+    @classmethod
+    def today(cls): return cls(2026,10,10)
+main.date=DueDate
 booked=ok(client.post(f"/api/recurring/{rec['id']}/execute"))
 tx=c.execute('SELECT amount FROM transactions WHERE id=?',(booked['transaction_id'],)).fetchone(); assert tx['amount']==245000
 html=(root/'static/index.html').read_text(); js=(root/'static/app.js').read_text(); css=(root/'static/style.css').read_text()

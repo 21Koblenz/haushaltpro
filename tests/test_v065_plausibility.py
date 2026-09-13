@@ -35,14 +35,19 @@ for payload in [
     {'category_id':exp['id'],'name':'Miete','amount':1000,'next_date':'2026-01-01','kind':'direct_debit'},
     {'category_id':sav['id'],'name':'ETF-Sparplan','amount':500,'next_date':'2026-01-05','kind':'direct_debit'},
 ]:
-    ok(client.post('/api/recurring',json={'account_id':acc['id'],'frequency':'monthly','active':True,'valid_until':None,'max_amount':None,**payload}))
+    rr=ok(client.post('/api/recurring',json={'account_id':acc['id'],'frequency':'monthly','active':True,'valid_until':None,'max_amount':None,**payload}))
+    # Simulate contracts that really existed since January before this upgrade.
+    # Remove only the API-create safeguard that marked pre-creation dates skipped.
+    c.execute("UPDATE recurring SET created_at='2026-01-01T00:00:00+00:00' WHERE id=?",(rr['id'],))
+    c.execute("DELETE FROM recurring_occurrences WHERE recurring_id=? AND status='skipped'",(rr['id'],))
+    c.commit()
 
 dash=ok(client.get('/api/dashboard?month=2026-10'))
 # Future October must list recurring payments and mark their source.
 up={x['name']:x for x in dash['next_payments']}
-assert up['Miete']['date']=='2026-10-01' and up['Miete']['source']=='recurring',up
-assert up['ETF-Sparplan']['date']=='2026-10-05' and up['ETF-Sparplan']['source']=='recurring',up
-assert up['Gehalt']['date']=='2026-10-25' and up['Gehalt']['source']=='recurring',up
+assert up['Miete']['date']=='2026-10-01' and up['Miete']['source']=='transaction',up
+assert up['ETF-Sparplan']['date']=='2026-10-05' and up['ETF-Sparplan']['source']=='transaction',up
+assert up['Gehalt']['date']=='2026-10-25' and up['Gehalt']['source']=='transaction',up
 # 12-month row ends in selected month and includes all 12 rows.
 months=dash['analysis']['monthly_overview']
 assert len(months)==12 and months[-1]['month']=='2026-10',months

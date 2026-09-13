@@ -64,7 +64,7 @@ assert octo['accounts'][0]['balance']==4600.0,octo['accounts'][0] # synthetic Oc
 assert octo['accounts'][0]['month_end_balance']==6100.0,octo['accounts'][0]
 assert len(octo['total_forecast'])==31 and octo['total_forecast'][0]['date']=='2026-10-01' and octo['total_forecast'][-1]['date']=='2026-10-31'
 np={(x['date'],x['name'],x['source']) for x in octo['next_payments']}
-assert ('2026-10-01','Miete','recurring') in np and ('2026-10-25','Gehalt','recurring') in np,np
+assert ('2026-10-01','Miete','transaction') in np and ('2026-10-25','Gehalt','transaction') in np,np
 # Category reports: September real/manual bookings and savings semantics.
 rep=ok(client.get('/api/reports/categories?period=month&anchor=2026-09-01'))
 assert rep['actual_through']=='2026-09-11',rep
@@ -85,9 +85,10 @@ assert p['forecast']['3'][2]['end_balance']==6700.0,p['forecast']['3']
 # Conservative excludes likely future salary, so must be below expected; optimistic includes likely salary.
 assert p['forecast']['conservative'][-1]['end_balance'] < p['forecast']['12'][-1]['end_balance']
 assert p['forecast']['optimistic'][-1]['end_balance'] >= p['forecast']['12'][-1]['end_balance']
-# Next payment events in Oct exist and are correctly dated/signed.
-ev=main.recurring_events(c,acc['id'],date(2026,10,1),date(2026,10,31))
-got={(e['date'].isoformat(),e['name'],e['amount']) for e in ev}
-assert ('2026-10-01','Miete',-80000) in got and ('2026-10-25','Gehalt',200000) in got and ('2026-10-28','Sparen',-50000) in got,got
+# Next payment rows in Oct exist in the journal and are correctly dated/signed.
+rows=c.execute("SELECT booking_date,name,amount,status FROM transactions WHERE recurring_id IS NOT NULL AND booking_date BETWEEN '2026-10-01' AND '2026-10-31'").fetchall()
+got={(r['booking_date'],r['name'],r['amount'],r['status']) for r in rows}
+assert ('2026-10-01','Miete',-80000,'planned') in got and ('2026-10-25','Gehalt',200000,'planned') in got and ('2026-10-28','Sparen',-50000,'planned') in got,got
+assert main.recurring_events(c,acc['id'],date(2026,10,1),date(2026,10,31))==[]
 print('v0.7.1 full household plausibility: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

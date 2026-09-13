@@ -24,10 +24,9 @@ today=date.today(); month=today.strftime('%Y-%m'); first=today.replace(day=1); m
 acc=ok(client.post('/api/accounts',json={'name':'Serientest','type':'checking','opening_balance':1000,'currency':'EUR','start_date':first.isoformat()}))
 inc=ok(client.post('/api/categories',json={'name':'Gehalt Serie','direction':'income'}))
 exp=ok(client.post('/api/categories',json={'name':'Miete Serie','direction':'expense'}))
-# Direct recurring rows simulate an existing plan whose due date was the 1st and
-# has not been manually marked executed. They must still flow into "bis heute".
-rin=ok(client.post('/api/recurring',json={'account_id':acc['id'],'category_id':inc['id'],'name':'Gehalt','amount':2000,'next_date':first.isoformat(),'frequency':'monthly','kind':'income','active':True}))
-rout=ok(client.post('/api/recurring',json={'account_id':acc['id'],'category_id':exp['id'],'name':'Miete','amount':500,'next_date':first.isoformat(),'frequency':'monthly','kind':'direct_debit','active':True}))
+# Due-today recurring rows are materialised into the real journal and must flow into "bis heute".
+rin=ok(client.post('/api/recurring',json={'account_id':acc['id'],'category_id':inc['id'],'name':'Gehalt','amount':2000,'next_date':today.isoformat(),'frequency':'monthly','kind':'income','active':True}))
+rout=ok(client.post('/api/recurring',json={'account_id':acc['id'],'category_id':exp['id'],'name':'Miete','amount':500,'next_date':today.isoformat(),'frequency':'monthly','kind':'direct_debit','active':True}))
 d=ok(client.get('/api/dashboard?month='+month)); a=d['analysis']
 assert a['booked_income']==2000.0,a
 assert a['booked_expense']==500.0,a

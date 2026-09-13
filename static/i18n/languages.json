@@ -1,0 +1,19 @@
+{
+  "default": "de",
+  "languages": [
+    {
+      "code": "de",
+      "name": "Deutsch",
+      "nativeName": "Deutsch",
+      "file": "de.json",
+      "locale": "de-DE"
+    },
+    {
+      "code": "en",
+      "name": "English",
+      "nativeName": "English",
+      "file": "en.json",
+      "locale": "en-GB"
+    }
+  ]
+}

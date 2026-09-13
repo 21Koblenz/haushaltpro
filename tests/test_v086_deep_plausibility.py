@@ -54,7 +54,7 @@ def exec_occ(rec_id,due,amount,category_id,direction,fixed,name):
     cur=c.execute('''INSERT INTO transactions(account_id,amount,direction,booking_date,value_date,name,payee,note,category_id,status,external_id,recurring_id,confidence,fixed_cost,created_at,updated_at)
                      VALUES(?,?,?,?,?,?,?,?,?,'executed',?,?,?,?,?,?)''',
                   (acc,amount,direction,due,due,name,name,'Test-Ist',category_id,f'test-{rec_id}-{due}',rec_id,'fixed',int(fixed),ts,ts))
-    c.execute("INSERT INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,?,'executed',?)",(rec_id,due,cur.lastrowid,ts))
+    c.execute("INSERT OR REPLACE INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,?,'executed',?)",(rec_id,due,cur.lastrowid,ts))
 
 for m in range(1,9):
     exec_occ(rent,f'2026-{m:02d}-01',-120000,cat['Miete'],'expense',True,'Miete')
@@ -115,8 +115,8 @@ eq(dash['pending_outflows'],1100.0,'dashboard pending outflows') # car 600 + sav
 eq(dash['pending_inflows'],3000.0,'dashboard pending inflows')
 np={(x['date'],x['name'],x['source']) for x in dash['next_payments']}
 assert ('2026-09-20','Werkstatt','transaction') in np,np
-assert ('2026-09-25','Gehalt','recurring') in np,np
-assert ('2026-09-28','Sparplan','recurring') in np,np
+assert ('2026-09-25','Gehalt','transaction') in np,np
+assert ('2026-09-28','Sparplan','transaction') in np,np
 
 # Documentary reports exclude future-dated manual entries (car on Sep20) until their date arrives.
 rep=ok(client.get('/api/reports/categories?period=month&anchor=2026-09-01'))

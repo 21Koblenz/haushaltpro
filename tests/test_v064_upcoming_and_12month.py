@@ -26,8 +26,14 @@ assert main.date.today().isoformat()=='2026-09-11',main.date.today()
 acc=ok(client.post('/api/accounts',json={'name':'12M','type':'checking','opening_balance':5000,'currency':'EUR','start_date':'2025-11-01'}))
 exp=ok(client.post('/api/categories',json={'name':'Miete','direction':'expense'}))
 inc=ok(client.post('/api/categories',json={'name':'Gehalt','direction':'income'}))
-# monthly rent on the 1st and salary on the 15th, created in September
-ok(client.post('/api/recurring',json={'account_id':acc['id'],'category_id':exp['id'],'name':'Miete','amount':800,'next_date':'2026-09-01','frequency':'monthly','kind':'direct_debit','active':True,'valid_until':None,'max_amount':None}))
+# monthly rent on the 1st and salary on the 15th.  The rent row simulates
+# an existing pre-upgrade contract created on Sep 1; startup synchronization
+# should create its future journal schedule without inventing missed history.
+cur=c.execute("""INSERT INTO recurring(account_id,category_id,name,amount,next_date,frequency,kind,max_amount,active,series_id,anchor_date,valid_from,valid_until,confidence,fixed_cost,created_at)
+                 VALUES(?,?,?,?,?,?,?,?,?,NULL,?,?,?,?,?,?)""",
+              (acc['id'],exp['id'],'Miete',-80000,'2026-09-01','monthly','direct_debit',None,1,'2026-09-01','2026-09-01',None,'fixed',0,'2026-09-01T00:00:00+00:00'))
+rent_id=cur.lastrowid; c.execute('UPDATE recurring SET series_id=? WHERE id=?',(rent_id,rent_id)); c.commit()
+sync=ok(client.post('/api/recurring/materialize-due')); assert sync['scope']=='all'
 ok(client.post('/api/recurring',json={'account_id':acc['id'],'category_id':inc['id'],'name':'Gehalt','amount':2000,'next_date':'2026-09-15','frequency':'monthly','kind':'income','active':True,'valid_until':None,'max_amount':None}))
 
 dash=ok(client.get('/api/dashboard?month=2026-10'))

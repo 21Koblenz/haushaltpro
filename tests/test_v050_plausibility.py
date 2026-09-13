@@ -33,8 +33,10 @@ series_tx=ok(client.post('/api/transactions',json={
     'recurring':True,'recurring_frequency':'monthly','recurring_until':'2027-01-31'
 }))
 assert series_tx['recurring_id']
-events=[e for e in main.recurring_events(c,acc['id'],main.date(2026,10,1),main.date(2027,1,31)) if e['series_id']==series_tx['recurring_id']]
-assert [e['date'].isoformat() for e in events]==['2026-11-30','2026-12-31','2027-01-31'],events
+journal=c.execute("SELECT booking_date,amount,status FROM transactions WHERE recurring_id=? ORDER BY booking_date",(series_tx['recurring_id'],)).fetchall()
+assert [r['booking_date'] for r in journal]==['2026-10-31','2026-11-30','2026-12-31','2027-01-31'],[dict(r) for r in journal]
+assert all(r['status']=='planned' for r in journal),[dict(r) for r in journal]
+assert [e for e in main.recurring_events(c,acc['id'],main.date(2026,10,1),main.date(2027,1,31)) if e['series_id']==series_tx['recurring_id']]==[]
 # Critical short-month anchor: 31 -> 30/28 as needed -> back to 31, no permanent drift.
 assert main.add_months(main.date(2026,1,31),1)==main.date(2026,2,28)
 assert list(main.occurrences(main.date(2026,1,31),'monthly',main.date(2026,2,1),main.date(2026,3,31)))==[main.date(2026,2,28),main.date(2026,3,31)]
@@ -49,10 +51,12 @@ ok(client.put(f"/api/transactions/{tx['id']}",json={
     'recurring':True,'recurring_frequency':'monthly','recurring_until':'2027-01-31','recurring_effective_from':'2026-12-01'
 }))
 series_id=series_tx['recurring_id']
-events=main.recurring_events(c,acc['id'],main.date(2026,11,1),main.date(2027,1,31))
-bydate={e['date'].isoformat():e['amount'] for e in events if e['series_id']==series_id}
+future_rows=c.execute("SELECT t.booking_date,t.amount,t.status FROM transactions t JOIN recurring r ON r.id=t.recurring_id WHERE COALESCE(r.series_id,r.id)=? AND t.booking_date BETWEEN '2026-11-01' AND '2027-01-31' ORDER BY t.booking_date",(series_id,)).fetchall()
+bydate={r['booking_date']:r['amount'] for r in future_rows}
 assert bydate['2026-11-30']==-10000,bydate
 assert bydate['2026-12-31']==-12000 and bydate['2027-01-31']==-12000,bydate
+assert all(r['status']=='planned' for r in future_rows),[dict(r) for r in future_rows]
+assert main.recurring_events(c,acc['id'],main.date(2026,11,1),main.date(2027,1,31))==[]
 # The future dashboards must contain those series amounts.
 nov=ok(client.get('/api/dashboard?month=2026-11')); dec=ok(client.get('/api/dashboard?month=2026-12'))
 assert len(nov['total_forecast'])==30 and len(dec['total_forecast'])==31

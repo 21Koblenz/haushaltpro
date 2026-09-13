@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+## v0.21.3 - 2026-09-13
+
+Stable release of the tested v0.21.x preview line.
+
+### Added
+
+- German and English user interface with local translation catalogs and locale-aware number/date/currency formatting.
+- Complete recurring-contract schedule materialization in Bookings, including finite schedules, rolling horizon for open-ended contracts, one-occurrence overrides and series changes from an effective date.
+- New money-flow visualization for monthly and yearly analysis with category → group flows for income, expenses and savings.
+- Fast light/dark theme switch in the top bar.
+
+### Changed
+
+- Money-flow category arrows now use explicit SVG geometry. Their direction, length and thickness follow the real category share and cannot be flattened by CSS.
+- Category names remain fully visible above their arrows.
+- Income, expense and savings groups scale independently to their own 100% total.
+- Monthly analysis now also shows savings rate and average savings per day; yearly analysis keeps average savings per month.
+- Account/month selectors self-heal if browser state or stale assets leave invalid options behind.
+
+### Fixed
+
+- Correct arrow direction for the money-flow card.
+- Correct proportional arrow sizing for very small and very large categories.
+- Forecast double counting of already materialized recurring transactions.
+- Monthly recurring overrides now update the materialized booking and revert cleanly.
+- Existing v0.21.2 mid-month opening-balance and negative-balance fixes remain included.
+
+### Validation
+
+- Preview 24 was manually confirmed in the target environment before release.
+- Full application regression suite re-run for the v0.21.3 release candidate.
+- Static security audit re-run for the v0.21.3 release candidate.
+- Python and JavaScript syntax checks re-run for the v0.21.3 release candidate.
+
 ## v0.21.2 - 2026-09-13
 
 ### Fixed

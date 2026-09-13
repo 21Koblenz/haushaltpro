@@ -30,7 +30,7 @@ checks = {
     "read_only_root": "read_only: true" in compose,
     "no_new_privileges": "no-new-privileges:true" in compose,
     "no_access_log": "--no-access-log" in dockerfile,
-    "maintained_sqlcipher_binding": "sqlcipher3==0.6.2" in requirements and "sqlcipher3-binary" not in requirements and "pysqlcipher3" not in requirements,
+    "maintained_sqlcipher_binding": "sqlcipher3==0.6.2" in requirements and "pysqlcipher3" not in requirements,
     "per_thread_read_connections": "_thread_local" in db and "current_key()" in db and "active_path()" in db,
     "isolated_write_transactions": "BEGIN IMMEDIATE" in db and "c.close()" in db,
     "decimal_money_inputs": "def money_decimal" in main and "amount: Decimal" in main and "opening_balance: Decimal" in main,

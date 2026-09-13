@@ -34,7 +34,7 @@ rent=c.execute("SELECT id FROM recurring WHERE name='Miete' LIMIT 1").fetchone()
 ts=main.iso(main.utcnow())
 c.execute("INSERT INTO transactions(account_id,amount,direction,booking_date,payee,category_id,status,external_id,recurring_id,confidence,fixed_cost,created_at,updated_at) VALUES(?,?,?,?,?,?, 'executed',?,?,?,?,?,?)",
           (acc['id'],-85000,'expense','2026-09-01','Miete Ist',exp,'test-rent',rent,'fixed',1,ts,ts))
-c.execute("INSERT INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,last_insert_rowid(),'executed',?)",(rent,'2026-09-01',ts)); c.commit()
+c.execute("INSERT OR REPLACE INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,last_insert_rowid(),'executed',?)",(rent,'2026-09-01',ts)); c.commit()
 var=ok(client.get('/api/planning/variance?month=2026-09'))
 rentrow=next(x for x in var['rows'] if x['category_id']==exp)
 assert rentrow['planned']==800.0 and rentrow['actual']==850.0 and rentrow['difference']==50.0,rentrow

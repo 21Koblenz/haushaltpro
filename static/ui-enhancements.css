@@ -1,26 +1,21 @@
-/* Mobile-friendly signed account balances. */
+/* v0.21.3: signed balances + V4V + i18n selector */
 .signed-money-input{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;margin-top:6px}
-.signed-money-input input{margin-top:0;min-width:0}
-.signed-money-toggle{margin:0;width:46px;height:46px;padding:0;font-size:1.15rem;line-height:1}
-.signed-money-help{display:block;margin-top:6px;line-height:1.45}
+.signed-money-input input{margin-top:0;min-width:0}.signed-money-toggle{margin:0;width:46px;height:46px;padding:0;font-size:1.15rem;line-height:1}.signed-money-help{display:block;margin-top:6px;line-height:1.45}
+.app-footer{margin-top:26px;padding:24px 12px 10px;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:16px;color:var(--muted);font-size:.82rem}.app-footer-meta{display:flex;justify-content:center;gap:10px;align-items:center;flex-wrap:wrap}.app-footer-meta span+span:before{content:"·";margin-right:10px}.app-footer-v4v{width:min(560px,100%);display:flex;justify-content:center;align-items:center;gap:18px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--panel2)}.app-footer-v4v-copy{display:flex;flex-direction:column;gap:5px;min-width:0}.app-footer-v4v-copy strong{color:var(--text);font-size:.95rem}.lightning-address{color:var(--accent);font-weight:800;text-decoration:none;overflow-wrap:anywhere}.lightning-address:hover{text-decoration:underline}.footer-qr-link{display:inline-grid;place-items:center;flex:0 0 auto;padding:7px;border:1px solid var(--line);border-radius:12px;background:#0b0f14}.footer-lightning-qr{display:block;width:86px;height:86px;filter:invert(1)}html[data-theme="light"] .footer-lightning-qr{filter:none}html[data-theme="light"] .footer-qr-link{background:#fff}
+.hp-language-switcher{position:fixed;right:14px;bottom:14px;z-index:1200;display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 94%,transparent);box-shadow:0 8px 28px rgba(0,0,0,.22);backdrop-filter:blur(10px)}.hp-language-switcher label{margin:0;font-size:.78rem;color:var(--muted)}.hp-language-switcher select{margin:0;min-width:112px;padding:7px 30px 7px 9px}.hp-i18n-missing{outline:1px dashed #d99b32;outline-offset:2px}
+@media(max-width:600px){.app-footer-v4v{align-items:flex-start;justify-content:space-between}.footer-lightning-qr{width:76px;height:76px}.app-footer-meta span+span:before{display:none}.app-footer-meta{gap:6px 12px}.signed-money-toggle{width:44px;height:44px}.hp-language-switcher{right:8px;bottom:8px}}
 
-/* Value-for-Value footer with local, theme-aware Lightning QR. */
-.app-footer{margin-top:26px;padding:24px 12px 10px;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:16px;color:var(--muted);font-size:.82rem}
-.app-footer-meta{display:flex;justify-content:center;gap:10px;align-items:center;flex-wrap:wrap}
-.app-footer-meta span+span:before{content:"·";margin-right:10px}
-.app-footer-v4v{width:min(560px,100%);display:flex;justify-content:center;align-items:center;gap:18px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--panel2)}
-.app-footer-v4v-copy{display:flex;flex-direction:column;gap:5px;min-width:0}
-.app-footer-v4v-copy strong{color:var(--text);font-size:.95rem}
-.lightning-address{color:var(--accent);font-weight:800;text-decoration:none;overflow-wrap:anywhere}
-.lightning-address:hover{text-decoration:underline}
-.footer-qr-link{display:inline-grid;place-items:center;flex:0 0 auto;padding:7px;border:1px solid var(--line);border-radius:12px;background:#0b0f14}
-.footer-lightning-qr{display:block;width:86px;height:86px;filter:invert(1)}
-html[data-theme="light"] .footer-lightning-qr{filter:none}
-html[data-theme="light"] .footer-qr-link{background:#fff}
-@media(max-width:600px){
-  .app-footer-v4v{align-items:flex-start;justify-content:space-between}
-  .footer-lightning-qr{width:76px;height:76px}
-  .app-footer-meta span+span:before{display:none}
-  .app-footer-meta{gap:6px 12px}
-  .signed-money-toggle{width:44px;height:44px}
-}
+/* Locale-stable date inputs: visible text follows the selected app language;
+   the original ISO date input stays in the form and can still open the picker. */
+.hp-date-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:6px;position:relative}
+.hp-date-input .hp-date-native{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+.hp-date-input .hp-date-display{margin-top:0;min-width:0}
+.hp-date-picker{margin:0;width:44px;height:44px;padding:0;display:grid;place-items:center}
+
+/* Browser-native file chooser captions follow the OS/browser language and are
+   therefore replaced with app-localised controls. The real file input remains
+   present so upload code keeps using input.files unchanged. */
+.hp-file-input{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+.hp-file-native{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0!important}
+.hp-file-button{margin:0}
+.hp-file-name{color:var(--muted);font-size:.9rem;overflow-wrap:anywhere}

@@ -130,9 +130,12 @@ made=ok(client.post('/api/transactions',json={'account_id':acc2['id'],'amount':4
 assert made['recurring_id']
 rrow=c.execute('SELECT valid_until,frequency FROM recurring WHERE id=?',(made['recurring_id'],)).fetchone(); assert rrow['valid_until']==future_end.isoformat() and rrow['frequency']=='monthly'
 occ=c.execute('SELECT status FROM recurring_occurrences WHERE recurring_id=? AND due_date=?',(made['recurring_id'],future_start.isoformat())).fetchone(); assert occ and occ['status']=='executed'
+journal=c.execute('SELECT booking_date,status FROM transactions WHERE recurring_id=? ORDER BY booking_date',(made['recurring_id'],)).fetchall()
+assert [r['booking_date'] for r in journal]==[future_start.isoformat(),main.add_months(future_start,1).isoformat(),future_end.isoformat()], [dict(r) for r in journal]
+assert all(r['status']=='planned' for r in journal), [dict(r) for r in journal]
 events=[ev for ev in main.recurring_events(c,acc2['id'],future_start,future_end+timedelta(days=40)) if ev['recurring_id']==made['recurring_id']]
-assert events and all(ev['date']<=future_end for ev in events), events
-print('transaction recurring checkbox + bounded end date: PASS')
+assert events==[], events
+print('transaction recurring checkbox -> full bounded journal schedule: PASS')
 
 print('API functional tests: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

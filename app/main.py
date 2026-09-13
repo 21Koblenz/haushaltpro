@@ -33,7 +33,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from . import db
 
-APP_VERSION = "0.21.2"
+APP_VERSION = "0.21.3"
 
 PUBLIC_MODE = os.getenv("HAUSHALTPRO_MODE", "lan").strip().lower() == "public"
 SECURE_COOKIES = os.getenv("SECURE_COOKIES", "true" if PUBLIC_MODE else "false").lower() == "true"
@@ -1047,7 +1047,7 @@ def planning_overview(request: Request, month: str | None = None):
     actual={"income":0,"expense":0,"savings":0}
     for r in c.execute("""SELECT ABS(t.amount) amount,COALESCE(cat.direction,CASE WHEN t.amount>=0 THEN 'income' ELSE 'expense' END) typ
                           FROM transactions t LEFT JOIN categories cat ON cat.id=t.category_id
-                          WHERE t.status<>'cancelled' AND t.transfer_id IS NULL AND t.booking_date>=? AND t.booking_date<=?""",(start.isoformat(),min(end,today).isoformat())).fetchall():
+                          WHERE t.status='executed' AND t.transfer_id IS NULL AND t.booking_date>=? AND t.booking_date<=?""",(start.isoformat(),min(end,today).isoformat())).fetchall():
         actual[r["typ"] if r["typ"] in actual else "expense"]+=int(r["amount"])
     planned={"income":0,"expense":0,"savings":0}
     for r in planned_month_category_totals(c,start,end).values():
@@ -1639,7 +1639,6 @@ def monthly_account_series(c, account_id: int, month: str | None = None) -> list
         account_start=date.fromisoformat(account["start_date"])
         if start < account_start <= end and not exact_override:
             movements[account_start.isoformat()]+=int(account["opening_balance"])
-
     for r in c.execute(
         """SELECT booking_date,COALESCE(SUM(CASE WHEN direction='expense' THEN -ABS(amount) WHEN direction='income' THEN ABS(amount) ELSE amount END),0) amount
            FROM transactions WHERE account_id=? AND status<>'cancelled' AND booking_date BETWEEN ? AND ?
@@ -2096,24 +2095,34 @@ def transaction_create(x: TransactionIn, request: Request):
             )
             recurring_id = rcur.lastrowid
             c.execute("UPDATE recurring SET series_id=? WHERE id=?", (recurring_id, recurring_id))
+        initial_status = "planned" if x.recurring and x.booking_date > date.today() else "executed"
         cur = c.execute(
             """INSERT INTO transactions(account_id,amount,direction,booking_date,value_date,name,payee,note,category_id,status,external_id,recurring_id,confidence,fixed_cost,created_at,updated_at)
                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (x.account_id, amount, tx_direction, x.booking_date.isoformat(), x.value_date.isoformat() if x.value_date else None,
-             clean_text(x.name, 160) or clean_text(x.payee, 200) or "Buchung", clean_text(x.payee, 200), clean_text(x.note, 1000), x.category_id, "executed",
+             clean_text(x.name, 160) or clean_text(x.payee, 200) or "Buchung", clean_text(x.payee, 200), clean_text(x.note, 1000), x.category_id, initial_status,
              "manual-" + secrets.token_hex(16), recurring_id, x.confidence, int(x.fixed_cost), ts, ts),
         )
         write_tx_children(c, cur.lastrowid, x.tags, x.splits)
+        generated_transactions=[]
         if recurring_id:
             c.execute(
                 "INSERT OR REPLACE INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,?,'executed',?)",
                 (recurring_id, x.booking_date.isoformat(), cur.lastrowid, ts),
             )
+            # A recurring transaction is a contract template plus journal rows:
+            # materialise the rest of the finite contract immediately, or a
+            # rolling 24-month horizon for an open-ended series. The explicitly
+            # entered first row above already owns its occurrence and is not
+            # duplicated by the materialiser.
+            generated_transactions=_materialize_recurring_series(
+                c, recurring_id, sess[1], from_day=max(date.today(), x.booking_date)
+            )
         created_tx=tx_snapshot(c,cur.lastrowid)
         if x.remember_payee:
             remember_payee(c,x.payee)
         audit_append(c,sess[1],"transaction.create","transaction",cur.lastrowid,{"name":created_tx.get("name"),"added":audit_pick(created_tx,("name","amount","booking_date","value_date","account_name","payee","category_name","note","confidence","fixed_cost","tags"))})
-        return {"id": cur.lastrowid, "recurring_id": recurring_id}
+        return {"id": cur.lastrowid, "recurring_id": recurring_id, "generated_transactions": len(generated_transactions)}
 
 
 @app.put("/api/transactions/{tx_id}")
@@ -2182,6 +2191,14 @@ def transaction_update(tx_id: int, x: TransactionIn, request: Request):
                 c.execute("UPDATE transactions SET recurring_id=? WHERE id=?", (active_recurring_id, tx_id))
                 c.execute("INSERT OR REPLACE INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,?,'executed',?)",
                           (active_recurring_id,x.booking_date.isoformat(),tx_id,iso(utcnow())))
+
+            # Rebuild only the future/planned part of the contract. Executed
+            # history remains untouched. This keeps the bookings journal in sync
+            # immediately after editing a recurring transaction.
+            series_id = int(series_id if existing_recurring_id and linked else active_recurring_id)
+            rebuild_from=max(date.today(),effective)
+            _remove_planned_series_transactions(c,series_id,rebuild_from)
+            _materialize_recurring_series(c,series_id,sess[1],from_day=rebuild_from)
         after=tx_snapshot(c,tx_id)
         if x.remember_payee:
             remember_payee(c,x.payee)
@@ -2318,7 +2335,7 @@ def _next_unexecuted_due(c, r, horizon_years: int = 10) -> date | None:
     anchor = date.fromisoformat(r["anchor_date"] or r["valid_from"] or r["next_date"])
     high = date.fromisoformat(r["valid_until"]) if r["valid_until"] else add_months(date.today(), horizon_years * 12)
     for due in occurrences(anchor, r["frequency"], start, high):
-        done = c.execute("SELECT 1 FROM recurring_occurrences WHERE recurring_id=? AND due_date=? AND status='executed'", (r["id"], due.isoformat())).fetchone()
+        done = c.execute("SELECT 1 FROM recurring_occurrences WHERE recurring_id=? AND due_date=? AND status IN ('executed','skipped')", (r["id"], due.isoformat())).fetchone()
         if not done:
             return due
     return None
@@ -2358,7 +2375,7 @@ def recurring_events(c, account_id: int | None, from_day: date, to_day: date):
         if low>high: continue
         anchor = date.fromisoformat(r["anchor_date"] or r["valid_from"] or r["next_date"])
         for d in occurrences(anchor, r["frequency"], low, high):
-            done=c.execute("SELECT 1 FROM recurring_occurrences WHERE recurring_id=? AND due_date=? AND status='executed'",(r["id"],d.isoformat())).fetchone()
+            done=c.execute("SELECT 1 FROM recurring_occurrences WHERE recurring_id=? AND due_date=? AND status IN ('executed','skipped')",(r["id"],d.isoformat())).fetchone()
             if not done:
                 series_id = r["series_id"] or r["id"]
                 override = c.execute("SELECT amount,note FROM recurring_overrides WHERE series_id=? AND due_date=?", (series_id, d.isoformat())).fetchone()
@@ -2366,6 +2383,183 @@ def recurring_events(c, account_id: int | None, from_day: date, to_day: date):
                 event_amount = recurring_signed_amount(c, r, raw_amount)
                 events.append({"date":d,"amount":event_amount,"base_amount":recurring_signed_amount(c, r),"overridden":bool(override),"override_note":override["note"] if override else None,"name":r["name"],"account_id":r["account_id"],"kind":r["kind"],"recurring_id":r["id"],"series_id":series_id})
     return events
+
+
+def _materialize_recurring_window(c, from_day: date, to_day: date, user_id: int | None = None, series_id: int | None = None) -> list[dict]:
+    """Create journal rows for recurring occurrences in a time window.
+
+    Recurring occurrences are stored immediately as ``planned`` transactions so
+    the bookings view can show the complete contract schedule without pretending
+    that future or merely due payments are already settled.  The occurrence marker
+    is consumed, so forecasts never add the same recurring amount a second time.
+    ``series_id`` limits synchronization to one recurring contract.
+    """
+    if from_day > to_day:
+        return []
+    created=[]
+
+    # A newly defined series must never auto-backfill occurrences from before
+    # that definition/version was created. Mark such historical open dates as
+    # skipped so the recurring overview advances, while leaving the planning
+    # model itself untouched for reports that intentionally inspect history.
+    for r in c.execute("SELECT * FROM recurring WHERE active=1").fetchall():
+        if series_id is not None and int(r["series_id"] or r["id"]) != int(series_id):
+            continue
+        try:
+            created_day=min(date.today(),date.fromisoformat(str(r["created_at"])[:10]))
+        except (TypeError,ValueError):
+            continue
+        valid_from=date.fromisoformat(r["valid_from"] or r["next_date"])
+        if valid_from >= created_day:
+            continue
+        valid_until=date.fromisoformat(r["valid_until"]) if r["valid_until"] else created_day-timedelta(days=1)
+        high=min(valid_until,created_day-timedelta(days=1))
+        if valid_from>high:
+            continue
+        anchor=date.fromisoformat(r["anchor_date"] or r["valid_from"] or r["next_date"])
+        ts=iso(utcnow())
+        for due in occurrences(anchor,r["frequency"],valid_from,high):
+            c.execute(
+                "INSERT OR IGNORE INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,NULL,'skipped',?)",
+                (r["id"],due.isoformat(),ts),
+            )
+
+    for ev in sorted(recurring_events(c, None, from_day, to_day), key=lambda x:(x["date"],x["recurring_id"])):
+        if series_id is not None and int(ev["series_id"]) != int(series_id):
+            continue
+        due=ev["date"]
+        recurring_id=int(ev["recurring_id"])
+        r=c.execute("SELECT * FROM recurring WHERE id=? AND active=1",(recurring_id,)).fetchone()
+        if not r:
+            continue
+        external_id=f"rec-{recurring_id}-{due.isoformat()}"
+        existing=c.execute("SELECT id,status FROM transactions WHERE account_id=? AND external_id=?",(r["account_id"],external_id)).fetchone()
+        ts=iso(utcnow())
+
+        # Never backfill a transaction for a due date that predates creation of
+        # this recurring definition/version.  This is especially important when
+        # a user accidentally enters an already-past date as the "next open
+        # occurrence": the series should move on, not invent historical book
+        # entries.  Marking it skipped also keeps forecasts from counting the
+        # missed occurrence later.
+        created_day=min(date.today(),date.fromisoformat(str(r["created_at"])[:10])) if r["created_at"] else due
+        if due < created_day and not existing:
+            c.execute(
+                "INSERT OR IGNORE INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,NULL,'skipped',?)",
+                (recurring_id,due.isoformat(),ts),
+            )
+            continue
+        if existing:
+            occurrence_status="skipped" if existing["status"]=="cancelled" else "executed"
+            c.execute("INSERT OR IGNORE INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,?,?,?)",
+                      (recurring_id,due.isoformat(),existing["id"],occurrence_status,ts))
+            continue
+        amount=int(ev["amount"])
+        transaction_status="planned"
+        cur=c.execute(
+            """INSERT INTO transactions(account_id,amount,direction,booking_date,name,payee,note,category_id,status,external_id,recurring_id,confidence,fixed_cost,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (r["account_id"],amount,"income" if amount>=0 else "expense",due.isoformat(),r["name"],r["name"],
+             ev.get("override_note"),r["category_id"],transaction_status,external_id,recurring_id,r["confidence"] or "fixed",int(r["fixed_cost"] or 0),ts,ts),
+        )
+        c.execute("INSERT INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,?,'executed',?)",
+                  (recurring_id,due.isoformat(),cur.lastrowid,ts))
+        created.append({"transaction_id":cur.lastrowid,"recurring_id":recurring_id,"due_date":due.isoformat(),"amount":euros(amount)})
+    return created
+
+
+RECURRING_OPEN_ENDED_MONTHS = 24
+
+
+def _recurring_contract_end(r, reference: date | None = None) -> date:
+    """Return the materialisation horizon for one recurring version.
+
+    Finite contracts are materialised through their real end date.  Open-ended
+    series get a rolling 24-month journal horizon; browsing later months can
+    extend that horizon without changing the recurring definition.
+    """
+    if r["valid_until"]:
+        return date.fromisoformat(r["valid_until"])
+    start = date.fromisoformat(r["valid_from"] or r["next_date"])
+    base = max(reference or date.today(), start)
+    return add_months(base, RECURRING_OPEN_ENDED_MONTHS)-timedelta(days=1)
+
+
+def _remove_planned_series_transactions(c, series_id: int, from_day: date) -> int:
+    """Remove only future/planned generated rows for a recurring series.
+
+    Executed history is intentionally immutable here.  This lets editing or
+    stopping a contract rebuild its future schedule without rewriting what has
+    already become part of the real household journal.
+    """
+    rows=c.execute("""SELECT t.id
+                      FROM transactions t JOIN recurring r ON r.id=t.recurring_id
+                      WHERE COALESCE(r.series_id,r.id)=? AND t.status='planned'
+                        AND t.booking_date>=?""",(series_id,from_day.isoformat())).fetchall()
+    ids=[int(r["id"]) for r in rows]
+    if not ids:
+        return 0
+    marks=','.join('?' for _ in ids)
+    c.execute("DELETE FROM recurring_occurrences WHERE transaction_id IN (" + marks + ")",ids)
+    c.execute("DELETE FROM transactions WHERE id IN (" + marks + ")",ids)
+    return len(ids)
+
+
+def _materialize_recurring_series(c, series_id: int, user_id: int | None = None, from_day: date | None = None) -> list[dict]:
+    versions=c.execute("""SELECT * FROM recurring
+                          WHERE COALESCE(series_id,id)=? AND active=1
+                          ORDER BY COALESCE(valid_from,next_date),id""",(series_id,)).fetchall()
+    if not versions:
+        return []
+    low=from_day or min(date.fromisoformat(r["valid_from"] or r["next_date"]) for r in versions)
+    high=max(_recurring_contract_end(r,low) for r in versions)
+    return _materialize_recurring_window(c,low,high,user_id,series_id=series_id)
+
+
+def _next_scheduled_due(r, from_day: date | None = None) -> date | None:
+    """Next contractual date, regardless of whether its journal row already exists."""
+    from_day=from_day or date.today()
+    valid_from=date.fromisoformat(r["valid_from"] or r["next_date"])
+    valid_until=date.fromisoformat(r["valid_until"]) if r["valid_until"] else _recurring_contract_end(r,from_day)
+    low=max(valid_from,from_day)
+    if low>valid_until:
+        return None
+    anchor=date.fromisoformat(r["anchor_date"] or r["valid_from"] or r["next_date"])
+    return next(occurrences(anchor,r["frequency"],low,valid_until),None)
+
+
+@app.post("/api/recurring/materialize-due")
+def recurring_materialize_due(request: Request, month: str | None = None, year: int | None = None):
+    sess=session(request, True)
+    today=date.today()
+    if month:
+        start,end=month_bounds(month)
+        through=end
+        with db.transaction() as c:
+            items=_materialize_recurring_window(c,start,through,sess[1])
+        return {"created":len(items),"items":items,"through":through.isoformat(),"scope":"month"}
+    if year is not None:
+        if year < 1970 or year > 2200:
+            raise HTTPException(400,"Ungültiges Jahr")
+        start,end=date(year,1,1),date(year,12,31)
+        with db.transaction() as c:
+            items=_materialize_recurring_window(c,start,end,sess[1])
+        return {"created":len(items),"items":items,"through":end.isoformat(),"scope":"year"}
+
+    # No period means: synchronize every active contract into the journal.
+    # This is used on app startup so existing series from older versions get
+    # the same future-journal representation as newly created contracts.
+    with db.transaction() as c:
+        series_ids=[int(r[0]) for r in c.execute("SELECT DISTINCT COALESCE(series_id,id) FROM recurring WHERE active=1").fetchall()]
+        items=[]
+        for sid in series_ids:
+            versions=c.execute("SELECT * FROM recurring WHERE COALESCE(series_id,id)=? AND active=1",(sid,)).fetchall()
+            if not versions:
+                continue
+            first_future=max(today,min(date.fromisoformat(r["valid_from"] or r["next_date"]) for r in versions))
+            items.extend(_materialize_recurring_series(c,sid,sess[1],from_day=first_future))
+        horizons=[_recurring_contract_end(r,today) for r in c.execute("SELECT * FROM recurring WHERE active=1").fetchall()]
+    return {"created":len(items),"items":items,"through":max(horizons).isoformat() if horizons else today.isoformat(),"scope":"all"}
 
 
 @app.get("/api/recurring")
@@ -2385,7 +2579,7 @@ def recurring(request: Request):
         # the next valid future version is shown instead.
         due_candidates=[]
         for version in versions:
-            due=_next_unexecuted_due(c,version)
+            due=_next_scheduled_due(version)
             if due is not None:
                 due_candidates.append((due,version))
         if not due_candidates:
@@ -2400,8 +2594,15 @@ def recurring(request: Request):
         selected_from=date.fromisoformat(r["valid_from"] or r["next_date"])
         later_versions=[v for v in versions if int(v["id"])!=int(r["id"]) and date.fromisoformat(v["valid_from"] or v["next_date"])>selected_from]
         item["future_change_from"]=min((v["valid_from"] or v["next_date"] for v in later_versions),default=None)
-        executed=c.execute("SELECT COUNT(*) FROM recurring_occurrences WHERE recurring_id IN (SELECT id FROM recurring WHERE COALESCE(series_id,id)=?) AND status='executed'",(item["series_id"],)).fetchone()[0]
-        item["executed_count"]=int(executed or 0)
+        executed=c.execute("""SELECT COUNT(*)
+                              FROM recurring_occurrences o
+                              JOIN recurring rr ON rr.id=o.recurring_id
+                              JOIN transactions t ON t.id=o.transaction_id
+                              WHERE COALESCE(rr.series_id,rr.id)=?
+                                AND o.status='executed' AND t.status<>'cancelled'""",
+                           (item["series_id"],)).fetchone()[0]
+        item["journal_count"]=int(executed or 0)
+        item["executed_count"]=item["journal_count"]
         out.append(item)
     return sorted(out,key=lambda x:(x["next_date"],x["name"]))
 
@@ -2421,8 +2622,9 @@ def recurring_create(x: RecurringIn, request: Request):
             (x.account_id,x.category_id,x.name.strip(),amount,x.next_date.isoformat(),x.frequency,kind,max_amount,int(x.active),x.next_date.isoformat(),x.next_date.isoformat(),x.valid_until.isoformat() if x.valid_until else None,x.confidence,int(x.fixed_cost),iso(utcnow())))
         c.execute("UPDATE recurring SET series_id=? WHERE id=?",(cur.lastrowid,cur.lastrowid))
         created=recurring_snapshot(c,cur.lastrowid)
-        audit_append(c,sess[1],"recurring.create","recurring",cur.lastrowid,{"name":created.get("name"),"added":audit_pick(created,("name","amount","next_date","frequency","account_name","category_name","valid_until","confidence","fixed_cost","max_amount"))})
-        return {"id":cur.lastrowid}
+        generated=_materialize_recurring_series(c,cur.lastrowid,sess[1],from_day=max(date.today(),x.next_date)) if x.active else []
+        audit_append(c,sess[1],"recurring.create","recurring",cur.lastrowid,{"name":created.get("name"),"added":audit_pick(created,("name","amount","next_date","frequency","account_name","category_name","valid_until","confidence","fixed_cost","max_amount")),"generated_transactions":len(generated)})
+        return {"id":cur.lastrowid,"generated_transactions":len(generated)}
 
 
 @app.put("/api/recurring/{recurring_id}")
@@ -2444,15 +2646,21 @@ def recurring_update(recurring_id: int, x: RecurringUpdateIn, request: Request):
         if effective <= old_from:
             c.execute("UPDATE recurring SET account_id=?,category_id=?,name=?,amount=?,next_date=?,frequency=?,kind=?,max_amount=?,anchor_date=?,valid_from=?,valid_until=?,confidence=?,fixed_cost=? WHERE id=?",
                 (x.account_id,x.category_id,x.name.strip(),amount,x.next_date.isoformat(),x.frequency,kind,max_amount,x.next_date.isoformat(),effective.isoformat(),x.valid_until.isoformat() if x.valid_until else None,x.confidence,int(x.fixed_cost),recurring_id))
+            series_id=int(old["series_id"] or old["id"])
+            _remove_planned_series_transactions(c,series_id,effective)
+            generated=_materialize_recurring_series(c,series_id,sess[1],from_day=max(date.today(),effective))
             after=recurring_snapshot(c,recurring_id)
-            audit_append(c,sess[1],"recurring.update","recurring",recurring_id,{"name":after.get("name"),"changes":audit_changes(before,after,("name","amount","next_date","frequency","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"current":audit_pick(after,("name","amount","next_date","frequency","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"effective_from":effective.isoformat(),"versioned":False})
-            return {"ok":True,"id":recurring_id,"versioned":False}
+            audit_append(c,sess[1],"recurring.update","recurring",recurring_id,{"name":after.get("name"),"changes":audit_changes(before,after,("name","amount","next_date","frequency","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"current":audit_pick(after,("name","amount","next_date","frequency","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"effective_from":effective.isoformat(),"versioned":False,"generated_transactions":len(generated)})
+            return {"ok":True,"id":recurring_id,"versioned":False,"generated_transactions":len(generated)}
         c.execute("UPDATE recurring SET valid_until=? WHERE id=?",((effective-timedelta(days=1)).isoformat(),recurring_id))
         cur=c.execute("INSERT INTO recurring(account_id,category_id,name,amount,next_date,frequency,kind,max_amount,active,series_id,anchor_date,valid_from,valid_until,confidence,fixed_cost,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (x.account_id,x.category_id,x.name.strip(),amount,x.next_date.isoformat(),x.frequency,kind,max_amount,1,old["series_id"] or old["id"],x.next_date.isoformat(),effective.isoformat(),x.valid_until.isoformat() if x.valid_until else None,x.confidence,int(x.fixed_cost),iso(utcnow())))
+        series_id=int(old["series_id"] or old["id"])
+        _remove_planned_series_transactions(c,series_id,effective)
+        generated=_materialize_recurring_series(c,series_id,sess[1],from_day=max(date.today(),effective))
         new_version=recurring_snapshot(c,cur.lastrowid)
-        audit_append(c,sess[1],"recurring.version","recurring",cur.lastrowid,{"name":new_version.get("name"),"series_id":old["series_id"] or old["id"],"changes":audit_changes(before,new_version,("name","amount","next_date","frequency","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"current":audit_pick(new_version,("name","amount","next_date","frequency","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"effective_from":effective.isoformat()})
-        return {"ok":True,"id":cur.lastrowid,"versioned":True}
+        audit_append(c,sess[1],"recurring.version","recurring",cur.lastrowid,{"name":new_version.get("name"),"series_id":series_id,"changes":audit_changes(before,new_version,("name","amount","next_date","frequency","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"current":audit_pick(new_version,("name","amount","next_date","frequency","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"effective_from":effective.isoformat(),"generated_transactions":len(generated)})
+        return {"ok":True,"id":cur.lastrowid,"versioned":True,"generated_transactions":len(generated)}
 
 
 @app.put("/api/recurring/{recurring_id}/override")
@@ -2479,13 +2687,35 @@ def recurring_override(recurring_id: int, x: RecurringOverrideIn, request: Reque
                 break
         if not matching:
             raise HTTPException(400, "Für dieses Datum existiert kein Termin der Serie")
-        amount = abs(cents(x.amount)) if matching["kind"] == "income" else -abs(cents(x.amount))
+        amount = recurring_signed_amount(c, matching, cents(x.amount))
         prior_override=c.execute("SELECT amount,note FROM recurring_overrides WHERE series_id=? AND due_date=?",(series_id,x.due_date.isoformat())).fetchone()
         ts = iso(utcnow())
         c.execute("""INSERT INTO recurring_overrides(series_id,due_date,amount,note,created_at,updated_at) VALUES(?,?,?,?,?,?)
                      ON CONFLICT(series_id,due_date) DO UPDATE SET amount=excluded.amount,note=excluded.note,updated_at=excluded.updated_at""",
                   (series_id, x.due_date.isoformat(), amount, x.note, ts, ts))
+
+        # If this occurrence was already materialised as a real transaction (for
+        # example the first recurring salary created from the transaction form),
+        # a month-only override must update that transaction as well. Otherwise
+        # dashboards/reports would keep the original series amount while the
+        # override table contains the corrected value.
+        materialised=c.execute("""SELECT o.transaction_id,o.recurring_id
+                                  FROM recurring_occurrences o
+                                  JOIN recurring r ON r.id=o.recurring_id
+                                  WHERE COALESCE(r.series_id,r.id)=? AND o.due_date=?
+                                    AND o.status='executed' AND o.transaction_id IS NOT NULL
+                                  ORDER BY o.id DESC LIMIT 1""",
+                               (series_id,x.due_date.isoformat())).fetchone()
+        if materialised:
+            tx_before=tx_snapshot(c,int(materialised["transaction_id"]))
+            c.execute("INSERT INTO transaction_history(transaction_id,action,snapshot_json,changed_at) VALUES(?,?,?,?)",
+                      (materialised["transaction_id"],"recurring_override",json.dumps(tx_before,ensure_ascii=False),ts))
+            c.execute("UPDATE transactions SET amount=?,direction=?,updated_at=? WHERE id=?",
+                      (amount,"income" if amount>=0 else "expense",ts,materialised["transaction_id"]))
+
         details={"series_id":series_id,"due_date":x.due_date.isoformat()}
+        if materialised:
+            details["transaction_id"]=int(materialised["transaction_id"])
         current_override={"amount":amount,"note":clean_text(x.note,300)}
         if prior_override:
             details["changes"]=audit_changes(dict(prior_override),current_override,("amount","note"))
@@ -2503,8 +2733,37 @@ def recurring_override_delete(recurring_id: int, due_date: date, request: Reques
         if not row:
             raise HTTPException(404, "Wiederholungsserie nicht gefunden")
         series_id = row["series_id"] or row["id"]
+        prior=c.execute("SELECT amount,note FROM recurring_overrides WHERE series_id=? AND due_date=?",(series_id,due_date.isoformat())).fetchone()
         c.execute("DELETE FROM recurring_overrides WHERE series_id=? AND due_date=?", (series_id, due_date.isoformat()))
-        audit_append(c,sess[1],"recurring.override.delete","recurring",recurring_id,{"series_id":series_id,"due_date":due_date.isoformat()})
+
+        # Revert an already materialised occurrence to the base amount of the
+        # series version that owns this due date.
+        versions=c.execute("SELECT * FROM recurring WHERE COALESCE(series_id,id)=? ORDER BY COALESCE(valid_from,next_date)",(series_id,)).fetchall()
+        matching=None
+        for version in versions:
+            vf=date.fromisoformat(version["valid_from"] or version["next_date"])
+            vu=date.fromisoformat(version["valid_until"]) if version["valid_until"] else due_date
+            if vf<=due_date<=vu:
+                anchor=date.fromisoformat(version["anchor_date"] or version["valid_from"] or version["next_date"])
+                if any(occ==due_date for occ in occurrences(anchor,version["frequency"],due_date,due_date)):
+                    matching=version; break
+        materialised=c.execute("""SELECT o.transaction_id FROM recurring_occurrences o
+                                  JOIN recurring r ON r.id=o.recurring_id
+                                  WHERE COALESCE(r.series_id,r.id)=? AND o.due_date=?
+                                    AND o.status='executed' AND o.transaction_id IS NOT NULL
+                                  ORDER BY o.id DESC LIMIT 1""",
+                               (series_id,due_date.isoformat())).fetchone()
+        if prior and matching and materialised:
+            base_amount=recurring_signed_amount(c,matching)
+            ts=iso(utcnow())
+            tx_before=tx_snapshot(c,int(materialised["transaction_id"]))
+            c.execute("INSERT INTO transaction_history(transaction_id,action,snapshot_json,changed_at) VALUES(?,?,?,?)",
+                      (materialised["transaction_id"],"recurring_override_delete",json.dumps(tx_before,ensure_ascii=False),ts))
+            c.execute("UPDATE transactions SET amount=?,direction=?,updated_at=? WHERE id=?",
+                      (base_amount,"income" if base_amount>=0 else "expense",ts,materialised["transaction_id"]))
+        details={"series_id":series_id,"due_date":due_date.isoformat()}
+        if materialised: details["transaction_id"]=int(materialised["transaction_id"])
+        audit_append(c,sess[1],"recurring.override.delete","recurring",recurring_id,details)
     return {"ok": True}
 
 
@@ -2515,18 +2774,23 @@ def recurring_execute(recurring_id: int, request: Request):
         r = c.execute("SELECT * FROM recurring WHERE id=? AND active=1", (recurring_id,)).fetchone()
         if not r:
             raise HTTPException(404, "Wiederholungsserie nicht gefunden")
-        due = _next_unexecuted_due(c, r)
+        due = _next_scheduled_due(r)
         if due is None:
-            raise HTTPException(400, "Keine offene Wiederholung vorhanden")
+            raise HTTPException(400, "Kein weiterer Serientermin vorhanden")
+        existing=c.execute("SELECT id,booking_date FROM transactions WHERE recurring_id=? AND booking_date=? AND status<>'cancelled'",(recurring_id,due.isoformat())).fetchone()
+        if existing:
+            c.execute("UPDATE transactions SET status='executed',updated_at=? WHERE id=?",(iso(utcnow()),existing["id"]))
+            audit_append(c,sess[1],"recurring.execute","recurring",recurring_id,{"transaction_id":int(existing["id"]),"due_date":existing["booking_date"],"already_materialized":True})
+            return {"transaction_id":int(existing["id"]),"due_date":existing["booking_date"],"already_materialized":True}
         ts = iso(utcnow())
         series_id = r["series_id"] or r["id"]
         override = c.execute("SELECT amount FROM recurring_overrides WHERE series_id=? AND due_date=?", (series_id, due.isoformat())).fetchone()
         raw_booked_amount = int(override["amount"]) if override else int(r["amount"]); booked_amount = recurring_signed_amount(c, r, raw_booked_amount)
         cur = c.execute(
             """INSERT INTO transactions(account_id,amount,direction,booking_date,name,payee,note,category_id,status,external_id,recurring_id,confidence,fixed_cost,created_at,updated_at)
-               VALUES(?,?,?,?,?,?,?,?,'executed',?,?,?,?,?,?)""",
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (r["account_id"], booked_amount, "income" if r["kind"]=="income" else "expense", due.isoformat(), r["name"], r["name"], "Aus wiederkehrender Buchung", r["category_id"],
-             f"rec-{recurring_id}-{due.isoformat()}", recurring_id, r["confidence"] or "fixed", int(r["fixed_cost"] or 0), ts, ts),
+             "executed", f"rec-{recurring_id}-{due.isoformat()}", recurring_id, r["confidence"] or "fixed", int(r["fixed_cost"] or 0), ts, ts),
         )
         c.execute(
             "INSERT OR REPLACE INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,?,'executed',?)",
@@ -2546,15 +2810,17 @@ def recurring_delete(recurring_id: int, request: Request, hard: bool = False):
         series_id = row["series_id"] or row["id"]
         before=recurring_snapshot(c,recurring_id)
         versions=int(c.execute("SELECT COUNT(*) FROM recurring WHERE COALESCE(series_id,id)=?",(series_id,)).fetchone()[0])
+        # Future planned journal rows are part of the contract schedule, not immutable
+        # history.  Stopping/deleting a series removes those rows while preserving
+        # already executed past/today transactions.
+        removed_planned=_remove_planned_series_transactions(c,int(series_id),date.today())
         if hard:
-            # Delete the complete planning series and its generated occurrence metadata.
-            # Already created transactions are preserved because transactions.recurring_id uses ON DELETE SET NULL.
             c.execute("DELETE FROM recurring_overrides WHERE series_id=?", (series_id,))
             c.execute("DELETE FROM recurring WHERE COALESCE(series_id,id)=?", (series_id,))
         else:
             c.execute("UPDATE recurring SET active=0 WHERE COALESCE(series_id,id)=?", (series_id,))
         fields=("name","amount","next_date","frequency","account_name","category_name","valid_from","valid_until","confidence","fixed_cost")
-        audit_append(c,sess[1],"recurring.delete" if hard else "recurring.stop","recurring",recurring_id,{"series_id":series_id,"versions":versions,"snapshot":audit_pick(before,fields)})
+        audit_append(c,sess[1],"recurring.delete" if hard else "recurring.stop","recurring",recurring_id,{"series_id":series_id,"versions":versions,"removed_planned_transactions":removed_planned,"snapshot":audit_pick(before,fields)})
     return {"ok": True, "hard": hard}
 
 
@@ -2877,10 +3143,26 @@ def category_report(request: Request, period: str = "month", anchor: date | None
     retained = max(0, income - expense - savings)
     total_saved = savings + retained
     savings_rate = (total_saved / income * 100.0) if income else 0.0
-    months_divisor = 12 if period == "year" else 1
-    avg_saved = (Decimal(total_saved) / Decimal(months_divisor) / Decimal(100)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    explicit_savings_rate = (savings / income * 100.0) if income else 0.0
+
+    # Average metrics follow the documentary period actually covered by this report.
+    # Current month/year therefore divides by elapsed days/months, while completed
+    # periods use their full calendar length. Future periods have no actual divisor.
+    if actual_end < start:
+        elapsed_days = 0
+        elapsed_months = 0
+    else:
+        elapsed_days = (actual_end - start).days + 1
+        elapsed_months = (actual_end.year - start.year) * 12 + actual_end.month - start.month + 1
+    avg_divisor = elapsed_months if period == "year" else elapsed_days
+    avg_saved = (Decimal(total_saved) / Decimal(max(avg_divisor, 1)) / Decimal(100)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) if avg_divisor else Decimal('0.00')
+
     result={"period":period,"start":start.isoformat(),"end":end.isoformat(),"actual_through":actual_end.isoformat() if actual_end>=start else None,
-            "income":euros(income),"expense":euros(expense),"savings":euros(savings),"net":euros(income-expense-savings),"total_saved":euros(total_saved),"savings_rate_pct":round(savings_rate,1),"average_saved":float(avg_saved),"items":items}
+            "income":euros(income),"expense":euros(expense),"savings":euros(savings),"net":euros(income-expense-savings),
+            "retained":euros(retained),"total_saved":euros(total_saved),
+            "savings_rate_pct":round(savings_rate,1),"explicit_savings_rate_pct":round(explicit_savings_rate,1),
+            "average_saved":float(avg_saved),"average_saved_unit":"month" if period == "year" else "day",
+            "average_saved_divisor":avg_divisor,"items":items}
     return _cache_set("category_report",result,*cache_key,ttl=25)
 
 @app.get("/api/budgets")
@@ -2899,12 +3181,12 @@ def budgets(request: Request, month: str | None = None):
 
     spent_rows = c.execute(
         """SELECT t.category_id,COALESCE(SUM(ABS(t.amount)),0) amount FROM transactions t LEFT JOIN categories c ON c.id=t.category_id
-           WHERE t.status<>'cancelled' AND t.transfer_id IS NULL AND COALESCE(c.direction,CASE WHEN t.amount<0 THEN 'expense' ELSE 'income' END)='expense' AND t.booking_date BETWEEN ? AND ? GROUP BY t.category_id""",
+           WHERE t.status='executed' AND t.transfer_id IS NULL AND COALESCE(c.direction,CASE WHEN t.amount<0 THEN 'expense' ELSE 'income' END)='expense' AND t.booking_date BETWEEN ? AND ? GROUP BY t.category_id""",
         (start.isoformat(), end.isoformat()),
     ).fetchall()
     spent_by_category = {r["category_id"]: int(r["amount"] or 0) for r in spent_rows}
     total_expense = int(c.execute(
-        "SELECT COALESCE(SUM(ABS(t.amount)),0) FROM transactions t LEFT JOIN categories c ON c.id=t.category_id WHERE t.status<>'cancelled' AND t.transfer_id IS NULL AND COALESCE(c.direction,CASE WHEN t.amount<0 THEN 'expense' ELSE 'income' END)='expense' AND t.booking_date BETWEEN ? AND ?",
+        "SELECT COALESCE(SUM(ABS(t.amount)),0) FROM transactions t LEFT JOIN categories c ON c.id=t.category_id WHERE t.status='executed' AND t.transfer_id IS NULL AND COALESCE(c.direction,CASE WHEN t.amount<0 THEN 'expense' ELSE 'income' END)='expense' AND t.booking_date BETWEEN ? AND ?",
         (start.isoformat(), end.isoformat()),
     ).fetchone()[0] or 0)
     tx_income = int(c.execute(
@@ -3148,7 +3430,7 @@ def month_category_totals(c, start: date, end: date, include_recurring: bool = F
                              COALESCE(cat.direction,CASE WHEN t.amount>=0 THEN 'income' ELSE 'expense' END) typ,
                              SUM(ABS(t.amount)) amount
                       FROM transactions t LEFT JOIN categories cat ON cat.id=t.category_id
-                      WHERE t.status<>'cancelled' AND t.transfer_id IS NULL AND t.booking_date BETWEEN ? AND ?
+                      WHERE t.status='executed' AND t.transfer_id IS NULL AND t.booking_date BETWEEN ? AND ?
                       GROUP BY t.category_id,COALESCE(cat.name,'Nicht kategorisiert'),COALESCE(cat.direction,CASE WHEN t.amount>=0 THEN 'income' ELSE 'expense' END)""",(start.isoformat(),end.isoformat())).fetchall()
     for r in rows:
         out[r["category_id"]]={"category_id":r["category_id"],"name":r["category_label"],"type":r["typ"],"amount":int(r["amount"] or 0)}

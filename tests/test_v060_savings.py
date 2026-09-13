@@ -28,6 +28,13 @@ ok(client.post('/api/transactions',json={'account_id':acc['id'],'amount':1000,'b
 ok(client.post('/api/transactions',json={'account_id':acc['id'],'amount':500,'booking_date':'2026-09-03','payee':'ETF','category_id':sav['id'],'tags':[],'splits':[]}))
 r=ok(client.get('/api/reports/categories?period=month&anchor=2026-09-01'))
 assert r['income']==2000 and r['expense']==1000 and r['savings']==500,r
+assert r['savings_rate_pct']==50.0,r
+assert r['average_saved']>0 and r['average_saved_unit']=='day',r
+# The same actual bookings must also produce the same savings rate in the annual report.
+yr=ok(client.get('/api/reports/categories?period=year&anchor=2026-01-01'))
+assert yr['income']==2000 and yr['expense']==1000 and yr['savings']==500,yr
+assert yr['savings_rate_pct']==50.0,yr
+assert yr['average_saved']>0 and yr['average_saved_unit']=='month',yr
 # Savings is not consumption and contributes to the saving rate. For 2000 income, 1000 expense, 500 explicit savings + 500 retained cash = 50%.
 d=ok(client.get('/api/dashboard?month=2026-09'))
 assert d['analysis']['booked_savings']==500,d['analysis']
@@ -38,9 +45,11 @@ assert d['analysis']['monthly_overview'][-1]['month']=='2026-09',d['analysis']['
 assert d['analysis']['monthly_overview'][-1]['savings']==500
 # Recurring monthly savings must propagate into future months.
 rt=ok(client.post('/api/transactions',json={'account_id':acc['id'],'amount':100,'booking_date':'2026-10-15','payee':'Sparplan','category_id':sav['id'],'tags':[],'splits':[],'recurring':True,'recurring_frequency':'monthly'}))
-events=main.recurring_events(c,acc['id'],main.date(2026,11,1),main.date(2027,2,28))
-dates=[e['date'].isoformat() for e in events if e['series_id']==rt['recurring_id']]
+rows=c.execute("SELECT booking_date,status FROM transactions WHERE recurring_id=? AND booking_date BETWEEN '2026-11-01' AND '2027-02-28' ORDER BY booking_date",(rt['recurring_id'],)).fetchall()
+dates=[r['booking_date'] for r in rows]
 assert dates==['2026-11-15','2026-12-15','2027-01-15','2027-02-15'],dates
+assert all(r['status']=='planned' for r in rows),[dict(r) for r in rows]
+assert main.recurring_events(c,acc['id'],main.date(2026,11,1),main.date(2027,2,28))==[]
 nov=ok(client.get('/api/dashboard?month=2026-11')); dec=ok(client.get('/api/dashboard?month=2026-12'))
 assert nov['month_end_balance']-dec['month_end_balance']>=100, (nov['month_end_balance'],dec['month_end_balance'])
 js=(root/'static/app.js').read_text(); html=(root/'static/index.html').read_text()

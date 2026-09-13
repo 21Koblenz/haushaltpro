@@ -41,7 +41,7 @@ series=ok(admin.get('/api/recurring'))
 row=next((x for x in series if x['id']==r['id']),None)
 assert row and row['name']=='testwiederholung',series
 assert row['next_date']=='2026-09-15',row
-assert row['executed_count']==0,row
+assert row['journal_count']==24,row
 print('v0.10.3 direct recurring series visible immediately: PASS')
 
 # A transaction explicitly marked recurring must also have a linked series visible.
@@ -55,6 +55,6 @@ js=(root/'static/app.js').read_text();html=(root/'static/index.html').read_text(
 assert "$('newRecurringTx').onclick=()=>recDialog(null);" in js
 assert 'data-membership-user' in js and 'membership-grid' in css
 assert 'txRecurringCount' in html and 'Aktive Serien' in html
-assert main.APP_VERSION in {'0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.1','0.21.2'}
+assert main.APP_VERSION in {'0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3'}
 print('v0.10.3 UI source: PASS')
 shutil.rmtree(base,ignore_errors=True)

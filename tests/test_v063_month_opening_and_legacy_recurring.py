@@ -20,7 +20,7 @@ today=date.today(); first=today.replace(day=1); prev_end=first-timedelta(days=1)
 acc=ok(client.post('/api/accounts',json={'name':'Monatslogik','type':'checking','opening_balance':500,'currency':'EUR','start_date':prev_start.isoformat()}))
 exp=ok(client.post('/api/categories',json={'name':'Legacy Ausgabe','direction':'expense'}))
 # Simulate an OLD recurring row that wrongly stored an expense as positive 250 EUR.
-ts=main.iso(main.utcnow())
+ts=first.isoformat()+'T00:00:00+00:00'
 with main.db.transaction() as tc:
     cur=tc.execute("""INSERT INTO recurring(account_id,category_id,name,amount,next_date,frequency,kind,max_amount,active,series_id,anchor_date,valid_from,valid_until,created_at)
                       VALUES(?,?,?,?,?,'monthly','direct_debit',NULL,1,NULL,?,?,NULL,?)""",
