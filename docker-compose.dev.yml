@@ -1,0 +1,5 @@
+services:
+  haushaltpro:
+    build:
+      context: .
+    image: haushaltpro:dev
