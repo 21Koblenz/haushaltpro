@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+
+## v0.21.8 - 2026-09-14
+
+Bugfix and deployment-channel release. No database migration is required.
+
+### Fixed
+
+- Saved payees in the transaction dialog now use a real native selection control instead of relying on browser-dependent `datalist` behaviour.
+- Selecting a saved payee fills the normal payee field used to save the transaction; free-text entry remains available for new payees.
+- Added a dedicated regression guard for the saved-payee selector.
+
+### Deployment
+
+- Every push to `main` publishes `21koblenz/haushaltpro:dev` for `linux/amd64` and `linux/arm64`, providing a separate test channel for Portainer and other Docker deployments.
+- Stable `latest` remains reserved for releases; development builds cannot overwrite the stable release tag.
+- Removed obsolete preview-by-preview notes from the README; historical implementation details remain in this changelog.
+
+### Validation
+
+- Full regression suite passes, including the saved-payee selector regression.
+- JavaScript syntax checks and the static security audit pass.
+- Docker builds and SQLCipher runtime checks pass on both `linux/amd64` and `linux/arm64`.
+- Published release images remain protected by Docker Scout Critical/High gates on both architectures and PyPI Medium+ gates.
+
 ## v0.21.7 - 2026-09-14
 
 Role-boundary and responsive-UI maintenance release. No database migration is required.

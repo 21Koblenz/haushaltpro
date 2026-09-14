@@ -48,6 +48,6 @@ assert tl['total']>=6,tl
 assert any(x['username']=='admin' and x['action']=='account.create' for x in tl['items']),tl['items']
 assert any(x['username']=='admin' and x['action']=='recurring.create' for x in tl['items']),tl['items']
 for x in tl['items'][:3]: datetime.fromisoformat(x['created_at'].replace('Z','+00:00'))
-assert main.APP_VERSION in {'0.8.2','0.8.3','0.8.4','0.8.5','0.8.6','0.8.7','0.9.0','0.10.0','0.10.1','0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4','0.21.5','0.21.6','0.21.7'}
+assert main.APP_VERSION in {'0.8.2','0.8.3','0.8.4','0.8.5','0.8.6','0.8.7','0.9.0','0.10.0','0.10.1','0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4','0.21.5','0.21.6','0.21.7','0.21.8'}
 print('v0.8.2 year views + user audit timeline: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)
