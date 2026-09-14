@@ -1,4 +1,4 @@
-# HaushaltPro v0.21.6
+# HaushaltPro v0.21.7
 
 [![License: AGPL v3+](https://img.shields.io/badge/License-AGPL_v3%2B-blue.svg)](LICENSE)
 [![Vibe Coding](https://img.shields.io/badge/development-Vibe%20Coding-orange.svg)](VIBE_CODING.md)
@@ -28,7 +28,6 @@ HaushaltPro verwaltet Finanzdaten auf dem eigenen Server. Konten, Buchungen, int
 - optionale Investment-Übersicht
 - verschlüsselte portable Backups und interne Snapshot-Rotation
 - responsive Smartphone-Ansicht
-
 
 ### Weitere Hinweise
 
@@ -137,57 +136,8 @@ Licensed under **GNU AGPL-3.0-or-later**. Modified distributed versions remain u
 ## Project links
 
 - Source: https://github.com/21Koblenz/haushaltpro
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
 - Issues: https://github.com/21Koblenz/haushaltpro/issues
 - License: [AGPL-3.0-or-later](LICENSE)
 - Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Security policy: [SECURITY.md](SECURITY.md)
-
-
-## Preview 9
-
-- Geldfluss überarbeitet: Sparen gelb statt rot.
-- Balkenbreiten und Linienstärken folgen jetzt stärker den Beträgen.
-- Einnahmen- und Ausgabenkategorien werden als verzweigte Nebenflüsse dargestellt.
-
-
-## Preview 10
-
-- Geldfluss als Sammelstruktur neu aufgebaut.
-- Jede Einnahmekategorie fließt per eigenem Pfeil in den Summenblock „Einnahmen“.
-- Jede Ausgabenkategorie fließt per eigenem Pfeil in den Summenblock „Ausgaben“.
-- Jede Sparkategorie fließt per eigenem Pfeil in den Summenblock „Sparen“.
-- Die Summenblöcke bilden die jeweilige Gesamtsumme; Guthaben/Saldo bleibt der zentrale Knoten.
-- Alle Kategorien des gewählten Zeitraums werden einzeln dargestellt, nicht nur Top-N.
-
-
-## Preview 15
-
-- Geldfluss visuell vereinfacht und näher an einer Transaktionsfluss-Ansicht ausgerichtet.
-- Rechte Hauptverbindungen (Saldo -> Ausgaben / Saldo -> Sparen) wieder sichtbar.
-- Summenblöcke skalieren nun in ihrer Höhe nach Betrag.
-- Asset-Cache-Key auf preview15 angehoben.
-
-
-## Preview 18
-
-- Hauptpfeile zwischen Summenblöcken und Saldo entfernt.
-- Fokus auf Kategoriepfeile direkt in die Summenblöcke.
-- Kategoriepfeile deutlich verlängert, damit auch kleine Kategorien sichtbar bleiben.
-- Asset-Cache-Key auf preview18 angehoben.
-
-
-## Preview 19
-
-- Kategorienamen im Geldfluss werden nicht mehr mit Ellipsis abgeschnitten; z. B. „Freizeit“ bleibt vollständig sichtbar.
-- Die Kategorie-Karte steht nun oberhalb des zugehörigen Pfeils.
-- Pfeildicke wird deutlich relativ zur größten Kategorie der jeweiligen Gruppe skaliert (8–42 px).
-- Pfeillänge bildet weiterhin den prozentualen Gruppenanteil ab; Mindestlänge hält kleine Kategorien sichtbar.
-- Asset-Cache-Key auf preview19 angehoben.
-
-
-## Preview 22
-
-- Flow-Pfeildicke deutlich proportional zum echten Kategorieanteil skaliert (4 px + 0,61 × Prozentwert).
-- Pfeilhöhe zusätzlich direkt am Element gesetzt, damit CSS-/Browser-Fallbacks die Dicke nicht vereinheitlichen.
-- Mindesthöhe am Pfeil entfernt, die unterschiedliche Dicken optisch nivellieren konnte.
-- Topbar-Aktionen ohne Umbruch; Theme-Schalter hat feste Breite/Höhe in Hell und Dunkel.
