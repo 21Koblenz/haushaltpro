@@ -19,7 +19,6 @@ replacements = {
     Path("static/index.html"): [("?v=0.21.7", "?v=0.21.8")],
     Path("tests/test_i18n_account_month_selfheal.py"): [("?v=0.21.7", "?v=0.21.8")],
     Path("tests/test_preview14_flow_style_cache.py"): [("v=0.21.7", "v=0.21.8")],
-    Path("tests/test_v081_ui_and_pagination.py"): [("'0.21.7'}", "'0.21.7','0.21.8'}")],
 }
 for path, pairs in replacements.items():
     text = path.read_text(encoding="utf-8")
@@ -28,6 +27,24 @@ for path, pairs in replacements.items():
             raise SystemExit(f"Expected release marker not found in {path}: {old}")
         text = text.replace(old, new)
     path.write_text(text, encoding="utf-8")
+
+# Historical regression files intentionally allow all known application versions.
+# Add this release to every one-line APP_VERSION allowlist instead of maintaining
+# a growing hand-written list of files in the release process.
+for path in Path("tests").glob("test_*.py"):
+    text = path.read_text(encoding="utf-8")
+    lines = text.splitlines(keepends=True)
+    changed = False
+    result = []
+    for line in lines:
+        if "main.APP_VERSION in {" in line and "'0.21.8'" not in line:
+            if "}" not in line:
+                raise SystemExit(f"Unsupported multi-line APP_VERSION allowlist: {path}")
+            line = line.replace("}", ",'0.21.8'}", 1)
+            changed = True
+        result.append(line)
+    if changed:
+        path.write_text("".join(result), encoding="utf-8")
 
 changelog = Path("CHANGELOG.md")
 text = changelog.read_text(encoding="utf-8")
@@ -71,7 +88,15 @@ grep -F '## v0.21.8 - 2026-09-14' CHANGELOG.md
 test "$(grep -o 'v=0.21.8' static/index.html | wc -l)" -ge 5
 grep -F '?v=0.21.8' tests/test_i18n_account_month_selfheal.py
 grep -F 'v=0.21.8' tests/test_preview14_flow_style_cache.py
-grep -F "'0.21.8'" tests/test_v081_ui_and_pagination.py
+
+# Every legacy APP_VERSION allowlist must now accept this release.
+python - <<'PY'
+from pathlib import Path
+for path in Path("tests").glob("test_*.py"):
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if "main.APP_VERSION in {" in line and "'0.21.8'" not in line:
+            raise SystemExit(f"Missing 0.21.8 in APP_VERSION guard: {path}")
+PY
 
 git diff --check
 python -m compileall -q app tests
@@ -87,7 +112,7 @@ python tests/security_audit.py
 
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-git add app/main.py README.md CHANGELOG.md static/index.html tests/test_i18n_account_month_selfheal.py tests/test_preview14_flow_style_cache.py tests/test_v081_ui_and_pagination.py
+git add app/main.py README.md CHANGELOG.md static/index.html tests/test_*.py
 git commit -m "release: v0.21.8"
 RELEASE_SHA="$(git rev-parse HEAD)"
 git push origin HEAD:main
