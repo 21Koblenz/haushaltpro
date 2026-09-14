@@ -40,7 +40,7 @@ checks = {
     "backup_rotation_verify": "rotate_internal_backups" in main and "verify_latest_internal_backup" in main,
     "docker_resource_limits": "mem_limit: 512m" in compose and "cpus: 1.0" in compose,
     "docker_loopback_default": "HAUSHALTPRO_BIND_IP:-127.0.0.1" in compose,
-    "pinned_base_image": "python:3.12-slim-bookworm@sha256:" in dockerfile,
+    "pinned_base_image": bool(re.search(r"^FROM python:[^\s@]+@sha256:[0-9a-f]{64}$", dockerfile, re.M)),
     "updated_fastapi": "fastapi==0.141.1" in requirements and "starlette==1.6.0" in requirements,
     "updated_uvicorn": "uvicorn[standard]==0.52.4" in requirements,
     "updated_multipart": "python-multipart==0.0.32" in requirements,
