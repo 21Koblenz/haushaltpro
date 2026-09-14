@@ -15,12 +15,26 @@ RUN apk upgrade --no-cache
 
 WORKDIR /app
 COPY requirements.txt ./
+# pip/setuptools/ensurepip are build tooling only. Remove them from the final
+# runtime filesystem after dependency validation so vendored packages in those
+# tools cannot add an unnecessary runtime attack surface or stale SBOM entries.
 RUN python -m pip install --no-cache-dir --disable-pip-version-check --upgrade "pip==26.2" \
     && python -m pip install --no-cache-dir --disable-pip-version-check -r requirements.txt \
-    && python -m pip install --no-cache-dir --disable-pip-version-check --upgrade \
-       "msgpack==1.2.1" \
-       "setuptools==78.1.1" \
-    && python -m pip check
+    && python -m pip check \
+    && rm -rf \
+       /usr/local/lib/python3.12/site-packages/pip \
+       /usr/local/lib/python3.12/site-packages/pip-*.dist-info \
+       /usr/local/lib/python3.12/site-packages/setuptools \
+       /usr/local/lib/python3.12/site-packages/setuptools-*.dist-info \
+       /usr/local/lib/python3.12/site-packages/_distutils_hack \
+       /usr/local/lib/python3.12/site-packages/pkg_resources \
+       /usr/local/lib/python3.12/site-packages/wheel \
+       /usr/local/lib/python3.12/site-packages/wheel-*.dist-info \
+       /usr/local/lib/python3.12/ensurepip \
+       /usr/local/bin/pip \
+       /usr/local/bin/pip3 \
+       /usr/local/bin/pip3.12 \
+    && python -c "import fastapi,starlette,uvicorn,pydantic,argon2,cryptography,multipart; from sqlcipher3 import dbapi2 as sqlite; c=sqlite.connect(':memory:'); v=c.execute('PRAGMA cipher_version').fetchone()[0]; assert str(v).startswith('4.')"
 COPY app ./app
 COPY static ./static
 RUN addgroup -S -g 10001 appuser \
