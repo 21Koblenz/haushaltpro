@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## v0.21.5 - 2026-09-14
+
+Security-maintenance release following v0.21.4. Application and database semantics are unchanged.
+
+### Security / Dependencies
+
+- Alpine packages are upgraded during the image build with `apk upgrade --no-cache` so fixed `libuuid` / `util-linux` packages replace vulnerable versions from the pinned base snapshot.
+- `msgpack` is updated to 1.2.1 in the container build.
+- `setuptools` is updated to 78.1.1 in the container build.
+- `pip check` now runs during the Docker build and fails on broken Python dependency resolution.
+- Existing non-root execution, SQLCipher, SBOM and provenance controls remain enabled.
+
+### Validation
+
+- Full application regression suite and JavaScript syntax check run before publication.
+- Static security audit verifies the new remediation controls.
+- Docker builds and SQLCipher runtime checks run on both `linux/amd64` and `linux/arm64`.
+- Docker Scout reports Critical and High CVEs for the published multi-architecture image.
+
+
 ## v0.21.4 - 2026-09-14
 
 Security-focused Docker release. Application and database semantics are unchanged.

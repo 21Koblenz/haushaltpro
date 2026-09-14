@@ -55,6 +55,6 @@ js=(root/'static/app.js').read_text();html=(root/'static/index.html').read_text(
 assert "$('newRecurringTx').onclick=()=>recDialog(null);" in js
 assert 'data-membership-user' in js and 'membership-grid' in css
 assert 'txRecurringCount' in html and 'Aktive Serien' in html
-assert main.APP_VERSION in {'0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4'}
+assert main.APP_VERSION in {'0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4','0.21.5'}
 print('v0.10.3 UI source: PASS')
 shutil.rmtree(base,ignore_errors=True)

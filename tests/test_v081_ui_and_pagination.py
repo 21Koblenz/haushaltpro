@@ -56,6 +56,6 @@ assert len(annual['months'])==12,annual
 assert annual['months'][0]['month']=='2026-01' and annual['months'][-1]['month']=='2026-12'
 assert annual['totals']['planned_income']>0,annual['totals']
 
-assert main.APP_VERSION in {'0.8.1','0.8.2','0.8.3','0.8.4','0.8.5','0.8.6','0.8.7','0.9.0','0.10.0','0.10.1','0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4'}
+assert main.APP_VERSION in {'0.8.1','0.8.2','0.8.3','0.8.4','0.8.5','0.8.6','0.8.7','0.9.0','0.10.0','0.10.1','0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4','0.21.5'}
 print('v0.8.1 transactions/year/pagination plausibility: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)
