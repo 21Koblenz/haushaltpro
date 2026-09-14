@@ -1,4 +1,4 @@
-/* v0.21.3: signed balances + V4V + i18n selector */
+/* v0.21.x: signed balances + V4V + i18n selector + responsive role UX */
 .signed-money-input{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;margin-top:6px}
 .signed-money-input input{margin-top:0;min-width:0}.signed-money-toggle{margin:0;width:46px;height:46px;padding:0;font-size:1.15rem;line-height:1}.signed-money-help{display:block;margin-top:6px;line-height:1.45}
 .app-footer{margin-top:26px;padding:24px 12px 10px;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:16px;color:var(--muted);font-size:.82rem}.app-footer-meta{display:flex;justify-content:center;gap:10px;align-items:center;flex-wrap:wrap}.app-footer-meta span+span:before{content:"·";margin-right:10px}.app-footer-v4v{width:min(560px,100%);display:flex;justify-content:center;align-items:center;gap:18px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--panel2)}.app-footer-v4v-copy{display:flex;flex-direction:column;gap:5px;min-width:0}.app-footer-v4v-copy strong{color:var(--text);font-size:.95rem}.lightning-address{color:var(--accent);font-weight:800;text-decoration:none;overflow-wrap:anywhere}.lightning-address:hover{text-decoration:underline}.footer-qr-link{display:inline-grid;place-items:center;flex:0 0 auto;padding:7px;border:1px solid var(--line);border-radius:12px;background:#0b0f14}.footer-lightning-qr{display:block;width:86px;height:86px;filter:invert(1)}html[data-theme="light"] .footer-lightning-qr{filter:none}html[data-theme="light"] .footer-qr-link{background:#fff}
@@ -19,3 +19,54 @@
 .hp-file-native{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0!important}
 .hp-file-button{margin:0}
 .hp-file-name{color:var(--muted);font-size:.9rem;overflow-wrap:anywhere}
+
+/* Role-aware settings */
+.password-required{outline:2px solid #d97706;outline-offset:2px}
+.temporary-password-warning{margin:0 0 14px;padding:11px 12px;border:1px solid #d97706;border-radius:10px;background:color-mix(in srgb,#d97706 14%,var(--panel));font-weight:700;line-height:1.45}
+.book-request-panel{margin-top:14px}.book-request-list{display:grid;gap:10px}.book-request-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}.book-request-row>span:first-child{display:flex;flex-direction:column;gap:4px;min-width:0}.book-request-row small{color:var(--muted);overflow-wrap:anywhere}.book-request-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+/* Buchungstabelle: auf breiten Bildschirmen vollständig in die verfügbare
+   Breite einpassen, auf kleineren Geräten automatisch in Karten umschalten.
+   Dadurch entsteht kein seitlicher Scrollbalken. */
+#txAllView .table-wrap{overflow-x:visible}
+#txAllView table{width:100%;table-layout:fixed}
+#txAllView th,#txAllView td{white-space:normal;overflow-wrap:anywhere;word-break:normal}
+#txAllView th:nth-child(1),#txAllView td:nth-child(1){width:9%}
+#txAllView th:nth-child(2),#txAllView td:nth-child(2){width:16%}
+#txAllView th:nth-child(3),#txAllView td:nth-child(3){width:11%}
+#txAllView th:nth-child(4),#txAllView td:nth-child(4){width:12%}
+#txAllView th:nth-child(5),#txAllView td:nth-child(5){width:12%}
+#txAllView th:nth-child(6),#txAllView td:nth-child(6){width:14%}
+#txAllView th:nth-child(7),#txAllView td:nth-child(7){width:10%}
+#txAllView th:nth-child(8),#txAllView td:nth-child(8){width:16%}
+#txAllView td.actions button{margin:2px;max-width:100%;white-space:normal}
+
+@media(max-width:1100px){
+  #txAllView .table-wrap{padding:0;border:0;background:transparent;box-shadow:none;overflow:visible}
+  #txAllView table,#txAllView tbody,#txAllView tr,#txAllView td{display:block;width:100%!important;max-width:100%}
+  #txAllView thead{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+  #txAllView tbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  #txAllView tr{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:10px 12px;box-shadow:0 6px 18px rgba(0,0,0,.07);overflow:hidden}
+  #txAllView td{display:grid;grid-template-columns:minmax(86px,34%) minmax(0,1fr);gap:10px;align-items:start;padding:7px 0!important;border:0!important;text-align:left!important;min-width:0}
+  #txAllView td+td{border-top:1px solid color-mix(in srgb,var(--line) 68%,transparent)!important}
+  #txAllView td::before{content:attr(data-label);font-size:.76rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;overflow-wrap:anywhere}
+  #txAllView td.right{justify-content:stretch}
+  #txAllView td.amount{font-size:1rem;font-weight:800}
+  #txAllView td.actions{display:grid;grid-template-columns:minmax(86px,34%) minmax(0,1fr);gap:10px}
+  #txAllView td.actions::before{grid-column:1;grid-row:1}
+  #txAllView td.actions button{grid-column:2;margin:2px 0;width:100%}
+  #txAllView .table-sub{display:block;margin-top:3px}
+}
+
+@media(max-width:720px){
+  #txAllView tbody{grid-template-columns:1fr}
+  #txAllView td{grid-template-columns:minmax(78px,31%) minmax(0,1fr)}
+  #txAllView td.actions{grid-template-columns:minmax(78px,31%) minmax(0,1fr)}
+  .book-request-row{align-items:flex-start;flex-direction:column}.book-request-actions{width:100%;justify-content:stretch}.book-request-actions button{flex:1}
+}
+
+@media(max-width:460px){
+  #txAllView td,#txAllView td.actions{grid-template-columns:1fr;gap:4px}
+  #txAllView td.actions::before{grid-column:1}
+  #txAllView td.actions button{grid-column:1}
+}
