@@ -1,4 +1,4 @@
-# Installation / Deployment - v0.21.3
+# Installation / Deployment - v0.21.4
 
 ## Deutsch
 
@@ -23,7 +23,7 @@ cd haushaltpro
 
 ```bash
 cp .env.example .env
-docker compose build --pull
+docker compose pull
 docker compose up -d
 docker compose ps
 ```
@@ -37,7 +37,8 @@ Wenn Geräte im vertrauenswürdigen Heimnetz zugreifen sollen:
 ```bash
 cp .env.example .env
 sed -i 's/HAUSHALTPRO_BIND_IP=127.0.0.1/HAUSHALTPRO_BIND_IP=0.0.0.0/' .env
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Danach: `http://SERVER-IP:8080`.
@@ -85,7 +86,7 @@ haushalt.example.de {
 Dann:
 
 ```bash
-docker compose build --pull
+docker compose pull
 docker compose up -d
 ```
 
@@ -115,8 +116,18 @@ Vor Updates ein portables verschlüsseltes Backup herunterladen und außerhalb d
 
 ```bash
 git fetch --tags
-docker compose build --pull
+docker compose pull
 docker compose up -d
+```
+
+
+### Entwicklung / lokaler Build aus dem Quellcode
+
+Die normale Compose-Datei zieht das veröffentlichte Docker-Hub-Image. Für Entwicklung oder einen lokalen Build aus dem Git-Checkout:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml build --pull
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
 ---
@@ -131,7 +142,7 @@ Linux host/VM, Docker Engine, Docker Compose plugin and Git.
 git clone https://github.com/21Koblenz/haushaltpro.git
 cd haushaltpro
 cp .env.example .env
-docker compose build --pull
+docker compose pull
 docker compose up -d
 ```
 

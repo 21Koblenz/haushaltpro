@@ -23,7 +23,7 @@ def put(url,j=None): return client.put(url,json=j,headers={'X-CSRF-Token':csrf()
 def delete(url,j=None): return client.request('DELETE',url,json=j,headers={'X-CSRF-Token':csrf()})
 
 ok(client.post('/api/setup',json={'username':'admin','password':'AdminPasswort123!','trusted_device':False}))
-assert main.APP_VERSION in {'0.10.1','0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3'},'0.10.2'
+assert main.APP_VERSION in {'0.10.1','0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4'},'0.10.2'
 
 # Create data + recurring series and verify deletion snapshot is searchable/readable.
 acc=ok(post('/api/accounts',{'name':'giro','type':'checking','opening_balance':'1000','currency':'EUR','start_date':'2026-09-01'}))['id']

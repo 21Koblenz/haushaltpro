@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+## v0.21.4 - 2026-09-14
+
+Security-focused Docker release. Application and database semantics are unchanged.
+
+### Security / Container
+
+- Runtime base changed from Debian Bookworm to the smaller official Python 3.12.14 / Alpine 3.24 image, pinned by its multi-architecture SHA-256 index digest.
+- `pip` in the runtime image is upgraded to 26.2 to remove Scout findings with an available pip fix.
+- Non-root execution with UID/GID 10001 remains enforced.
+- Docker Hub publishing includes SBOM and provenance attestations.
+- Docker Scout scans the published image for Critical and High CVEs.
+
+### Deployment
+
+- The default `docker-compose.yml` consumes `21koblenz/haushaltpro:latest` from Docker Hub.
+- Local source builds remain available through `docker-compose.dev.yml`.
+- Standard updates now use `docker compose pull` followed by `docker compose up -d`.
+
+### Validation
+
+- Full application regression suite passed on the security-hardening branch.
+- Static security audit passed.
+- Docker builds and SQLCipher runtime checks passed on both `linux/amd64` and `linux/arm64`.
+- The v0.21.4 release workflow repeats regression, static-security, architecture and SQLCipher checks before publishing.
+
+
 ## v0.21.3 - 2026-09-13
 
 Stable release of the tested v0.21.x preview line.

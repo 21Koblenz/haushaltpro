@@ -1,4 +1,4 @@
-# HaushaltPro v0.21.0
+# HaushaltPro v0.21.4
 
 [![License: AGPL v3+](https://img.shields.io/badge/License-AGPL_v3%2B-blue.svg)](LICENSE)
 [![Vibe Coding](https://img.shields.io/badge/development-Vibe%20Coding-orange.svg)](VIBE_CODING.md)
@@ -44,13 +44,15 @@ Für private Nutzung wird **LAN oder VPN** empfohlen. Für öffentlichen Betrieb
 
 Details: [Security Audit](docs/SECURITY-AUDIT.md) und [Public Deployment](docs/PUBLIC-DEPLOYMENT.md).
 
+Published Docker images are built for `linux/amd64` and `linux/arm64`, include SBOM/provenance attestations and are analyzed with Docker Scout.
+
 ### Installation
 
 ```bash
 git clone https://github.com/21Koblenz/haushaltpro.git
 cd haushaltpro
 cp .env.example .env
-docker compose build --pull
+docker compose pull
 docker compose up -d
 docker compose ps
 ```
@@ -65,7 +67,7 @@ Vor einem Update ein externes Backup erzeugen. Danach:
 
 ```bash
 git fetch --tags
-docker compose build --pull
+docker compose pull
 docker compose up -d
 ```
 
@@ -116,7 +118,7 @@ Financial data is stored in SQLCipher databases. The container is hardened and b
 git clone https://github.com/21Koblenz/haushaltpro.git
 cd haushaltpro
 cp .env.example .env
-docker compose build --pull
+docker compose pull
 docker compose up -d
 ```
 

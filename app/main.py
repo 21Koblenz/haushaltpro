@@ -33,7 +33,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from . import db
 
-APP_VERSION = "0.21.3"
+APP_VERSION = "0.21.4"
 
 PUBLIC_MODE = os.getenv("HAUSHALTPRO_MODE", "lan").strip().lower() == "public"
 SECURE_COOKIES = os.getenv("SECURE_COOKIES", "true" if PUBLIC_MODE else "false").lower() == "true"
