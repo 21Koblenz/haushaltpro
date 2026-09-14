@@ -1,0 +1,38 @@
+name: Apply role and UX patch
+
+on:
+  push:
+    branches:
+      - fix/roles-password-responsive
+    paths:
+      - scripts/apply_role_ux_patch.py
+      - .github/workflows/apply-role-ux-patch.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message || '', 'apply role/password/book UX patch') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/roles-password-responsive
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply patch
+        run: python scripts/apply_role_ux_patch.py
+      - name: Remove one-shot patch files
+        run: rm -f scripts/apply_role_ux_patch.py .github/workflows/apply-role-ux-patch.yml
+      - name: Commit patched sources
+        run: |
+          git config user.name "21Koblenz"
+          git config user.email "koblenzeinundzwanzig@proton.me"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: apply role/password/book UX patch"
+          git push origin HEAD:fix/roles-password-responsive
