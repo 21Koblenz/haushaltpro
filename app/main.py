@@ -300,6 +300,15 @@ def require_system_admin(request: Request):
     if u.get("system_role")!="admin": raise HTTPException(403,"Nur Administratoren dürfen diese Funktion verwenden")
     return rec
 
+
+def require_csrf_session(request: Request):
+    """Authenticate a state-changing user-account action without requiring book write rights."""
+    sess=session(request)
+    sent=request.headers.get("X-CSRF-Token")
+    if not sent or not hmac.compare_digest(sent,sess[2]):
+        raise HTTPException(403,"CSRF-Prüfung fehlgeschlagen")
+    return sess
+
 def _password_key(password: str, salt: bytes) -> bytes:
     return PBKDF2HMAC(algorithm=hashes.SHA512(), length=32, salt=salt, iterations=AUTH_KDF_ITER).derive(password.encode())
 
@@ -1281,7 +1290,7 @@ def logout(request: Request,response: Response):
 def me(request: Request):
     s=session(request);_,rec=_session_record(request);data=_auth_load_v2();entry=data["users"][rec["user_key"]];book=data["books"][rec["book_id"]];member=book["members"][rec["user_key"]]
     return {"username":entry["username"],"system_role":entry.get("system_role","user"),"role":member.get("role","viewer"),"permissions":_permission_set(member.get("role","viewer")),
-            "book":{"id":rec["book_id"],"name":book.get("name",rec["book_id"])},"books":_user_books(data,rec["user_key"]),"csrf":s[2],"trusted_device":bool(s[3]),"autolock_minutes":int(setting_value(db.db(),"autolock_minutes","15"))}
+            "book":{"id":rec["book_id"],"name":book.get("name",rec["book_id"])},"books":_user_books(data,rec["user_key"]),"csrf":s[2],"trusted_device":bool(s[3]),"autolock_minutes":int(setting_value(db.db(),"autolock_minutes","15")),"must_change_password":bool(entry.get("must_change_password",False))}
 
 
 def _database_file_stats(path: Path) -> dict:
@@ -1315,14 +1324,77 @@ def books_list(request: Request):
         rows.append(b)
     return rows
 
+def _create_book_record(data: dict, owner_key: str, name: str, editor_key: str | None = None) -> dict:
+    uid=secrets.token_hex(8);BOOKS_DIR.mkdir(parents=True,exist_ok=True);path=BOOKS_DIR/f"{uid}.db";master=secrets.token_urlsafe(48)
+    owner=data.get("users",{}).get(owner_key)
+    if not owner: raise HTTPException(404,"Eigentümer nicht gefunden")
+    clean_name=clean_text(name,80) or "Haushalt"
+    members={owner_key:{"role":"owner","wrapped_master":_wrap_master(owner["public_key"],master)}}
+    editor=None
+    if editor_key and editor_key!=owner_key:
+        editor=data.get("users",{}).get(editor_key)
+        if not editor: raise HTTPException(409,"Anfragender Benutzer existiert nicht mehr")
+        members[editor_key]={"role":"editor","wrapped_master":_wrap_master(editor["public_key"],master)}
+    db.activate(path,master);c=db.unlock(master,initialize=True,path=path,set_default=False)
+    owner_uid=_ensure_book_user(c,owner["username"],owner["password_hash"])
+    if editor:_ensure_book_user(c,editor["username"],editor["password_hash"])
+    data.setdefault("books",{})[uid]={"id":uid,"name":clean_name,"path":str(path),"created_at":iso(utcnow()),"members":members}
+    audit_append(c,owner_uid,"book.create","book",uid,{"name":clean_name,"requested_by":editor["username"] if editor else None});c.commit()
+    return {"id":uid,"name":clean_name,"path":str(path),"master":master}
+
+
 @app.post("/api/books")
 def book_create(x: BookIn,request: Request):
-    rec=require_system_admin(request);data=_auth_load_v2();uid=secrets.token_hex(8);BOOKS_DIR.mkdir(parents=True,exist_ok=True);path=BOOKS_DIR/f"{uid}.db";master=secrets.token_urlsafe(48)
-    me=data["users"][rec["user_key"]];member={"role":"owner","wrapped_master":_wrap_master(me["public_key"],master)}
-    db.activate(path,master);c=db.unlock(master,initialize=True,path=path,set_default=False);_ensure_book_user(c,me["username"],me["password_hash"])
-    data.setdefault("books",{})[uid]={"id":uid,"name":clean_text(x.name,80) or "Haushalt","path":str(path),"created_at":iso(utcnow()),"members":{rec["user_key"]:member}}
-    _auth_save(data);audit_append(c,c.execute("SELECT id FROM users WHERE username=?",(me["username"],)).fetchone()[0],"book.create","book",uid,{"name":x.name});c.commit()
-    return {"id":uid,"name":x.name}
+    sess=session(request,True);_,rec=_session_record(request);data=_auth_load_v2();user=data.get("users",{}).get(rec["user_key"],{})
+    source=data.get("books",{}).get(rec["book_id"],{});role=source.get("members",{}).get(rec["user_key"],{}).get("role","viewer")
+    if user.get("system_role")=="admin" or role=="owner":
+        result=_create_book_record(data,rec["user_key"],x.name);_auth_save(data)
+        db.activate(_book_path(source),rec["book_master"])
+        return {"id":result["id"],"name":result["name"],"pending":False}
+    if role!="editor": raise HTTPException(403,"Nur Bearbeiter oder Eigentümer dürfen ein neues Haushaltsbuch beantragen")
+    clean_name=clean_text(x.name,80) or "Haushalt";requests=data.setdefault("book_requests",{})
+    for existing in requests.values():
+        if existing.get("status","pending")=="pending" and existing.get("requested_by")==rec["user_key"] and existing.get("source_book_id")==rec["book_id"] and str(existing.get("name","")).casefold()==clean_name.casefold():
+            return {"id":existing["id"],"name":existing["name"],"pending":True}
+    rid=secrets.token_hex(8);req={"id":rid,"name":clean_name,"requested_by":rec["user_key"],"source_book_id":rec["book_id"],"created_at":iso(utcnow()),"status":"pending"};requests[rid]=req;_auth_save(data)
+    c=db.db();audit_append(c,sess[1],"book.request","book",rid,{"name":clean_name,"requested_by":user.get("username")});c.commit()
+    return {"id":rid,"name":clean_name,"pending":True}
+
+
+@app.get("/api/book-requests")
+def book_requests(request: Request):
+    session(request);_,rec=_session_record(request);data=_auth_load_v2();user=data.get("users",{}).get(rec["user_key"],{});source=data.get("books",{}).get(rec["book_id"],{})
+    role=source.get("members",{}).get(rec["user_key"],{}).get("role","viewer");can_approve=user.get("system_role")=="admin" or role=="owner"
+    out=[]
+    for req in data.get("book_requests",{}).values():
+        if req.get("status","pending")!="pending": continue
+        if can_approve:
+            if req.get("source_book_id")!=rec["book_id"]: continue
+        elif role=="editor":
+            if req.get("requested_by")!=rec["user_key"]: continue
+        else:
+            continue
+        row=dict(req);target=data.get("users",{}).get(req.get("requested_by"),{});row["requested_by_username"]=target.get("username",req.get("requested_by"));row["can_approve"]=can_approve;out.append(row)
+    return sorted(out,key=lambda r:r.get("created_at","") or "")
+
+
+@app.post("/api/book-requests/{request_id}/approve")
+def book_request_approve(request_id: str,request: Request):
+    sess=session(request,True);_,rec=_session_record(request);data=_auth_load_v2();req=data.get("book_requests",{}).get(request_id)
+    if not req or req.get("status","pending")!="pending": raise HTTPException(404,"Haushaltsbuch-Anfrage nicht gefunden")
+    if req.get("source_book_id")!=rec["book_id"] or not _can_manage_book(data,rec["book_id"],rec["user_key"]): raise HTTPException(403,"Nur ein Eigentümer des freigebenden Haushaltsbuchs darf diese Anfrage bestätigen")
+    source=data["books"][rec["book_id"]];result=_create_book_record(data,rec["user_key"],req["name"],req.get("requested_by"));data.get("book_requests",{}).pop(request_id,None);_auth_save(data)
+    db.activate(_book_path(source),rec["book_master"]);c=db.db();audit_append(c,sess[1],"book.request.approve","book",result["id"],{"name":result["name"],"request_id":request_id});c.commit()
+    return {"ok":True,"id":result["id"],"name":result["name"]}
+
+
+@app.delete("/api/book-requests/{request_id}")
+def book_request_reject(request_id: str,request: Request):
+    sess=session(request,True);_,rec=_session_record(request);data=_auth_load_v2();req=data.get("book_requests",{}).get(request_id)
+    if not req or req.get("status","pending")!="pending": raise HTTPException(404,"Haushaltsbuch-Anfrage nicht gefunden")
+    if req.get("source_book_id")!=rec["book_id"] or not _can_manage_book(data,rec["book_id"],rec["user_key"]): raise HTTPException(403,"Nur ein Eigentümer des freigebenden Haushaltsbuchs darf diese Anfrage ablehnen")
+    data.get("book_requests",{}).pop(request_id,None);_auth_save(data);c=db.db();audit_append(c,sess[1],"book.request.reject","book",request_id,{"name":req.get("name")});c.commit();return {"ok":True}
+
 
 @app.post("/api/books/{book_id}/switch")
 def book_switch(book_id: str,request: Request):
@@ -1398,7 +1470,7 @@ def admin_user_create(x: AdminUserCreateIn,request: Request):
     if not username: raise HTTPException(400,"Ungültiger Benutzername")
     if user_key in data.get("users",{}): raise HTTPException(409,"Benutzername existiert bereits")
     password_hash,public_pem,private_blob=_new_user_crypto(x.password)
-    data.setdefault("users",{})[user_key]={"username":username,"password_hash":password_hash,"public_key":public_pem,"private_key":private_blob,"system_role":"user","created_at":iso(utcnow()),"last_book_id":target_book_id}
+    data.setdefault("users",{})[user_key]={"username":username,"password_hash":password_hash,"public_key":public_pem,"private_key":private_blob,"system_role":"user","must_change_password":True,"created_at":iso(utcnow()),"last_book_id":target_book_id}
     book.setdefault("members",{})[user_key]={"role":x.role,"wrapped_master":_wrap_master(public_pem,master)}
     _auth_save(data)
     if target_book_id==rec["book_id"]:
@@ -1476,7 +1548,7 @@ def admin_reset_password(username: str,x: AdminPasswordResetIn,request: Request)
             db.activate(_book_path(book),master);c=db.db();row=c.execute("SELECT id FROM users WHERE username=?",(target["username"],)).fetchone()
             if row:c.execute("UPDATE users SET password_hash=? WHERE id=?",(new_hash,row[0]));c.commit()
         except Exception: pass
-    target.update({"password_hash":new_hash,"public_key":new_public,"private_key":new_private_blob})
+    target.update({"password_hash":new_hash,"public_key":new_public,"private_key":new_private_blob,"must_change_password":True})
     _auth_save(data)
     with _app_session_lock:
         for token,r in list(_app_sessions.items()):
@@ -1527,7 +1599,8 @@ def admin_user_delete(username: str,request: Request):
 
 @app.post("/api/password")
 def change_password(x: PasswordChangeIn,request: Request):
-    sess=session(request,True);th,rec=_session_record(request);data=_auth_load_v2();entry=data["users"][rec["user_key"]]
+    sess=require_csrf_session(request);th,rec=_session_record(request);data=_auth_load_v2();entry=data["users"][rec["user_key"]]
+    validate_new_password(x.new_password)
     try: ph.verify(entry["password_hash"],x.current_password)
     except VerifyMismatchError: raise HTTPException(401,"Aktuelles Passwort ist falsch")
     old_private=rec["private_key"];new_hash,new_public,new_private_blob=_new_user_crypto(x.new_password);new_private=_unlock_private(x.new_password,new_private_blob)
@@ -1539,7 +1612,7 @@ def change_password(x: PasswordChangeIn,request: Request):
             db.activate(_book_path(book),master);c=db.db();row=c.execute("SELECT id FROM users WHERE username=?",(entry["username"],)).fetchone()
             if row:c.execute("UPDATE users SET password_hash=? WHERE id=?",(new_hash,row[0]));c.commit()
         except Exception: pass
-    entry.update({"password_hash":new_hash,"public_key":new_public,"private_key":new_private_blob});_auth_save(data);rec["private_key"]=new_private
+    entry.update({"password_hash":new_hash,"public_key":new_public,"private_key":new_private_blob,"must_change_password":False});_auth_save(data);rec["private_key"]=new_private
     # Keep current session, close every other session of this user.
     with _app_session_lock:
         for token,r in list(_app_sessions.items()):
@@ -3697,7 +3770,7 @@ def planning_year(request: Request, year: int | None = None):
 
 @app.get("/api/audit/timeline")
 def audit_timeline(request: Request, q: str | None = None, page: int = 1, page_size: int = 25, limit: int | None = None, offset: int | None = None):
-    session(request);can_delete=False
+    require_book_owner(request);can_delete=True
     try:
         _,rec=_session_record(request);data=_auth_load_v2();book=data["books"][rec["book_id"]];member=book.get("members",{}).get(rec["user_key"],{})
         can_delete=member.get("role")=="owner" or data.get("users",{}).get(rec["user_key"],{}).get("system_role")=="admin"
@@ -3748,7 +3821,7 @@ def _bulk_tx_where(mode: str, from_date: date | None, to_date: date | None):
 
 @app.get("/api/admin/storage")
 def admin_storage(request: Request):
-    session(request);path=db.active_path();c=db.db()
+    require_book_owner(request);path=db.active_path();c=db.db()
     db_bytes=sum(Path(str(path)+suffix).stat().st_size for suffix in ("","-wal","-shm") if Path(str(path)+suffix).exists())
     attachments=int(c.execute("SELECT COALESCE(SUM(size),0) FROM attachments").fetchone()[0])
     tx_count=int(c.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]);rec_count=int(c.execute("SELECT COUNT(*) FROM recurring").fetchone()[0])
