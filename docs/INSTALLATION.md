@@ -1,4 +1,4 @@
-# Installation / Deployment - v0.21.5
+# Installation / Deployment - v0.21.6
 
 ## Deutsch
 

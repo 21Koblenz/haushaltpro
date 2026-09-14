@@ -1,4 +1,4 @@
-# HaushaltPro v0.21.5
+# HaushaltPro v0.21.6
 
 [![License: AGPL v3+](https://img.shields.io/badge/License-AGPL_v3%2B-blue.svg)](LICENSE)
 [![Vibe Coding](https://img.shields.io/badge/development-Vibe%20Coding-orange.svg)](VIBE_CODING.md)

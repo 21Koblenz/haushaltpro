@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## v0.21.6 - 2026-09-14
+
+Runtime-security maintenance release following v0.21.5. Application logic and database semantics are unchanged; no database migration is required.
+
+### Security / Container
+
+- Removes Python packaging/build tooling (`pip`, `setuptools`, `wheel`, `pkg_resources` and `ensurepip`) from the final runtime filesystem after dependencies have been installed and validated.
+- This removes the unnecessary runtime packages that Docker Scout associated with CVE-2026-23949 (`jaraco-context`), CVE-2025-47273 and CVE-2026-59890 (`setuptools`), GHSA-6v7p-g79w-8964 and CVE-2026-57585 (`msgpack`), and CVE-2026-24049 (`wheel`).
+- `pip check` still runs before packaging tools are removed.
+- A post-removal smoke test verifies FastAPI, Starlette, Uvicorn, Pydantic, Argon2, Cryptography, multipart parsing and SQLCipher 4.
+- Existing non-root execution, read-only container hardening, dropped capabilities, SQLCipher, SBOM and provenance controls remain enabled.
+
+### Validation
+
+- Full application regression suite and JavaScript syntax check run before release.
+- Static security audit validates the runtime-tooling removal.
+- Docker builds and SQLCipher runtime checks run on both `linux/amd64` and `linux/arm64`.
+- Docker Scout scans both locally built architecture images for Critical/High findings and blocks the release if any remain.
+
+
 ## v0.21.5 - 2026-09-14
 
 Security-maintenance release following v0.21.4. Application and database semantics are unchanged.
