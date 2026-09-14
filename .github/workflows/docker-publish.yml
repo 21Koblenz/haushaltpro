@@ -2,12 +2,14 @@ name: Build and publish Docker image
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (e.g. 0.21.6; matching v-tag must exist)"
+        description: "Version to publish (e.g. 0.21.7; matching v-tag must exist)"
         required: true
         type: string
 
@@ -23,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout release source
+      - name: Checkout source
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref }}
@@ -41,17 +43,28 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Select published image
+        id: target
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "image=21koblenz/haushaltpro:dev" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=21koblenz/haushaltpro:latest" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: 21koblenz/haushaltpro
           tags: |
-            type=semver,pattern={{version}},value=${{ github.ref_name }},enable=${{ github.event_name == 'push' }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }},enable=${{ github.event_name == 'push' }}
+            type=raw,value=dev,enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}},value=${{ github.ref_name }},enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }},enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
             type=semver,pattern={{version}},value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.event_name != 'push' || startsWith(github.ref, 'refs/tags/v') }}
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -67,13 +80,13 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Verify published multi-arch manifest
-        run: docker buildx imagetools inspect 21koblenz/haushaltpro:latest
+        run: docker buildx imagetools inspect "${{ steps.target.outputs.image }}"
 
       - name: Scout amd64 Critical/High gate
         uses: docker/scout-action@v1
         with:
           command: cves
-          image: registry://21koblenz/haushaltpro:latest
+          image: registry://${{ steps.target.outputs.image }}
           platform: linux/amd64
           only-severities: critical,high
           exit-code: true
@@ -83,7 +96,7 @@ jobs:
         uses: docker/scout-action@v1
         with:
           command: cves
-          image: registry://21koblenz/haushaltpro:latest
+          image: registry://${{ steps.target.outputs.image }}
           platform: linux/arm64
           only-severities: critical,high
           exit-code: true
@@ -93,7 +106,7 @@ jobs:
         uses: docker/scout-action@v1
         with:
           command: cves
-          image: registry://21koblenz/haushaltpro:latest
+          image: registry://${{ steps.target.outputs.image }}
           platform: linux/amd64
           only-package-types: pypi
           only-severities: critical,high,medium
@@ -104,7 +117,7 @@ jobs:
         uses: docker/scout-action@v1
         with:
           command: cves
-          image: registry://21koblenz/haushaltpro:latest
+          image: registry://${{ steps.target.outputs.image }}
           platform: linux/arm64
           only-package-types: pypi
           only-severities: critical,high,medium
