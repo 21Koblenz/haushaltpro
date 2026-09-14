@@ -10,10 +10,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HOST=0.0.0.0 \
     PORT=8080
 
+# Apply Alpine security updates available after the pinned base-image snapshot.
+RUN apk upgrade --no-cache
+
 WORKDIR /app
 COPY requirements.txt ./
 RUN python -m pip install --no-cache-dir --disable-pip-version-check --upgrade "pip==26.2" \
-    && python -m pip install --no-cache-dir --disable-pip-version-check -r requirements.txt
+    && python -m pip install --no-cache-dir --disable-pip-version-check -r requirements.txt \
+    && python -m pip install --no-cache-dir --disable-pip-version-check --upgrade \
+       "msgpack==1.2.1" \
+       "setuptools==78.1.1" \
+    && python -m pip check
 COPY app ./app
 COPY static ./static
 RUN addgroup -S -g 10001 appuser \
