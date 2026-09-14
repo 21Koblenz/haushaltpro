@@ -7,20 +7,27 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (e.g. 0.21.3)"
+        description: "Version to publish (e.g. 0.21.6; matching v-tag must exist)"
         required: true
         type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: docker-publish
+  cancel-in-progress: false
+
 jobs:
   docker:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout release source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref }}
+          fetch-depth: 0
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -59,9 +66,47 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Docker Scout CVE scan
+      - name: Verify published multi-arch manifest
+        run: docker buildx imagetools inspect 21koblenz/haushaltpro:latest
+
+      - name: Scout amd64 Critical/High gate
         uses: docker/scout-action@v1
         with:
           command: cves
-          image: 21koblenz/haushaltpro:latest
+          image: registry://21koblenz/haushaltpro:latest
+          platform: linux/amd64
           only-severities: critical,high
+          exit-code: true
+          write-comment: false
+
+      - name: Scout arm64 Critical/High gate
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: registry://21koblenz/haushaltpro:latest
+          platform: linux/arm64
+          only-severities: critical,high
+          exit-code: true
+          write-comment: false
+
+      - name: Scout amd64 PyPI Medium+ gate
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: registry://21koblenz/haushaltpro:latest
+          platform: linux/amd64
+          only-package-types: pypi
+          only-severities: critical,high,medium
+          exit-code: true
+          write-comment: false
+
+      - name: Scout arm64 PyPI Medium+ gate
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: registry://21koblenz/haushaltpro:latest
+          platform: linux/arm64
+          only-package-types: pypi
+          only-severities: critical,high,medium
+          exit-code: true
+          write-comment: false
