@@ -18,6 +18,7 @@ replacements = {
     Path("README.md"): [("# HaushaltPro v0.21.7", "# HaushaltPro v0.21.8")],
     Path("static/index.html"): [("?v=0.21.7", "?v=0.21.8")],
     Path("tests/test_i18n_account_month_selfheal.py"): [("?v=0.21.7", "?v=0.21.8")],
+    Path("tests/test_preview14_flow_style_cache.py"): [("v=0.21.7", "v=0.21.8")],
 }
 for path, pairs in replacements.items():
     text = path.read_text(encoding="utf-8")
@@ -68,6 +69,7 @@ grep -F '# HaushaltPro v0.21.8' README.md
 grep -F '## v0.21.8 - 2026-09-14' CHANGELOG.md
 test "$(grep -o 'v=0.21.8' static/index.html | wc -l)" -ge 5
 grep -F '?v=0.21.8' tests/test_i18n_account_month_selfheal.py
+grep -F 'v=0.21.8' tests/test_preview14_flow_style_cache.py
 
 git diff --check
 python -m compileall -q app tests
@@ -83,7 +85,7 @@ python tests/security_audit.py
 
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-git add app/main.py README.md CHANGELOG.md static/index.html tests/test_i18n_account_month_selfheal.py
+git add app/main.py README.md CHANGELOG.md static/index.html tests/test_i18n_account_month_selfheal.py tests/test_preview14_flow_style_cache.py
 git commit -m "release: v0.21.8"
 RELEASE_SHA="$(git rev-parse HEAD)"
 git push origin HEAD:main
