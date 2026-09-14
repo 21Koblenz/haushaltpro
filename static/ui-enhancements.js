@@ -25,8 +25,51 @@
     }
   }
   function enhanceSignedMoneyInputs(root=document){root.querySelectorAll?.('input[name="opening_balance"], input[name="actual_balance"]').forEach(addSignToggle)}
+
+  function payeePickerLabels(){
+    const en=(window.HaushaltProI18n?.language?.()||localStorage.getItem('hp_lang')||'de')==='en';
+    return en
+      ?{choose:'Select saved payee …',custom:'or enter another payee',help:'Select a saved payee above or enter a new name below.'}
+      :{choose:'Gespeicherten Empfänger auswählen …',custom:'oder anderen Empfänger eingeben',help:'Gespeicherten Empfänger oben auswählen oder unten einen neuen Namen eingeben.'};
+  }
+  function enhancePayeePicker(root=document){
+    const input=root.querySelector?.('input[name="payee"][list="payeeSuggestions"]');
+    if(!input||input.dataset.payeePicker==='1')return;
+    input.dataset.payeePicker='1';
+    const labels=payeePickerLabels();
+    const listId=input.getAttribute('list');
+    const datalist=listId?document.getElementById(listId):null;
+    const values=[...new Set(Array.from(datalist?.querySelectorAll('option')||[]).map(o=>String(o.value||'').trim()).filter(Boolean))];
+    input.removeAttribute('list');
+    input.placeholder=labels.custom;
+    if(!values.length)return;
+    const select=document.createElement('select');
+    select.className='payee-preset-select';
+    select.dataset.payeePickerSelect='1';
+    select.setAttribute('aria-label',labels.choose.replace(' …',''));
+    const placeholder=document.createElement('option');
+    placeholder.value='';placeholder.textContent=labels.choose;select.append(placeholder);
+    values.forEach(value=>{const option=document.createElement('option');option.value=value;option.textContent=value;select.append(option)});
+    if(values.includes(String(input.value||'')))select.value=String(input.value||'');
+    select.addEventListener('change',()=>{
+      if(select.value){
+        input.value=select.value;
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+      input.focus();
+    });
+    input.before(select);
+    const help=document.createElement('small');
+    help.className='muted payee-picker-help';help.textContent=labels.help;
+    input.after(help);
+  }
+
   const modalContent=document.getElementById('modalContent'),modalForm=document.getElementById('modalForm');
-  if(modalContent){enhanceSignedMoneyInputs(modalContent);new MutationObserver(()=>enhanceSignedMoneyInputs(modalContent)).observe(modalContent,{childList:true,subtree:true})}
+  if(modalContent){
+    enhanceSignedMoneyInputs(modalContent);enhancePayeePicker(modalContent);
+    new MutationObserver(()=>{enhanceSignedMoneyInputs(modalContent);enhancePayeePicker(modalContent)}).observe(modalContent,{childList:true,subtree:true});
+  }
   if(modalForm)modalForm.addEventListener('submit',(event)=>{try{modalForm.querySelectorAll('input[data-signed-money="1"]').forEach(input=>input.value=normalizeSignedMoneyInput(input.value))}catch(error){event.preventDefault();event.stopImmediatePropagation();const toast=document.getElementById('toast');if(toast){toast.textContent=error.message;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),3000)}}},true);
   window.HaushaltProSignedMoney=Object.freeze({normalize:normalizeSignedMoneyInput});
 
