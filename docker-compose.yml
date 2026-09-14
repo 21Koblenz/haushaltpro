@@ -1,7 +1,6 @@
 services:
   haushaltpro:
-    build:
-      context: .
+    image: 21koblenz/haushaltpro:latest
     container_name: haushaltpro
     restart: unless-stopped
     init: true
