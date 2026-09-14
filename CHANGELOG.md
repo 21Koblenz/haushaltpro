@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## v0.21.7 - 2026-09-14
+
+Role-boundary and responsive-UI maintenance release. No database migration is required.
+
+### Fixed
+
+- Users created or reset with a temporary password can now change their own password regardless of their household role. Temporary passwords are marked as requiring a change, and the UI guides the user directly to the self-service password form.
+- Self-service password changes are protected by authentication and CSRF checks but are no longer incorrectly tied to household write permissions.
+- Editors no longer see or access the audit timeline, storage/data-maintenance tools, bulk transaction deletion, or user/rights administration. The corresponding API endpoints are owner/admin protected as well.
+- Editors cannot rename or delete household books.
+- Editors may request a new household book. An owner of the current household must approve or reject the request; after approval the approver is owner and the requester remains editor.
+- The bookings table no longer relies on horizontal scrolling: wide screens use a wrapped fixed layout, while smaller devices automatically switch to responsive booking cards.
+- Asset cache keys are bumped so browsers load the new JavaScript and CSS immediately after updating.
+
+### Validation
+
+- Added an integration regression covering temporary-password change, editor permission boundaries, household-book approval and delete/rename denial.
+- Full regression suite and static security audit run before release.
+- Docker builds and SQLCipher runtime checks run on both `linux/amd64` and `linux/arm64`.
+- Docker Hub publishing remains protected by Scout Critical/High gates on both architectures and PyPI Medium+ gates.
+
 ## v0.21.6 - 2026-09-14
 
 Runtime-security maintenance release following v0.21.5. Application logic and database semantics are unchanged; no database migration is required.

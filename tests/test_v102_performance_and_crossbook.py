@@ -66,7 +66,7 @@ print(f"v0.10.2 monthly chart bounded queries: PASS ({count['select']} SELECTs)"
 js=(root/'static/app.js').read_text()
 assert 'viewDataCache=new Map()' in js and 'requestIdleCallback' in js and 'cachedApi(' in js
 assert 'sessionStorage.setItem' not in js
-assert main.APP_VERSION in {'0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4','0.21.5','0.21.6'}
+assert main.APP_VERSION in {'0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4','0.21.5','0.21.6','0.21.7'}
 print('v0.10.2 frontend prefetch/cache source: PASS')
 perf.close()
 
