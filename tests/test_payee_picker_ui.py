@@ -7,7 +7,7 @@ ENHANCEMENTS_JS = (ROOT / "static" / "ui-enhancements.js").read_text(encoding="u
 # The transaction dialog still exposes the saved payees through its datalist.
 # ui-enhancements.js converts that browser-dependent datalist into a native
 # select while keeping the free-text payee input as the submitted form value.
-assert 'name=\\"payee\\" list=\\"payeeSuggestions\\"' in APP_JS
+assert 'name="payee" list="payeeSuggestions"' in APP_JS
 assert "function enhancePayeePicker" in ENHANCEMENTS_JS
 assert "input.removeAttribute('list')" in ENHANCEMENTS_JS
 assert "select.className='payee-preset-select'" in ENHANCEMENTS_JS
