@@ -86,16 +86,33 @@ jobs:
           install.write_text(text, encoding="utf-8")
 
           # Historical compatibility tests intentionally whitelist all later versions.
-          # Add the new release only to those explicit APP_VERSION membership checks.
-          gate = re.compile(r"(assert\s+main\.APP_VERSION\s+in\s+\{[^\n}]*)(\})")
+          # Extend only version gates; do not change functional assertions.
+          membership_gate = re.compile(r"(assert\s+main\.APP_VERSION\s+in\s+\{[^\n}]*)(\})")
+          old_source_gate = "'APP_VERSION = \"0.21.3\"' in main"
+          new_source_gate = "'APP_VERSION = \"0.21.4\"' in main"
+          old_eq_gate = "main.APP_VERSION == '0.21.3'"
+          new_eq_gate = "main.APP_VERSION == '0.21.4'"
+
           for path in sorted(Path("tests").glob("test_*.py")):
               source = path.read_text(encoding="utf-8")
-              def extend(match):
+
+              def extend_membership(match):
                   body = match.group(1)
                   if "'0.21.4'" in body or '"0.21.4"' in body:
                       return match.group(0)
                   return body + ",'0.21.4'" + match.group(2)
-              changed = gate.sub(extend, source)
+
+              changed = membership_gate.sub(extend_membership, source)
+              if old_source_gate in changed and new_source_gate not in changed:
+                  changed = changed.replace(
+                      old_source_gate,
+                      f"({old_source_gate} or {new_source_gate})",
+                  )
+              if old_eq_gate in changed and new_eq_gate not in changed:
+                  changed = changed.replace(
+                      old_eq_gate,
+                      f"({old_eq_gate} or {new_eq_gate})",
+                  )
               if changed != source:
                   path.write_text(changed, encoding="utf-8")
 
