@@ -1,5 +1,5 @@
-# Current multi-arch Python 3.12.14 / Debian Bookworm image, pinned by index digest.
-FROM python:3.12-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254
+# Multi-arch Python 3.12.14 / Alpine 3.24 image, pinned by index digest.
+FROM python:3.12.14-alpine3.24@sha256:b64631e04e4920160c50fbe8d8df828f7f35f06f425cb44aa09bca53e708a35a
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -12,12 +12,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --disable-pip-version-check -r requirements.txt
+RUN python -m pip install --no-cache-dir --disable-pip-version-check --upgrade "pip==26.2" \
+    && python -m pip install --no-cache-dir --disable-pip-version-check -r requirements.txt
 COPY app ./app
 COPY static ./static
-RUN useradd --system --uid 10001 --create-home --home-dir /home/appuser appuser \
-    && mkdir -p /data \
-    && chown -R appuser:appuser /app /data
+RUN addgroup -S -g 10001 appuser \
+    && adduser -S -D -u 10001 -G appuser -h /home/appuser appuser \
+    && mkdir -p /data /home/appuser \
+    && chown -R appuser:appuser /app /data /home/appuser
 
 USER 10001:10001
 EXPOSE 8080
