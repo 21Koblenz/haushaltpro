@@ -13,6 +13,6 @@ assert "setMonthControls('accountMonthName','accountYear',body.start_date.slice(
 assert "function refreshLocalizedMonthControls()" in js
 assert "for(const [monthId,yearId] of MONTH_CONTROL_PAIRS)" in js
 for asset in ("style.css", "ui-enhancements.css", "i18n.js", "app.js", "ui-enhancements.js"):
-    assert f"/assets/{asset}?v=0.21.3" in html
+    assert f"/assets/{asset}?v=0.21.7" in html
 
 print("i18n account/month self-heal + cache busting: PASS")
