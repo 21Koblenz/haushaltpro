@@ -28,9 +28,8 @@ for path, pairs in replacements.items():
         text = text.replace(old, new)
     path.write_text(text, encoding="utf-8")
 
-# Historical regression files intentionally allow all known application versions.
-# Add this release to every one-line APP_VERSION allowlist instead of maintaining
-# a growing hand-written list of files in the release process.
+# Historical regression tests contain several styles of version guard. Keep their
+# functional assertions intact while teaching those guards about this release.
 for path in Path("tests").glob("test_*.py"):
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines(keepends=True)
@@ -43,8 +42,21 @@ for path in Path("tests").glob("test_*.py"):
             line = line.replace("}", ",'0.21.8'}", 1)
             changed = True
         result.append(line)
+    text = "".join(result)
+
+    # Source-level guards look for the literal assignment in app/main.py.
+    if 'APP_VERSION = "0.21.7"' in text:
+        text = text.replace('APP_VERSION = "0.21.7"', 'APP_VERSION = "0.21.8"')
+        changed = True
+    if "main.APP_VERSION == '0.21.7'" in text:
+        text = text.replace("main.APP_VERSION == '0.21.7'", "main.APP_VERSION == '0.21.8'")
+        changed = True
+    if 'main.APP_VERSION == "0.21.7"' in text:
+        text = text.replace('main.APP_VERSION == "0.21.7"', 'main.APP_VERSION == "0.21.8"')
+        changed = True
+
     if changed:
-        path.write_text("".join(result), encoding="utf-8")
+        path.write_text(text, encoding="utf-8")
 
 changelog = Path("CHANGELOG.md")
 text = changelog.read_text(encoding="utf-8")
@@ -89,13 +101,17 @@ test "$(grep -o 'v=0.21.8' static/index.html | wc -l)" -ge 5
 grep -F '?v=0.21.8' tests/test_i18n_account_month_selfheal.py
 grep -F 'v=0.21.8' tests/test_preview14_flow_style_cache.py
 
-# Every legacy APP_VERSION allowlist must now accept this release.
 python - <<'PY'
 from pathlib import Path
 for path in Path("tests").glob("test_*.py"):
-    for line in path.read_text(encoding="utf-8").splitlines():
+    text = path.read_text(encoding="utf-8")
+    for line in text.splitlines():
         if "main.APP_VERSION in {" in line and "'0.21.8'" not in line:
             raise SystemExit(f"Missing 0.21.8 in APP_VERSION guard: {path}")
+    if 'APP_VERSION = "0.21.7"' in text:
+        raise SystemExit(f"Stale source-version guard remains: {path}")
+    if "main.APP_VERSION == '0.21.7'" in text or 'main.APP_VERSION == "0.21.7"' in text:
+        raise SystemExit(f"Stale exact APP_VERSION guard remains: {path}")
 PY
 
 git diff --check
