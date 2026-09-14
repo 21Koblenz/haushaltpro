@@ -5,6 +5,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.21.3)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -35,8 +40,10 @@ jobs:
         with:
           images: 21koblenz/haushaltpro
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{version}},value=${{ github.ref_name }},enable=${{ github.event_name == 'push' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }},enable=${{ github.event_name == 'push' }}
+            type=semver,pattern={{version}},value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
             type=raw,value=latest
 
       - name: Build and push image
