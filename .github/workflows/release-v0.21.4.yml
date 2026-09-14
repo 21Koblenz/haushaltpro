@@ -1,0 +1,255 @@
+name: Release v0.21.4 security hardening
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/release-v0.21.4.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-v0.21.4
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: "0.21.4"
+      TAG: "v0.21.4"
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Prepare v0.21.4 source metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          version = "0.21.4"
+          today = "2026-09-14"
+
+          main = Path("app/main.py")
+          text = main.read_text(encoding="utf-8")
+          updated, count = re.subn(
+              r'^APP_VERSION = "[^"]+"$',
+              f'APP_VERSION = "{version}"',
+              text,
+              count=1,
+              flags=re.M,
+          )
+          if count != 1:
+              raise SystemExit("APP_VERSION could not be updated exactly once")
+          main.write_text(updated, encoding="utf-8")
+
+          changelog = Path("CHANGELOG.md")
+          text = changelog.read_text(encoding="utf-8")
+          if "## v0.21.4 -" not in text:
+              marker = "# Changelog\n\n## Unreleased\n"
+              entry = f'''# Changelog\n\n## Unreleased\n\n## v{version} - {today}\n\nSecurity-focused Docker release. Application and database semantics are unchanged.\n\n### Security / Container\n\n- Runtime base changed from Debian Bookworm to the smaller official Python 3.12.14 / Alpine 3.24 image, pinned by its multi-architecture SHA-256 index digest.\n- `pip` in the runtime image is upgraded to 26.2 to remove Scout findings with an available pip fix.\n- Non-root execution with UID/GID 10001 remains enforced.\n- Docker Hub publishing includes SBOM and provenance attestations.\n- Docker Scout scans the published image for Critical and High CVEs.\n\n### Deployment\n\n- The default `docker-compose.yml` consumes `21koblenz/haushaltpro:latest` from Docker Hub.\n- Local source builds remain available through `docker-compose.dev.yml`.\n- Standard updates now use `docker compose pull` followed by `docker compose up -d`.\n\n### Validation\n\n- Full application regression suite passed on the security-hardening branch.\n- Static security audit passed.\n- Docker builds and SQLCipher runtime checks passed on both `linux/amd64` and `linux/arm64`.\n- The v0.21.4 release workflow repeats regression, static-security, architecture and SQLCipher checks before publishing.\n\n'''
+              if marker not in text:
+                  raise SystemExit("CHANGELOG marker not found")
+              text = text.replace(marker, entry, 1)
+              changelog.write_text(text, encoding="utf-8")
+
+          readme = Path("README.md")
+          text = readme.read_text(encoding="utf-8")
+          text = re.sub(r'^# HaushaltPro v[^\n]+', f'# HaushaltPro v{version}', text, count=1, flags=re.M)
+          text = text.replace("docker compose build --pull\ndocker compose up -d", "docker compose pull\ndocker compose up -d")
+          security_line = "Details: [Security Audit](docs/SECURITY-AUDIT.md) und [Public Deployment](docs/PUBLIC-DEPLOYMENT.md)."
+          scout_note = "Published Docker images are built for `linux/amd64` and `linux/arm64`, include SBOM/provenance attestations and are analyzed with Docker Scout."
+          if scout_note not in text and security_line in text:
+              text = text.replace(security_line, security_line + "\n\n" + scout_note, 1)
+          readme.write_text(text, encoding="utf-8")
+
+          install = Path("docs/INSTALLATION.md")
+          text = install.read_text(encoding="utf-8")
+          text = re.sub(r'^# Installation / Deployment - v[^\n]+', f'# Installation / Deployment - v{version}', text, count=1, flags=re.M)
+          text = text.replace("docker compose build --pull\ndocker compose up -d", "docker compose pull\ndocker compose up -d")
+          text = text.replace("docker compose up -d --build", "docker compose pull\ndocker compose up -d")
+          dev = '''\n### Entwicklung / lokaler Build aus dem Quellcode\n\nDie normale Compose-Datei zieht das veröffentlichte Docker-Hub-Image. Für Entwicklung oder einen lokalen Build aus dem Git-Checkout:\n\n```bash\ndocker compose -f docker-compose.yml -f docker-compose.dev.yml build --pull\ndocker compose -f docker-compose.yml -f docker-compose.dev.yml up -d\n```\n\n'''
+          if "### Entwicklung / lokaler Build aus dem Quellcode" not in text:
+              marker = "---\n\n## English"
+              if marker not in text:
+                  raise SystemExit("INSTALLATION English marker not found")
+              text = text.replace(marker, dev + marker, 1)
+          install.write_text(text, encoding="utf-8")
+
+          test = Path("tests/test_v214_security_release.py")
+          if not test.exists():
+              test.write_text('''from pathlib import Path\n\nroot = Path(__file__).resolve().parents[1]\nmain = (root / "app/main.py").read_text()\ndockerfile = (root / "Dockerfile").read_text()\ncompose = (root / "docker-compose.yml").read_text()\nchangelog = (root / "CHANGELOG.md").read_text()\n\nassert 'APP_VERSION = "0.21.4"' in main\nassert 'python:3.12.14-alpine3.24@sha256:' in dockerfile\nassert 'pip==26.2' in dockerfile\nassert 'python:3.12-slim-bookworm' not in dockerfile\nassert 'image: 21koblenz/haushaltpro:latest' in compose\nassert '## v0.21.4 - 2026-09-14' in changelog\nprint("v0.21.4 security-release invariants: PASS")\n''', encoding="utf-8")
+          PY
+
+          rm -f .github/workflows/release-v0.21.4.yml
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install test dependencies
+        run: python -m pip install -r requirements.txt httpx2==2.12.0
+
+      - name: Compile Python
+        run: python -m compileall -q app tests
+
+      - name: JavaScript syntax check
+        run: node --check static/app.js
+
+      - name: Full regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo install -d -o "$(id -u)" -g "$(id -g)" /app
+          for t in tests/test_*.py; do
+            echo "== $t =="
+            python "$t"
+          done
+
+      - name: Static security audit
+        run: python tests/security_audit.py
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Verify amd64 image and SQLCipher
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx build --platform linux/amd64 --pull --load -t haushaltpro:release-amd64 .
+          docker run --rm --platform linux/amd64 --entrypoint python haushaltpro:release-amd64 \
+            -c "from sqlcipher3 import dbapi2 as sqlite; c=sqlite.connect(':memory:'); v=c.execute('PRAGMA cipher_version').fetchone()[0]; print('SQLCipher',v); assert str(v).startswith('4.')"
+
+      - name: Verify arm64 image and SQLCipher
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx build --platform linux/arm64 --pull --load -t haushaltpro:release-arm64 .
+          docker run --rm --platform linux/arm64 --entrypoint python haushaltpro:release-arm64 \
+            -c "from sqlcipher3 import dbapi2 as sqlite; c=sqlite.connect(':memory:'); v=c.execute('PRAGMA cipher_version').fetchone()[0]; print('SQLCipher',v); assert str(v).startswith('4.')"
+
+      - name: Commit release source
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/main.py CHANGELOG.md README.md docs/INSTALLATION.md tests/test_v214_security_release.py .github/workflows/release-v0.21.4.yml || true
+          if ! git diff --cached --quiet; then
+            git commit -m "release: v${VERSION} security hardening"
+            git push origin HEAD:main
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create signed release tag reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git show-ref --verify --quiet "refs/tags/${TAG}"; then
+            test "$(git rev-list -n1 "${TAG}")" = "$(git rev-parse HEAD)" || { echo "Existing ${TAG} points elsewhere"; exit 1; }
+          else
+            git tag -a "${TAG}" -m "HaushaltPro ${TAG} - Docker security hardening"
+            git push origin "${TAG}"
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and publish multi-arch Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          pull: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            21koblenz/haushaltpro:0.21.4
+            21koblenz/haushaltpro:0.21
+            21koblenz/haushaltpro:latest
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Docker Scout Critical/High report
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: 21koblenz/haushaltpro:0.21.4
+          only-severities: critical,high
+
+      - name: Create release archives and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          git archive --format=tar.gz --prefix="haushaltpro-${TAG}/" -o "dist/haushaltpro-${TAG}.tar.gz" HEAD
+          git archive --format=zip --prefix="haushaltpro-${TAG}/" -o "dist/haushaltpro-${TAG}.zip" HEAD
+          (cd dist && sha256sum "haushaltpro-${TAG}.tar.gz" "haushaltpro-${TAG}.zip" > "SHA256SUMS-${TAG}.txt")
+          cat > release-notes.md <<'EOF'
+          ## HaushaltPro v0.21.4
+
+          Security-focused container release. No database migration is required.
+
+          ### Security / Container
+          - Runtime moved from Debian Bookworm to the smaller official Python 3.12.14 / Alpine 3.24 image, pinned by multi-arch SHA-256 digest.
+          - Runtime `pip` upgraded to 26.2 for Scout-remediable pip findings.
+          - Non-root UID/GID 10001 remains enforced.
+          - Published Docker images include SBOM and provenance attestations.
+          - Docker Scout scans the resulting image for Critical/High CVEs.
+
+          ### Docker Hub
+          Multi-architecture images are published for `linux/amd64` and `linux/arm64`:
+          - `21koblenz/haushaltpro:0.21.4`
+          - `21koblenz/haushaltpro:0.21`
+          - `21koblenz/haushaltpro:latest`
+
+          ### Validation
+          - Full Python regression suite passed.
+          - JavaScript syntax check passed.
+          - Static security audit passed.
+          - Docker build and SQLCipher runtime verified on amd64 and arm64 before publication.
+
+          ### Upgrade
+          Keep the existing `haushaltpro_data` volume, then run:
+
+          ```bash
+          docker compose pull
+          docker compose up -d
+          ```
+          EOF
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists; leaving it unchanged."
+          else
+            gh release create "${TAG}" \
+              --title "HaushaltPro ${TAG}" \
+              --notes-file release-notes.md \
+              dist/haushaltpro-${TAG}.tar.gz \
+              dist/haushaltpro-${TAG}.zip \
+              dist/SHA256SUMS-${TAG}.txt
+          fi
