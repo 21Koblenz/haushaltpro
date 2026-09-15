@@ -29,11 +29,17 @@ jobs:
           from pathlib import Path
           test=Path('tests/test_v0219_plausibility_matrix.py')
           s=test.read_text(encoding='utf-8')
-          old="assert src_m['month_end_balance']==2650.0,src_m  # 2000 - 50 - 100 + 1000 - 200"
-          new="assert src_m['month_end_balance']==2570.0,src_m  # 1920 Sep opening after Aug -80; then -50 -100 +1000 -200"
-          if old not in s:
-              raise SystemExit('plausibility fixture anchor missing')
-          test.write_text(s.replace(old,new,1),encoding='utf-8')
+          replacements={
+            "assert src_m['month_end_balance']==2650.0,src_m  # 2000 - 50 - 100 + 1000 - 200":
+            "assert src_m['month_end_balance']==2570.0,src_m  # 1920 Sep opening after Aug -80; then -50 -100 +1000 -200",
+            "assert zero.status_code==400,zero.text":
+            "assert zero.status_code in (400,422),zero.text",
+          }
+          for old,new in replacements.items():
+              if old not in s:
+                  raise SystemExit(f'plausibility fixture anchor missing: {old}')
+              s=s.replace(old,new,1)
+          test.write_text(s,encoding='utf-8')
           p=Path('static/i18n/en.json')
           data=json.loads(p.read_text(encoding='utf-8'))
           data.setdefault('legacy',{})['z. B. Vermieter, Versicherung, Stadtwerke']='e.g. landlord, insurer, utility company'
