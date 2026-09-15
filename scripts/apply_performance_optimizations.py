@@ -104,5 +104,96 @@ new='''def recurring_events(c, account_id: int | None, from_day: date, to_day: d
     return events
 '''
 main=main[:start]+new+main[end:]
+
+# 3) Planning deliberately counts the contract schedule even after an occurrence
+# was executed, so it cannot reuse recurring_events(). It can still preload all
+# category metadata and overrides instead of querying them inside every occurrence.
+plan_start=main.index('def planned_month_category_totals(c, start: date, end: date)')
+plan_end=main.index('\n\n@app.get("/api/planning/variance")',plan_start)
+plan_new='''def _recurring_plan_context(c, rows, start: date, end: date):
+    category_ids=sorted({int(r["category_id"]) for r in rows if r["category_id"] is not None})
+    series_ids=sorted({int(r["series_id"] or r["id"]) for r in rows})
+    categories={}
+    overrides={}
+
+    for i in range(0,len(category_ids),800):
+        ids=category_ids[i:i+800]
+        marks=",".join("?" for _ in ids)
+        sql="SELECT id,name,direction FROM categories WHERE id IN ({})".format(marks)
+        for x in c.execute(sql,ids).fetchall():
+            categories[int(x["id"])]=x
+
+    for i in range(0,len(series_ids),800):
+        ids=series_ids[i:i+800]
+        marks=",".join("?" for _ in ids)
+        sql=("SELECT series_id,due_date,amount FROM recurring_overrides "
+             "WHERE series_id IN ({}) AND due_date BETWEEN ? AND ?").format(marks)
+        for x in c.execute(sql,[*ids,start.isoformat(),end.isoformat()]).fetchall():
+            overrides[(int(x["series_id"]),x["due_date"])]=int(x["amount"])
+    return categories,overrides
+
+
+def planned_month_category_totals(c, start: date, end: date) -> dict[int | None, dict]:
+    """Plan values independent of whether a recurring occurrence was executed."""
+    out={}
+    rows=c.execute("""SELECT t.category_id,COALESCE(cat.name,'Nicht kategorisiert') category_label,
+                             COALESCE(cat.direction,CASE WHEN t.amount>=0 THEN 'income' ELSE 'expense' END) typ,
+                             SUM(ABS(t.amount)) amount
+                      FROM transactions t LEFT JOIN categories cat ON cat.id=t.category_id
+                      WHERE t.status<>'cancelled' AND t.transfer_id IS NULL AND t.recurring_id IS NULL AND t.booking_date BETWEEN ? AND ?
+                      GROUP BY t.category_id,COALESCE(cat.name,'Nicht kategorisiert'),COALESCE(cat.direction,CASE WHEN t.amount>=0 THEN 'income' ELSE 'expense' END)""",(start.isoformat(),end.isoformat())).fetchall()
+    for r in rows:
+        out[r["category_id"]]={"category_id":r["category_id"],"name":r["category_label"],"type":r["typ"],"amount":int(r["amount"] or 0)}
+
+    recurring_rows=list(recurring_rows_for_window(c,None,start,end))
+    categories,overrides=_recurring_plan_context(c,recurring_rows,start,end)
+    for r in recurring_rows:
+        vf=date.fromisoformat(r["valid_from"] or r["next_date"])
+        vu=date.fromisoformat(r["valid_until"]) if r["valid_until"] else end
+        low=max(start,vf); high=min(end,vu)
+        if low>high:
+            continue
+        anchor=date.fromisoformat(r["anchor_date"] or r["valid_from"] or r["next_date"])
+        cid=r["category_id"]
+        cat=categories.get(int(cid)) if cid is not None else None
+        typ=cat["direction"] if cat else ("income" if r["kind"]=="income" else "expense")
+        name=cat["name"] if cat else "Nicht kategorisiert"
+        series_id=int(r["series_id"] or r["id"])
+        row=out.setdefault(cid,{"category_id":cid,"name":name,"type":typ,"amount":0})
+        for due in occurrences(anchor,r["frequency"],low,high,int(r["interval_count"] or 1)):
+            raw=overrides.get((series_id,due.isoformat()),int(r["amount"]))
+            row["amount"]+=abs(int(raw))
+    return out
+
+
+def planned_fixed_costs(c, start: date, end: date) -> int:
+    """Planned fixed-cost outflows for a period, independent of actual recurring deviations."""
+    total=int(c.execute("""SELECT COALESCE(SUM(ABS(t.amount)),0) FROM transactions t
+                           LEFT JOIN categories cat ON cat.id=t.category_id
+                           WHERE t.status<>'cancelled' AND t.transfer_id IS NULL AND t.recurring_id IS NULL AND t.fixed_cost=1
+                             AND COALESCE(cat.direction,CASE WHEN t.direction='income' THEN 'income' ELSE 'expense' END)='expense'
+                             AND t.booking_date BETWEEN ? AND ?""",
+                        (start.isoformat(),end.isoformat())).fetchone()[0] or 0)
+    recurring_rows=[r for r in recurring_rows_for_window(c,None,start,end) if int(r["fixed_cost"] or 0)]
+    categories,overrides=_recurring_plan_context(c,recurring_rows,start,end)
+    for r in recurring_rows:
+        cid=r["category_id"]
+        cat=categories.get(int(cid)) if cid is not None else None
+        cat_type=cat["direction"] if cat else None
+        if cat_type in {"income","savings"} or (cat_type is None and r["kind"]=="income"):
+            continue
+        vf=date.fromisoformat(r["valid_from"] or r["next_date"])
+        vu=date.fromisoformat(r["valid_until"]) if r["valid_until"] else end
+        low=max(start,vf); high=min(end,vu)
+        if low>high:
+            continue
+        anchor=date.fromisoformat(r["anchor_date"] or r["valid_from"] or r["next_date"])
+        series_id=int(r["series_id"] or r["id"])
+        for due in occurrences(anchor,r["frequency"],low,high,int(r["interval_count"] or 1)):
+            raw=overrides.get((series_id,due.isoformat()),int(r["amount"]))
+            total+=abs(int(raw))
+    return total
+'''
+main=main[:plan_start]+plan_new+main[plan_end:]
 main_path.write_text(main,encoding='utf-8')
 print('performance patch applied')
