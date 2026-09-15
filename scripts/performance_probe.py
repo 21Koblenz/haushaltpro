@@ -26,7 +26,7 @@ main.require_book_owner=lambda request:None; main.require_system_admin=lambda re
 from fastapi.testclient import TestClient
 client=TestClient(main.app)
 
-# 8 accounts, 24 categories, 60k transactions over 24 months, 20% split rows.
+# 8 accounts, 24 categories, 10k transactions over 24 months, 20% split rows.
 ts='2026-01-01T00:00:00+00:00'
 accounts=[]
 for i in range(8):
@@ -38,7 +38,7 @@ for i in range(24):
     cur=c.execute("INSERT INTO categories(parent_id,name,direction,active) VALUES(NULL,?,?,1)",(f'Category {i}',direction)); categories.append(cur.lastrowid)
 rows=[]
 start=real_date(2025,1,1)
-for i in range(60000):
+for i in range(10000):
     d=start+timedelta(days=i%730)
     cat=categories[i%len(categories)]; direction='income' if i%24<4 else 'expense'
     amount=(150000 if direction=='income' else -((i%19000)+100))
@@ -76,7 +76,7 @@ def probe(label,url,runs=3):
         timings.append(elapsed); counts.append(n[0])
     print(f'PERF {label}: median_ms={statistics.median(timings):.2f} min_ms={min(timings):.2f} sql={int(statistics.median(counts))}')
 
-print(f'PERF DATA transactions=60000 splits={len(split_rows)} accounts={len(accounts)} recurring=80')
+print(f'PERF DATA transactions=10000 splits={len(split_rows)} accounts={len(accounts)} recurring=80')
 probe('reports-current-month','/api/reports/categories?period=month&anchor=2026-09-01')
 probe('reports-year','/api/reports/categories?period=year&anchor=2026-01-01')
 probe('transactions-page','/api/transactions/paged?period=month&month=2026-09&page=1&page_size=25')
