@@ -1,0 +1,62 @@
+name: Validate performance optimizations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/apply-performance-optimizations.yml
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt httpx2==2.12.0
+      - name: Apply optimization patch
+        run: python scripts/apply_performance_optimizations.py
+      - name: Functional regression suite
+        run: |
+          set -e
+          sudo install -d -o "$(id -u)" -g "$(id -g)" /app
+          python -m compileall -q app tests
+          node --check static/app.js
+          python tests/test_v0219_plausibility_matrix.py
+          python tests/test_recurring_transfers_and_current_report.py
+          python tests/test_v0218_custom_recurring_intervals.py
+          python tests/test_recurring_forecast_journal_invariant.py
+          python tests/test_v090_transfers_payees_audit.py
+          python tests/test_i18n_preview.py
+          python tests/security_audit.py
+          git diff --check
+      - name: Performance regression probe
+        run: |
+          python scripts/performance_probe.py | tee /tmp/perf.txt
+          python - <<'PY'
+          import re
+          text=open('/tmp/perf.txt',encoding='utf-8').read()
+          vals={m.group(1):int(m.group(2)) for m in re.finditer(r'PERF ([^:]+):.* sql=(\d+)',text)}
+          required={'dashboard-month':500,'planning-month':1000,'planning-year':1000}
+          missing=set(required)-set(vals)
+          if missing: raise SystemExit(f'missing performance metrics: {sorted(missing)}')
+          for name,limit in required.items():
+              if vals[name]>=limit:
+                  raise SystemExit(f'{name}: SQL {vals[name]} exceeds limit {limit}')
+          print('performance SQL query-count gates: PASS',vals)
+          PY
+      - name: Commit optimized code
+        run: |
+          git add app/db.py app/main.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "perf: batch recurring forecast lookups"
+          git push origin HEAD:main
