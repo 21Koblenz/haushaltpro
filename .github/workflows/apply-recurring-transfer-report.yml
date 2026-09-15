@@ -1,0 +1,46 @@
+name: Apply recurring transfer and report patch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/apply-recurring-transfer-report.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install test dependencies
+        run: python -m pip install -r requirements.txt httpx2==2.12.0
+      - name: Apply patch
+        run: python scripts/apply_recurring_transfer_report.py
+      - name: Validate targeted behavior
+        run: |
+          set -e
+          sudo install -d -o "$(id -u)" -g "$(id -g)" /app
+          python -m compileall -q app tests
+          node --check static/app.js
+          python tests/test_recurring_transfers_and_current_report.py
+          python tests/test_v0218_custom_recurring_intervals.py
+          python tests/test_recurring_forecast_journal_invariant.py
+          python tests/test_v090_transfers_payees_audit.py
+          python tests/security_audit.py
+          git diff --check
+      - name: Commit tested patch
+        run: |
+          git add app/db.py app/main.py static/app.js static/index.html static/i18n/en.json CHANGELOG.md tests/test_recurring_transfers_and_current_report.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "feat: add recurring transfers and current-month forecast"
+          git push origin HEAD:main
