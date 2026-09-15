@@ -48,5 +48,5 @@ html=(root/'static/index.html').read_text(); js=(root/'static/app.js').read_text
 assert 'id="appVersion"' in html and 'id="themeMode"' in html
 assert 'data-roverride' in js and "localStorage.setItem('hp_theme'" in js
 assert 'html[data-theme="light"]' in css
-assert tuple(map(int,main.APP_VERSION.split('.'))) >= (0,6,0)
+assert tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.'))) >= (0,6,0)
 print('v0.4.0 monthly recurring override + theme + footer version: PASS')
