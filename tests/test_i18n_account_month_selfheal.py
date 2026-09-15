@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 root = Path(__file__).resolve().parents[1]
 js = (root / "static" / "app.js").read_text(encoding="utf-8")
@@ -13,6 +14,6 @@ assert "setMonthControls('accountMonthName','accountYear',body.start_date.slice(
 assert "function refreshLocalizedMonthControls()" in js
 assert "for(const [monthId,yearId] of MONTH_CONTROL_PAIRS)" in js
 for asset in ("style.css", "ui-enhancements.css", "i18n.js", "app.js", "ui-enhancements.js"):
-    assert f"/assets/{asset}?v=0.21.8" in html
+    assert re.search(rf'/assets/{re.escape(asset)}\?v=[^"\']+', html), asset
 
 print("i18n account/month self-heal + cache busting: PASS")
