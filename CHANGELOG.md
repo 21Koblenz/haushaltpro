@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Removed the duplicate “+ Wiederkehrende Buchung” creation button from the recurring-series tab. New recurring series are created through the normal “+ Buchung” dialog, while existing series remain manageable in the recurring tab.
+
 ### Added
 
 - Recurring transactions support quarterly and half-yearly presets plus arbitrary calendar intervals such as every 10 days, 2 weeks, 5 months or 2 years. Existing recurring series keep their previous rhythm with an interval multiplier of 1.

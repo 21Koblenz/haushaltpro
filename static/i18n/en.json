@@ -183,7 +183,6 @@
     "Seite 1 / 1": "Page 1 / 1",
     "Einträge pro Seite": "Entries per page",
     "Alle anzeigen": "Show all",
-    "Aktive Serien. Neue Serien werden hier direkt angelegt; einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.": "Active series. Create new series here; individual executed occurrences also appear under “All transactions”. Changes can take effect from a freely selected date.",
     "+ Wiederkehrende Buchung": "+ Recurring transaction",
     "Nächster Termin": "Next occurrence",
     "Intervall": "Interval",
@@ -771,7 +770,8 @@
     "Die Serienänderung ab einem Stichtag erfolgt unter „Wiederkehrende Buchungen“.": "Change the series from a specific date under “Recurring transactions”.",
     "Einzeltermin gespeichert": "Occurrence saved",
     "Termin anpassen": "Adjust occurrence",
-    "Einnahmekategorien": "Income categories"
+    "Einnahmekategorien": "Income categories",
+    "Aktive Serien. Neue Serien legst du über „+ Buchung“ an und aktivierst dort „Wiederkehrende Zahlung / Einnahme“. Einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.": "Active series. Create new series via “+ Transaction” and enable “Recurring payment / income” there. Individual executed occurrences also appear under “All transactions”. Changes can take effect from a freely selected date."
   },
   "patterns": [
     {
