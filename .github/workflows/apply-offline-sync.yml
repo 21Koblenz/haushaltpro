@@ -1,3 +1,4 @@
+# Rerun after cache-bust regression was made version-agnostic.
 name: Apply offline sync feature
 
 on:
