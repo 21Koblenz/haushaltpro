@@ -1,4 +1,4 @@
-# Rerun after cache-bust and connection-placeholder i18n fixes.
+# Final rerun after cache-bust and connection-placeholder i18n fixes.
 name: Apply offline sync feature
 
 on:
@@ -30,7 +30,7 @@ jobs:
           from pathlib import Path
           p=Path('static/index.html')
           s=p.read_text(encoding='utf-8')
-          s=s.replace('<span id="connectionText">Server prüfen …</span>','<span id="connectionText">…</span>',1)
+          s=s.replace('<span id="connectionText">Server prüfen …</span>','<span id="connectionText"></span>',1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Validate syntax and full regression suite
