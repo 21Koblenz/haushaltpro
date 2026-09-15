@@ -1,0 +1,341 @@
+name: Apply flexible recurring intervals
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/apply-custom-recurrence.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply recurrence patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              count=text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              return text.replace(old,new,1)
+
+          def replace_last(text, old, new, label):
+              count=text.count(old)
+              if count < 1:
+                  raise SystemExit(f'{label}: no match')
+              head,sep,tail=text.rpartition(old)
+              return head+new+tail
+
+          # --- Database: preserve old frequencies and add a multiplier. ---
+          p=Path('app/db.py'); db=p.read_text(encoding='utf-8')
+          db=replace_once(
+              db,
+              "            frequency TEXT NOT NULL CHECK(frequency IN ('daily','weekly','monthly','yearly')),\n            kind TEXT NOT NULL DEFAULT 'direct_debit' CHECK(kind IN ('direct_debit','standing_order','income')),",
+              "            frequency TEXT NOT NULL CHECK(frequency IN ('daily','weekly','monthly','yearly')),\n            interval_count INTEGER NOT NULL DEFAULT 1 CHECK(interval_count >= 1),\n            kind TEXT NOT NULL DEFAULT 'direct_debit' CHECK(kind IN ('direct_debit','standing_order','income')),",
+              'recurring schema interval_count',
+          )
+          db=replace_once(
+              db,
+              '    if "fixed_cost" not in rcols:\n        c.execute("ALTER TABLE recurring ADD COLUMN fixed_cost INTEGER NOT NULL DEFAULT 0")',
+              '    if "fixed_cost" not in rcols:\n        c.execute("ALTER TABLE recurring ADD COLUMN fixed_cost INTEGER NOT NULL DEFAULT 0")\n    if "interval_count" not in rcols:\n        c.execute("ALTER TABLE recurring ADD COLUMN interval_count INTEGER NOT NULL DEFAULT 1")\n    c.execute("UPDATE recurring SET interval_count=1 WHERE interval_count IS NULL OR interval_count<1")',
+              'recurring migration interval_count',
+          )
+          db=replace_once(db,"INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','22');","INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','23');",'init schema version')
+          db=replace_once(db,"c.execute(\"INSERT INTO app_meta(key,value) VALUES('schema_version','22') ON CONFLICT(key) DO UPDATE SET value='22'\")","c.execute(\"INSERT INTO app_meta(key,value) VALUES('schema_version','23') ON CONFLICT(key) DO UPDATE SET value='23'\")",'migration schema version')
+          p.write_text(db,encoding='utf-8')
+
+          # --- Backend models, calendar arithmetic and persistence. ---
+          p=Path('app/main.py'); main=p.read_text(encoding='utf-8')
+          main=replace_once(
+              main,
+              '    recurring: bool = False\n    recurring_frequency: str | None = None\n    recurring_until: date | None = None',
+              '    recurring: bool = False\n    recurring_frequency: str | None = None\n    recurring_interval_count: int = Field(default=1, ge=1, le=1000)\n    recurring_until: date | None = None',
+              'transaction recurring interval model',
+          )
+          main=replace_once(
+              main,
+              '    next_date: date\n    frequency: str = "monthly"\n    kind: str = "direct_debit"',
+              '    next_date: date\n    frequency: str = "monthly"\n    interval_count: int = Field(default=1, ge=1, le=1000)\n    kind: str = "direct_debit"',
+              'recurring interval model',
+          )
+          main=replace_once(
+              main,
+              '                             "recurring_frequency":latest["frequency"],"recurring_until":latest["valid_until"],',
+              '                             "recurring_frequency":latest["frequency"],"recurring_interval_count":int(latest["interval_count"] or 1),"recurring_until":latest["valid_until"],',
+              'transaction recurring serialization',
+          )
+
+          calendar_block='''def next_occurrence(d: date, frequency: str, interval_count: int = 1) -> date:
+              step=max(1,int(interval_count or 1))
+              if frequency == "daily":
+                  return d + timedelta(days=step)
+              if frequency == "weekly":
+                  return d + timedelta(weeks=step)
+              if frequency == "monthly":
+                  return add_months(d,step)
+              if frequency == "yearly":
+                  try:
+                      return d.replace(year=d.year + step)
+                  except ValueError:
+                      return d.replace(year=d.year + step, day=28)
+              raise ValueError("frequency")
+
+
+          def occurrences(start: date, frequency: str, from_day: date, to_day: date, interval_count: int = 1):
+              """Yield calendar-anchored occurrences for every N days/weeks/months/years.
+
+              Month/year schedules always derive from the original anchor. A series
+              started on the 31st therefore returns to the 31st after a short month.
+              """
+              if from_day > to_day:
+                  return
+              step=max(1,int(interval_count or 1))
+              if frequency in {"daily","weekly"}:
+                  step_days=step if frequency=="daily" else step*7
+                  delta=(from_day-start).days
+                  n=max(0,delta//step_days-1)
+                  while True:
+                      d=start+timedelta(days=n*step_days)
+                      if d>to_day:
+                          break
+                      if d>=from_day:
+                          yield d
+                      n+=1
+                  return
+              if frequency == "monthly":
+                  diff=(from_day.year-start.year)*12+from_day.month-start.month
+                  n=max(0,diff//step-1)
+                  while True:
+                      d=add_months(start,n*step)
+                      if d>to_day:
+                          break
+                      if d>=from_day:
+                          yield d
+                      n+=1
+                  return
+              if frequency == "yearly":
+                  diff=from_day.year-start.year
+                  n=max(0,diff//step-1)
+                  while True:
+                      target_year=start.year+n*step
+                      try:
+                          d=start.replace(year=target_year)
+                      except ValueError:
+                          d=start.replace(year=target_year,day=28)
+                      if d>to_day:
+                          break
+                      if d>=from_day:
+                          yield d
+                      n+=1
+                  return
+              raise ValueError("frequency")'''
+          pattern=r'def next_occurrence\(d: date, frequency: str\) -> date:\n.*?\n\ndef _next_unexecuted_due'
+          new_main,n=re.subn(pattern,calendar_block+'\n\ndef _next_unexecuted_due',main,count=1,flags=re.S)
+          if n!=1:
+              raise SystemExit(f'calendar recurrence block: expected 1 match, found {n}')
+          main=new_main
+
+          # Every recurrence calculation must use the row's multiplier.
+          call_re=re.compile(r'occurrences\(anchor,\s*(r|version)\["frequency"\],\s*([^,\n]+),\s*([^)\n]+)\)')
+          def add_interval(m):
+              var=m.group(1)
+              return f'occurrences(anchor,{var}["frequency"],{m.group(2).strip()},{m.group(3).strip()},int({var}["interval_count"] or 1))'
+          main,changed=call_re.subn(add_interval,main)
+          if changed < 7:
+              raise SystemExit(f'occurrence call sites: expected at least 7, found {changed}')
+          print('updated occurrence call sites:',changed)
+
+          # Store multiplier for series created from the transaction dialog.
+          main=replace_once(
+              main,
+              '            recurring_id = rcur.lastrowid\n            c.execute("UPDATE recurring SET series_id=? WHERE id=?", (recurring_id, recurring_id))',
+              '            recurring_id = rcur.lastrowid\n            c.execute("UPDATE recurring SET interval_count=? WHERE id=?", (x.recurring_interval_count, recurring_id))\n            c.execute("UPDATE recurring SET series_id=? WHERE id=?", (recurring_id, recurring_id))',
+              'transaction recurring create persistence',
+          )
+          main=replace_once(
+              main,
+              '            # Rebuild only the future/planned part of the contract. Executed',
+              '            if active_recurring_id:\n                c.execute("UPDATE recurring SET interval_count=? WHERE id=?", (x.recurring_interval_count, active_recurring_id))\n\n            # Rebuild only the future/planned part of the contract. Executed',
+              'transaction recurring update persistence',
+          )
+
+          # Store multiplier for the dedicated recurring-series dialog.
+          main=replace_once(
+              main,
+              '        c.execute("UPDATE recurring SET series_id=? WHERE id=?",(cur.lastrowid,cur.lastrowid))\n        created=recurring_snapshot(c,cur.lastrowid)',
+              '        c.execute("UPDATE recurring SET series_id=? WHERE id=?",(cur.lastrowid,cur.lastrowid))\n        c.execute("UPDATE recurring SET interval_count=? WHERE id=?",(x.interval_count,cur.lastrowid))\n        created=recurring_snapshot(c,cur.lastrowid)',
+              'recurring create persistence',
+          )
+          main=replace_once(
+              main,
+              '            c.execute("UPDATE recurring SET account_id=?,category_id=?,name=?,amount=?,next_date=?,frequency=?,kind=?,max_amount=?,anchor_date=?,valid_from=?,valid_until=?,confidence=?,fixed_cost=? WHERE id=?",\n                (x.account_id,x.category_id,x.name.strip(),amount,x.next_date.isoformat(),x.frequency,kind,max_amount,x.next_date.isoformat(),effective.isoformat(),x.valid_until.isoformat() if x.valid_until else None,x.confidence,int(x.fixed_cost),recurring_id))',
+              '            c.execute("UPDATE recurring SET account_id=?,category_id=?,name=?,amount=?,next_date=?,frequency=?,interval_count=?,kind=?,max_amount=?,anchor_date=?,valid_from=?,valid_until=?,confidence=?,fixed_cost=? WHERE id=?",\n                (x.account_id,x.category_id,x.name.strip(),amount,x.next_date.isoformat(),x.frequency,x.interval_count,kind,max_amount,x.next_date.isoformat(),effective.isoformat(),x.valid_until.isoformat() if x.valid_until else None,x.confidence,int(x.fixed_cost),recurring_id))',
+              'recurring update persistence',
+          )
+          marker='        series_id=int(old["series_id"] or old["id"])\n        _remove_planned_series_transactions(c,series_id,effective)'
+          main=replace_last(
+              main,
+              marker,
+              '        series_id=int(old["series_id"] or old["id"])\n        c.execute("UPDATE recurring SET interval_count=? WHERE id=?",(x.interval_count,cur.lastrowid))\n        _remove_planned_series_transactions(c,series_id,effective)',
+              'versioned recurring update persistence',
+          )
+          # Audit output should make interval changes visible.
+          main=main.replace('(\"name\",\"amount\",\"next_date\",\"frequency\",\"account_name\"','(\"name\",\"amount\",\"next_date\",\"frequency\",\"interval_count\",\"account_name\"')
+          p.write_text(main,encoding='utf-8')
+
+          # --- UI: named presets plus arbitrary Every N unit. ---
+          p=Path('static/app.js'); js=p.read_text(encoding='utf-8')
+          helper='''
+          const recurrencePreset=(frequency='monthly',intervalCount=1)=>{
+            const n=Math.max(1,Number(intervalCount||1));
+            if(frequency==='monthly'&&n===3)return 'monthly:3';
+            if(frequency==='monthly'&&n===6)return 'monthly:6';
+            if(n===1&&['daily','weekly','monthly','yearly'].includes(frequency))return `${frequency}:1`;
+            return 'custom';
+          };
+          function recurrenceLabel(frequency='monthly',intervalCount=1){
+            const n=Math.max(1,Number(intervalCount||1)),en=hpLang()==='en';
+            if(frequency==='monthly'&&n===3)return en?'Quarterly':'Quartalsweise';
+            if(frequency==='monthly'&&n===6)return en?'Every six months':'Halbjährlich';
+            if(n===1){
+              const labels=en?{daily:'Daily',weekly:'Weekly',monthly:'Monthly',yearly:'Yearly'}:{daily:'Täglich',weekly:'Wöchentlich',monthly:'Monatlich',yearly:'Jährlich'};
+              return labels[frequency]||frequency;
+            }
+            const units=en?{daily:n===1?'day':'days',weekly:n===1?'week':'weeks',monthly:n===1?'month':'months',yearly:n===1?'year':'years'}:{daily:n===1?'Tag':'Tage',weekly:n===1?'Woche':'Wochen',monthly:n===1?'Monat':'Monate',yearly:n===1?'Jahr':'Jahre'};
+            return en?`Every ${n} ${units[frequency]||frequency}`:`Alle ${n} ${units[frequency]||frequency}`;
+          }
+          function recurrencePresetOptions(selected){
+            const en=hpLang()==='en';
+            const options=[['daily:1',en?'Daily':'Täglich'],['weekly:1',en?'Weekly':'Wöchentlich'],['monthly:1',en?'Monthly':'Monatlich'],['monthly:3',en?'Quarterly':'Quartalsweise'],['monthly:6',en?'Every six months':'Halbjährlich'],['yearly:1',en?'Yearly':'Jährlich'],['custom',en?'Custom …':'Benutzerdefiniert …']];
+            return options.map(([value,label])=>`<option value="${value}" ${value===selected?'selected':''}>${label}</option>`).join('');
+          }
+          function recurrenceRuleFields(prefix,frequency,intervalCount,frequencyName,intervalName){
+            const n=Math.max(1,Number(intervalCount||1)),preset=recurrencePreset(frequency,n),en=hpLang()==='en';
+            const unitLabels=en?{daily:'Days',weekly:'Weeks',monthly:'Months',yearly:'Years'}:{daily:'Tage',weekly:'Wochen',monthly:'Monate',yearly:'Jahre'};
+            const units=['daily','weekly','monthly','yearly'].map(unit=>`<option value="${unit}" ${unit===frequency?'selected':''}>${unitLabels[unit]}</option>`).join('');
+            return `<label>${en?'Schedule':'Rhythmus'}<select id="${prefix}Preset">${recurrencePresetOptions(preset)}</select></label><div id="${prefix}Custom" class="subform recurrence-custom" ${preset==='custom'?'':'hidden'}><label>${en?'Every':'Alle'}<input name="${intervalName}" type="number" min="1" max="1000" step="1" required value="${n}"></label><label>${en?'Unit':'Einheit'}<select name="${frequencyName}">${units}</select></label><small>${en?'Examples: 10 days, 2 weeks, 5 months or 2 years.':'Beispiele: alle 10 Tage, 2 Wochen, 5 Monate oder 2 Jahre.'}</small></div>`;
+          }
+          function bindRecurrencePreset(prefix,frequencyName,intervalName){
+            const preset=$(prefix+'Preset'),custom=$(prefix+'Custom'),form=document.getElementById('modalForm');
+            if(!preset||!custom||!form)return;
+            const frequency=form.querySelector(`[name="${frequencyName}"]`),count=form.querySelector(`[name="${intervalName}"]`);
+            if(!frequency||!count)return;
+            const apply=()=>{if(preset.value==='custom'){custom.hidden=false;return}const [unit,n]=preset.value.split(':');frequency.value=unit;count.value=n;custom.hidden=true};
+            preset.onchange=apply;apply();
+          }
+          '''
+          js=replace_once(js,"const monthNames=()=>hpLang()==='en'?MONTHS_EN:MONTHS_DE;\n", "const monthNames=()=>hpLang()==='en'?MONTHS_EN:MONTHS_DE;\n"+helper, 'recurrence UI helpers')
+          js=replace_once(js,"  const freq=tx?.recurring_frequency||'monthly';\n", "  const freq=tx?.recurring_frequency||'monthly';\n  const intervalCount=Math.max(1,Number(tx?.recurring_interval_count||1));\n", 'transaction interval initial value')
+          old_tx_interval='<label>Intervall<select name="recurring_frequency"><option value="monthly" ${freq===\'monthly\'?\'selected\':\'\'}>Monatlich</option><option value="weekly" ${freq===\'weekly\'?\'selected\':\'\'}>Wöchentlich</option><option value="yearly" ${freq===\'yearly\'?\'selected\':\'\'}>Jährlich</option><option value="daily" ${freq===\'daily\'?\'selected\':\'\'}>Täglich</option></select></label>'
+          js=replace_once(js,old_tx_interval,"${recurrenceRuleFields('txRecurrence',freq,intervalCount,'recurring_frequency','recurring_interval_count')}",'transaction recurrence UI')
+          js=replace_once(js,"recurring,recurring_frequency:recurring?f.get('recurring_frequency'):null,recurring_until:","recurring,recurring_frequency:recurring?f.get('recurring_frequency'):null,recurring_interval_count:recurring?Number(f.get('recurring_interval_count')||1):1,recurring_until:",'transaction recurrence payload')
+          js=replace_once(js,"  const cb=$('txRecurring'),fields=$('txRecurringFields');","  bindRecurrencePreset('txRecurrence','recurring_frequency','recurring_interval_count');\n  const cb=$('txRecurring'),fields=$('txRecurringFields');",'transaction preset binding')
+          js=replace_once(js,"${esc(hpText(({monthly:'Monatlich',weekly:'Wöchentlich',yearly:'Jährlich',daily:'Täglich'})[t.recurring_frequency]||t.recurring_frequency))}","${esc(recurrenceLabel(t.recurring_frequency,t.recurring_interval_count))}",'transaction recurrence label')
+
+          js=replace_once(js,"  const today=new Date().toISOString().slice(0,10),next=rec?.next_date||today;\n","  const today=new Date().toISOString().slice(0,10),next=rec?.next_date||today;\n  const intervalCount=Math.max(1,Number(rec?.interval_count||1));\n",'series interval initial value')
+          old_rec_interval='<label>Intervall<select name="frequency"><option value="monthly" ${rec?.frequency===\'monthly\'?\'selected\':\'\'}>Monatlich</option><option value="weekly" ${rec?.frequency===\'weekly\'?\'selected\':\'\'}>Wöchentlich</option><option value="yearly" ${rec?.frequency===\'yearly\'?\'selected\':\'\'}>Jährlich</option><option value="daily" ${rec?.frequency===\'daily\'?\'selected\':\'\'}>Täglich</option></select></label>'
+          js=replace_once(js,old_rec_interval,"${recurrenceRuleFields('recurrence',rec?.frequency||'monthly',intervalCount,'frequency','interval_count')}",'series recurrence UI')
+          js=replace_once(js,"next_date:f.get('next_date'),frequency:f.get('frequency'),kind:'direct_debit'","next_date:f.get('next_date'),frequency:f.get('frequency'),interval_count:Number(f.get('interval_count')||1),kind:'direct_debit'",'series recurrence payload')
+          js=replace_once(js,"await loadRecurring();await loadTransactions();await loadDashboard()})\n}\nfunction recurringOverrideDialog","await loadRecurring();await loadTransactions();await loadDashboard()});\n  bindRecurrencePreset('recurrence','frequency','interval_count');\n}\nfunction recurringOverrideDialog",'series preset binding')
+          js=replace_once(js,"${esc(hpText(freqLabel[r.frequency]||r.frequency))}","${esc(recurrenceLabel(r.frequency,r.interval_count))}",'series recurrence label')
+          p.write_text(js,encoding='utf-8')
+
+          # Cache-bust changed browser assets without changing the release number yet.
+          p=Path('static/index.html'); html=p.read_text(encoding='utf-8')
+          html=html.replace('?v=0.21.8','?v=0.21.8-intervals1')
+          p.write_text(html,encoding='utf-8')
+
+          # Migration regression now expects schema 23 and the new column.
+          p=Path('tests/test_v090_migration.py'); t=p.read_text(encoding='utf-8')
+          t=replace_once(t,"assert ver2=='22',ver2","assert ver2=='23',ver2",'migration test schema version')
+          t=replace_once(t,"assert {'transfer_id','transfer_side'} <= cols, cols","assert {'transfer_id','transfer_side'} <= cols, cols\nrcols={r[1] for r in c.execute('PRAGMA table_info(recurring)').fetchall()}\nassert 'interval_count' in rcols,rcols",'migration test interval column')
+          p.write_text(t,encoding='utf-8')
+
+          # End-to-end calendar plausibility for presets and arbitrary multipliers.
+          Path('tests/test_v0218_custom_recurring_intervals.py').write_text(r'''import sqlite3,sys,types,tempfile
+          from pathlib import Path
+          from datetime import date
+          shim=types.ModuleType('sqlcipher3'); shim.dbapi2=sqlite3; sys.modules['sqlcipher3']=shim
+          root=Path(__file__).resolve().parents[1]
+          Path('/app').mkdir(exist_ok=True); static=Path('/app/static')
+          if not static.exists(): static.symlink_to(root/'static',target_is_directory=True)
+          sys.path.insert(0,str(root))
+          from app import db
+          fd,tmp=tempfile.mkstemp(suffix='.db'); Path(tmp).unlink(missing_ok=True)
+          c=sqlite3.connect(tmp,check_same_thread=False); c.row_factory=sqlite3.Row; c.execute('PRAGMA foreign_keys=ON'); db._conn=c; db.DB_PATH=Path(tmp); db.init_schema(c); db.migrate_schema(c)
+          from app import main
+          class FrozenDate(date):
+              @classmethod
+              def today(cls): return cls(2026,9,15)
+          main.date=FrozenDate; main.db._conn=c; main.session=lambda request,write=False:('test',1,'csrf',0)
+          main.require_book_owner=lambda request: None; main.require_system_admin=lambda request: None
+          from fastapi.testclient import TestClient
+          client=TestClient(main.app)
+          def ok(r): assert r.status_code<300,(r.status_code,r.text); return r.json()
+          acc=ok(client.post('/api/accounts',json={'name':'Interval Test','type':'checking','opening_balance':10000,'currency':'EUR','start_date':'2026-01-01'}))
+          cat=ok(client.post('/api/categories',json={'name':'Vertrag','direction':'expense'}))
+          def create(name,start,end,frequency,interval):
+              return ok(client.post('/api/recurring',json={'account_id':acc['id'],'category_id':cat['id'],'name':name,'amount':100,'next_date':start,'frequency':frequency,'interval_count':interval,'kind':'direct_debit','active':True,'valid_until':end,'confidence':'fixed','fixed_cost':True}))
+          def dates(rid):
+              return [r[0] for r in c.execute("SELECT booking_date FROM transactions WHERE recurring_id=? ORDER BY booking_date",(rid,)).fetchall()]
+          q=create('Quartal','2026-10-31','2027-10-31','monthly',3)
+          assert dates(q['id'])==['2026-10-31','2027-01-31','2027-04-30','2027-07-31','2027-10-31'],dates(q['id'])
+          h=create('Halbjahr','2026-11-30','2027-11-30','monthly',6)
+          assert dates(h['id'])==['2026-11-30','2027-05-30','2027-11-30'],dates(h['id'])
+          w=create('Alle zwei Wochen','2026-09-21','2026-11-02','weekly',2)
+          assert dates(w['id'])==['2026-09-21','2026-10-05','2026-10-19','2026-11-02'],dates(w['id'])
+          d=create('Alle zehn Tage','2026-09-20','2026-10-20','daily',10)
+          assert dates(d['id'])==['2026-09-20','2026-09-30','2026-10-10','2026-10-20'],dates(d['id'])
+          y=create('Alle zwei Jahre','2026-12-31','2030-12-31','yearly',2)
+          assert dates(y['id'])==['2026-12-31','2028-12-31','2030-12-31'],dates(y['id'])
+          m=create('Monat Standard','2026-10-15','2027-01-15','monthly',1)
+          assert dates(m['id'])==['2026-10-15','2026-11-15','2026-12-15','2027-01-15'],dates(m['id'])
+          rows=ok(client.get('/api/recurring'))
+          by_name={r['name']:r for r in rows}
+          assert by_name['Quartal']['interval_count']==3,by_name['Quartal']
+          assert by_name['Halbjahr']['interval_count']==6,by_name['Halbjahr']
+          assert by_name['Alle zwei Wochen']['interval_count']==2,by_name['Alle zwei Wochen']
+          bad=client.post('/api/recurring',json={'account_id':acc['id'],'category_id':cat['id'],'name':'Bad','amount':1,'next_date':'2026-10-01','frequency':'monthly','interval_count':0,'kind':'direct_debit','active':True})
+          assert bad.status_code==422,bad.text
+          # Transaction dialog path uses the same multiplier and persists it on the series.
+          tx=ok(client.post('/api/transactions',json={'account_id':acc['id'],'amount':50,'booking_date':'2026-10-20','category_id':cat['id'],'name':'Tx Quartal','payee':'Test','status':'executed','tags':[],'splits':[],'recurring':True,'recurring_frequency':'monthly','recurring_interval_count':3,'recurring_until':'2027-04-20','confidence':'fixed','fixed_cost':True}))
+          rr=c.execute('SELECT interval_count,frequency FROM recurring WHERE id=(SELECT recurring_id FROM transactions WHERE id=?)',(tx['id'],)).fetchone()
+          assert rr and rr['frequency']=='monthly' and rr['interval_count']==3,rr
+          source=(root/'static/app.js').read_text(encoding='utf-8')
+          for needle in ['Quartalsweise','Halbjährlich','recurring_interval_count','interval_count','recurrenceLabel']:
+              assert needle in source,needle
+          print('custom recurring intervals plausibility: PASS')
+          c.close(); Path(tmp).unlink(missing_ok=True)
+          '''.replace('\n          ','\n').lstrip(),encoding='utf-8')
+
+          # Record the feature under Unreleased while it is in the dev channel.
+          p=Path('CHANGELOG.md'); ch=p.read_text(encoding='utf-8')
+          ch=replace_once(ch,'## Unreleased\n\n','## Unreleased\n\n### Added\n\n- Recurring transactions support quarterly and half-yearly presets plus arbitrary calendar intervals such as every 10 days, 2 weeks, 5 months or 2 years. Existing recurring series keep their previous rhythm with an interval multiplier of 1.\n\n', 'changelog custom intervals')
+          p.write_text(ch,encoding='utf-8')
+          PY
+
+      - name: Syntax checks
+        run: |
+          python -m compileall -q app tests
+          node --check static/app.js
+
+      - name: Commit patched source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/db.py app/main.py static/app.js static/index.html tests/test_v090_migration.py tests/test_v0218_custom_recurring_intervals.py CHANGELOG.md
+          git diff --cached --check
+          git commit -m "feat: add flexible recurring intervals"
+          git push origin HEAD:main
