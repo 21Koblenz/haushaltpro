@@ -1,4 +1,4 @@
-name: Apply recurring transfer and report patch
+name: Finalize recurring transfer migration
 
 on:
   push:
@@ -6,13 +6,12 @@ on:
       - main
     paths:
       - .github/workflows/apply-recurring-transfer-report.yml
-      - scripts/apply_recurring_transfer_report.py
 
 permissions:
   contents: write
 
 jobs:
-  patch:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,38 +23,19 @@ jobs:
           cache: pip
       - name: Install test dependencies
         run: python -m pip install -r requirements.txt httpx2==2.12.0
-      - name: Make patch anchors resilient
+      - name: Fix migrated schema version
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path('scripts/apply_recurring_transfer_report.py')
+          p=Path('app/db.py')
           s=p.read_text(encoding='utf-8')
-
-          # The original transfer regex was deliberately conservative, but the
-          # legacy block contains multiple endpoints. Replace that script fragment
-          # with exact API-boundary slicing instead.
-          transfer_anchor=s.index("pattern = r'@app", s.index('transfer_block ='))
-          transfer_end_marker='    raise SystemExit("failed to replace transfer API block")'
-          transfer_end=s.index(transfer_end_marker,transfer_anchor)+len(transfer_end_marker)
-          transfer_replacement='''transfer_start = main.index('@app.get("/api/transfers/{transfer_id}")')
-          transfer_end = main.index('@app.get("/api/transactions")', transfer_start)
-          main = main[:transfer_start] + transfer_block + main[transfer_end:]'''
-          s=s[:transfer_anchor]+transfer_replacement+s[transfer_end:]
-
-          old='main = replace_once(main, old_report, new_report, "category report current-month forecast")'
-          new='''report_fn = main.index('def category_report')
-          report_start = main.index('    today=date.today()\\n    actual_end=min(end,today)\\n', report_fn)
-          report_end_marker = '    """, (start.isoformat(), query_end.isoformat(), start.isoformat(), query_end.isoformat())).fetchall()\\n'
-          report_end = main.index(report_end_marker, report_start) + len(report_end_marker)
-          main = main[:report_start] + new_report + main[report_end:]'''
+          old="INSERT INTO app_meta(key,value) VALUES('schema_version','25') ON CONFLICT(key) DO UPDATE SET value='24'"
+          new="INSERT INTO app_meta(key,value) VALUES('schema_version','25') ON CONFLICT(key) DO UPDATE SET value='25'"
           if old not in s:
-              raise SystemExit('report patch call anchor missing')
-          s=s.replace(old,new,1)
-          p.write_text(s,encoding='utf-8')
+              raise SystemExit('schema-version migration anchor missing')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
           PY
-      - name: Apply patch
-        run: python scripts/apply_recurring_transfer_report.py
-      - name: Validate targeted behavior
+      - name: Validate migration and feature behavior
         run: |
           set -e
           sudo install -d -o "$(id -u)" -g "$(id -g)" /app
@@ -66,11 +46,24 @@ jobs:
           python tests/test_recurring_forecast_journal_invariant.py
           python tests/test_v090_transfers_payees_audit.py
           python tests/security_audit.py
+          python - <<'PY'
+          import sqlite3, sys, types
+          shim=types.ModuleType('sqlcipher3'); shim.dbapi2=sqlite3; sys.modules['sqlcipher3']=shim
+          from app import db
+          c=sqlite3.connect(':memory:')
+          c.row_factory=sqlite3.Row
+          db.init_schema(c)
+          c.execute("UPDATE app_meta SET value='24' WHERE key='schema_version'")
+          db.migrate_schema(c)
+          got=c.execute("SELECT value FROM app_meta WHERE key='schema_version'").fetchone()[0]
+          assert got=='25',got
+          print('schema migration 24 -> 25: PASS')
+          PY
           git diff --check
-      - name: Commit tested patch
+      - name: Commit migration fix
         run: |
-          git add app/db.py app/main.py static/app.js static/index.html static/i18n/en.json CHANGELOG.md tests/test_recurring_transfers_and_current_report.py
+          git add app/db.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "feat: add recurring transfers and current-month forecast"
+          git commit -m "fix: finalize recurring transfer schema migration"
           git push origin HEAD:main
