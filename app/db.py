@@ -771,7 +771,7 @@ def migrate_schema(c) -> None:
     c.execute("CREATE INDEX IF NOT EXISTS idx_payee_usage ON payee_presets(usage_count DESC,last_used_at DESC)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tx_category_date ON transactions(category_id,booking_date,status)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag_tx ON transaction_tags(tag,transaction_id)")
-    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','25') ON CONFLICT(key) DO UPDATE SET value='24'")
+    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','25') ON CONFLICT(key) DO UPDATE SET value='25'")
     c.commit()
 
 def rekey(new_key: str) -> None:
