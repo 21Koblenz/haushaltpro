@@ -372,6 +372,7 @@ def init_schema(c) -> None:
             account_id INTEGER NOT NULL,
             category_id INTEGER,
             name TEXT NOT NULL,
+            payee TEXT,
             amount INTEGER NOT NULL,
             next_date TEXT NOT NULL,
             frequency TEXT NOT NULL CHECK(frequency IN ('daily','weekly','monthly','yearly')),
@@ -562,7 +563,7 @@ def init_schema(c) -> None:
         CREATE INDEX IF NOT EXISTS idx_reconcile_learning ON reconciliation_learning(account_id,direction,amount_cents);
 
         INSERT OR REPLACE INTO app_meta(key,value) VALUES('db_magic','HAUSHALTPRO_V3_SQLCIPHER4');
-        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','23');
+        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','24');
         INSERT OR IGNORE INTO settings(key,value) VALUES('investment_tracking','false');
         INSERT OR IGNORE INTO settings(key,value) VALUES('autolock_minutes','15');
         INSERT OR IGNORE INTO settings(key,value) VALUES('budget_strategy','hybrid');
@@ -651,7 +652,16 @@ def migrate_schema(c) -> None:
         c.execute("ALTER TABLE recurring ADD COLUMN fixed_cost INTEGER NOT NULL DEFAULT 0")
     if "interval_count" not in rcols:
         c.execute("ALTER TABLE recurring ADD COLUMN interval_count INTEGER NOT NULL DEFAULT 1")
+    if "payee" not in rcols:
+        c.execute("ALTER TABLE recurring ADD COLUMN payee TEXT")
     c.execute("UPDATE recurring SET interval_count=1 WHERE interval_count IS NULL OR interval_count<1")
+    c.execute("""UPDATE recurring SET payee=(
+        SELECT t.payee FROM transactions t
+        JOIN recurring rr ON rr.id=t.recurring_id
+        WHERE COALESCE(rr.series_id,rr.id)=COALESCE(recurring.series_id,recurring.id)
+          AND t.payee IS NOT NULL AND TRIM(t.payee)<>''
+        ORDER BY t.booking_date,t.id LIMIT 1
+    ) WHERE payee IS NULL OR TRIM(payee)=''""")
     c.execute("""CREATE TABLE IF NOT EXISTS attachments(
         id INTEGER PRIMARY KEY, transaction_id INTEGER NOT NULL, filename TEXT NOT NULL,
         content_type TEXT, data BLOB NOT NULL, size INTEGER NOT NULL, created_at TEXT NOT NULL,
@@ -723,7 +733,7 @@ def migrate_schema(c) -> None:
     c.execute("CREATE INDEX IF NOT EXISTS idx_payee_usage ON payee_presets(usage_count DESC,last_used_at DESC)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tx_category_date ON transactions(category_id,booking_date,status)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag_tx ON transaction_tags(tag,transaction_id)")
-    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','23') ON CONFLICT(key) DO UPDATE SET value='23'")
+    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','24') ON CONFLICT(key) DO UPDATE SET value='24'")
     c.commit()
 
 def rekey(new_key: str) -> None:

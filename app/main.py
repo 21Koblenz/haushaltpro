@@ -760,6 +760,7 @@ class RecurringIn(BaseModel):
     account_id: int
     category_id: int | None = None
     name: str = Field(min_length=1, max_length=150)
+    payee: str | None = Field(default=None, max_length=200)
     amount: Decimal
     next_date: date
     frequency: str = "monthly"
@@ -2169,7 +2170,7 @@ def transaction_create(x: TransactionIn, request: Request):
                  x.booking_date.isoformat(), x.booking_date.isoformat(), x.recurring_until.isoformat() if x.recurring_until else None, x.confidence, int(x.fixed_cost), ts),
             )
             recurring_id = rcur.lastrowid
-            c.execute("UPDATE recurring SET interval_count=? WHERE id=?", (x.recurring_interval_count, recurring_id))
+            c.execute("UPDATE recurring SET interval_count=?,payee=? WHERE id=?", (x.recurring_interval_count, clean_text(x.payee,200), recurring_id))
             c.execute("UPDATE recurring SET series_id=? WHERE id=?", (recurring_id, recurring_id))
         initial_status = "planned" if x.recurring and x.booking_date > date.today() else "executed"
         cur = c.execute(
@@ -2269,7 +2270,7 @@ def transaction_update(tx_id: int, x: TransactionIn, request: Request):
                           (active_recurring_id,x.booking_date.isoformat(),tx_id,iso(utcnow())))
 
             if active_recurring_id:
-                c.execute("UPDATE recurring SET interval_count=? WHERE id=?", (x.recurring_interval_count, active_recurring_id))
+                c.execute("UPDATE recurring SET interval_count=?,payee=? WHERE id=?", (x.recurring_interval_count, clean_text(x.payee,200), active_recurring_id))
 
             # Rebuild only the future/planned part of the contract. Executed
             # history remains untouched. This keeps the bookings journal in sync
@@ -2535,7 +2536,7 @@ def _materialize_recurring_window(c, from_day: date, to_day: date, user_id: int 
         cur=c.execute(
             """INSERT INTO transactions(account_id,amount,direction,booking_date,name,payee,note,category_id,status,external_id,recurring_id,confidence,fixed_cost,created_at,updated_at)
                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (r["account_id"],amount,"income" if amount>=0 else "expense",due.isoformat(),r["name"],r["name"],
+            (r["account_id"],amount,"income" if amount>=0 else "expense",due.isoformat(),r["name"],r["payee"] or r["name"],
              ev.get("override_note"),r["category_id"],transaction_status,external_id,recurring_id,r["confidence"] or "fixed",int(r["fixed_cost"] or 0),ts,ts),
         )
         c.execute("INSERT INTO recurring_occurrences(recurring_id,due_date,transaction_id,status,created_at) VALUES(?,?,?,'executed',?)",
@@ -2697,10 +2698,10 @@ def recurring_create(x: RecurringIn, request: Request):
         cur = c.execute("INSERT INTO recurring(account_id,category_id,name,amount,next_date,frequency,kind,max_amount,active,series_id,anchor_date,valid_from,valid_until,confidence,fixed_cost,created_at) VALUES(?,?,?,?,?,?,?,?,?,NULL,?,?,?,?,?,?)",
             (x.account_id,x.category_id,x.name.strip(),amount,x.next_date.isoformat(),x.frequency,kind,max_amount,int(x.active),x.next_date.isoformat(),x.next_date.isoformat(),x.valid_until.isoformat() if x.valid_until else None,x.confidence,int(x.fixed_cost),iso(utcnow())))
         c.execute("UPDATE recurring SET series_id=? WHERE id=?",(cur.lastrowid,cur.lastrowid))
-        c.execute("UPDATE recurring SET interval_count=? WHERE id=?",(x.interval_count,cur.lastrowid))
+        c.execute("UPDATE recurring SET interval_count=?,payee=? WHERE id=?",(x.interval_count,clean_text(x.payee,200),cur.lastrowid))
         created=recurring_snapshot(c,cur.lastrowid)
         generated=_materialize_recurring_series(c,cur.lastrowid,sess[1],from_day=max(date.today(),x.next_date)) if x.active else []
-        audit_append(c,sess[1],"recurring.create","recurring",cur.lastrowid,{"name":created.get("name"),"added":audit_pick(created,("name","amount","next_date","frequency","interval_count","account_name","category_name","valid_until","confidence","fixed_cost","max_amount")),"generated_transactions":len(generated)})
+        audit_append(c,sess[1],"recurring.create","recurring",cur.lastrowid,{"name":created.get("name"),"added":audit_pick(created,("name","payee","amount","next_date","frequency","interval_count","account_name","category_name","valid_until","confidence","fixed_cost","max_amount")),"generated_transactions":len(generated)})
         return {"id":cur.lastrowid,"generated_transactions":len(generated)}
 
 
@@ -2723,21 +2724,22 @@ def recurring_update(recurring_id: int, x: RecurringUpdateIn, request: Request):
         if effective <= old_from:
             c.execute("UPDATE recurring SET account_id=?,category_id=?,name=?,amount=?,next_date=?,frequency=?,interval_count=?,kind=?,max_amount=?,anchor_date=?,valid_from=?,valid_until=?,confidence=?,fixed_cost=? WHERE id=?",
                 (x.account_id,x.category_id,x.name.strip(),amount,x.next_date.isoformat(),x.frequency,x.interval_count,kind,max_amount,x.next_date.isoformat(),effective.isoformat(),x.valid_until.isoformat() if x.valid_until else None,x.confidence,int(x.fixed_cost),recurring_id))
+            c.execute("UPDATE recurring SET payee=? WHERE id=?",(clean_text(x.payee,200),recurring_id))
             series_id=int(old["series_id"] or old["id"])
             _remove_planned_series_transactions(c,series_id,effective)
             generated=_materialize_recurring_series(c,series_id,sess[1],from_day=max(date.today(),effective))
             after=recurring_snapshot(c,recurring_id)
-            audit_append(c,sess[1],"recurring.update","recurring",recurring_id,{"name":after.get("name"),"changes":audit_changes(before,after,("name","amount","next_date","frequency","interval_count","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"current":audit_pick(after,("name","amount","next_date","frequency","interval_count","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"effective_from":effective.isoformat(),"versioned":False,"generated_transactions":len(generated)})
+            audit_append(c,sess[1],"recurring.update","recurring",recurring_id,{"name":after.get("name"),"changes":audit_changes(before,after,("name","payee","amount","next_date","frequency","interval_count","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"current":audit_pick(after,("name","payee","amount","next_date","frequency","interval_count","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"effective_from":effective.isoformat(),"versioned":False,"generated_transactions":len(generated)})
             return {"ok":True,"id":recurring_id,"versioned":False,"generated_transactions":len(generated)}
         c.execute("UPDATE recurring SET valid_until=? WHERE id=?",((effective-timedelta(days=1)).isoformat(),recurring_id))
         cur=c.execute("INSERT INTO recurring(account_id,category_id,name,amount,next_date,frequency,kind,max_amount,active,series_id,anchor_date,valid_from,valid_until,confidence,fixed_cost,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (x.account_id,x.category_id,x.name.strip(),amount,x.next_date.isoformat(),x.frequency,kind,max_amount,1,old["series_id"] or old["id"],x.next_date.isoformat(),effective.isoformat(),x.valid_until.isoformat() if x.valid_until else None,x.confidence,int(x.fixed_cost),iso(utcnow())))
         series_id=int(old["series_id"] or old["id"])
-        c.execute("UPDATE recurring SET interval_count=? WHERE id=?",(x.interval_count,cur.lastrowid))
+        c.execute("UPDATE recurring SET interval_count=?,payee=? WHERE id=?",(x.interval_count,clean_text(x.payee,200),cur.lastrowid))
         _remove_planned_series_transactions(c,series_id,effective)
         generated=_materialize_recurring_series(c,series_id,sess[1],from_day=max(date.today(),effective))
         new_version=recurring_snapshot(c,cur.lastrowid)
-        audit_append(c,sess[1],"recurring.version","recurring",cur.lastrowid,{"name":new_version.get("name"),"series_id":series_id,"changes":audit_changes(before,new_version,("name","amount","next_date","frequency","interval_count","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"current":audit_pick(new_version,("name","amount","next_date","frequency","interval_count","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"effective_from":effective.isoformat(),"generated_transactions":len(generated)})
+        audit_append(c,sess[1],"recurring.version","recurring",cur.lastrowid,{"name":new_version.get("name"),"series_id":series_id,"changes":audit_changes(before,new_version,("name","payee","amount","next_date","frequency","interval_count","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"current":audit_pick(new_version,("name","payee","amount","next_date","frequency","interval_count","account_name","category_name","valid_from","valid_until","confidence","fixed_cost","max_amount")),"effective_from":effective.isoformat(),"generated_transactions":len(generated)})
         return {"ok":True,"id":cur.lastrowid,"versioned":True,"generated_transactions":len(generated)}
 
 
@@ -2867,7 +2869,7 @@ def recurring_execute(recurring_id: int, request: Request):
         cur = c.execute(
             """INSERT INTO transactions(account_id,amount,direction,booking_date,name,payee,note,category_id,status,external_id,recurring_id,confidence,fixed_cost,created_at,updated_at)
                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (r["account_id"], booked_amount, "income" if r["kind"]=="income" else "expense", due.isoformat(), r["name"], r["name"], "Aus wiederkehrender Buchung", r["category_id"],
+            (r["account_id"], booked_amount, "income" if r["kind"]=="income" else "expense", due.isoformat(), r["name"], r["payee"] or r["name"], "Aus wiederkehrender Buchung", r["category_id"],
              "executed", f"rec-{recurring_id}-{due.isoformat()}", recurring_id, r["confidence"] or "fixed", int(r["fixed_cost"] or 0), ts, ts),
         )
         c.execute(
@@ -2897,7 +2899,7 @@ def recurring_delete(recurring_id: int, request: Request, hard: bool = False):
             c.execute("DELETE FROM recurring WHERE COALESCE(series_id,id)=?", (series_id,))
         else:
             c.execute("UPDATE recurring SET active=0 WHERE COALESCE(series_id,id)=?", (series_id,))
-        fields=("name","amount","next_date","frequency","interval_count","account_name","category_name","valid_from","valid_until","confidence","fixed_cost")
+        fields=("name","payee","amount","next_date","frequency","interval_count","account_name","category_name","valid_from","valid_until","confidence","fixed_cost")
         audit_append(c,sess[1],"recurring.delete" if hard else "recurring.stop","recurring",recurring_id,{"series_id":series_id,"versions":versions,"removed_planned_transactions":removed_planned,"snapshot":audit_pick(before,fields)})
     return {"ok": True, "hard": hard}
 

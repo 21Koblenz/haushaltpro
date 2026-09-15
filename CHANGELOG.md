@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- The dedicated “+ Wiederkehrende Buchung” entry point remains available and now supports saved/free-text payees. The payee is stored on the recurring series and propagated to generated planned transactions.
+
 - Removed the duplicate “+ Wiederkehrende Buchung” creation button from the recurring-series tab. New recurring series are created through the normal “+ Buchung” dialog, while existing series remain manageable in the recurring tab.
 
 ### Added
