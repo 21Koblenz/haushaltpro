@@ -31,7 +31,11 @@ jobs:
           p=Path('static/index.html')
           s=p.read_text(encoding='utf-8')
           s=s.replace('<span id="connectionText">Server prüfen …</span>','<span id="connectionText"></span>',1)
+          s=s.replace('0.21.9-offline1','0.21.8-offline1')
           p.write_text(s,encoding='utf-8')
+          t=Path('tests/test_offline_sync.py')
+          ts=t.read_text(encoding='utf-8').replace('0.21.9-offline1','0.21.8-offline1')
+          t.write_text(ts,encoding='utf-8')
           PY
       - name: Validate syntax and full regression suite
         run: |
