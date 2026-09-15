@@ -1,4 +1,4 @@
-# Final rerun after cache-bust and connection-placeholder i18n fixes.
+# Final rerun after cache-bust, i18n and recurring-entrypoint fixes.
 name: Apply offline sync feature
 
 on:
@@ -32,7 +32,17 @@ jobs:
           s=p.read_text(encoding='utf-8')
           s=s.replace('<span id="connectionText">Server prüfen …</span>','<span id="connectionText"></span>',1)
           s=s.replace('0.21.9-offline1','0.21.8-offline1')
+          old='<div class="section-head recurring-section-head"><div><h2>Wiederkehrende Buchungen</h2><p class="muted">Aktive Serien. Neue Serien werden hier direkt angelegt; einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.</p></div><button class="ghost" id="newRecurringTx">+ Wiederkehrende Buchung</button></div>'
+          new='<div class="section-head recurring-section-head"><div><h2>Wiederkehrende Buchungen</h2><p class="muted">Aktive Serien. Neue Serien legst du über „+ Buchung“ an; einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.</p></div></div>'
+          if old not in s: raise SystemExit('recurring entrypoint HTML anchor not found')
+          s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
+          a=Path('static/app.js')
+          js=a.read_text(encoding='utf-8')
+          oldjs="$('quickTx').onclick=()=>txDialog();$('newTx').onclick=()=>txDialog();$('newTransfer').onclick=()=>transferDialog();$('newRecurringTx').onclick=()=>recDialog(null);"
+          newjs="$('quickTx').onclick=()=>txDialog();$('newTx').onclick=()=>txDialog();$('newTransfer').onclick=()=>transferDialog();"
+          if oldjs not in js: raise SystemExit('recurring entrypoint JS anchor not found')
+          a.write_text(js.replace(oldjs,newjs,1),encoding='utf-8')
           t=Path('tests/test_offline_sync.py')
           ts=t.read_text(encoding='utf-8').replace('0.21.9-offline1','0.21.8-offline1')
           t.write_text(ts,encoding='utf-8')
