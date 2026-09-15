@@ -133,7 +133,11 @@ async function materializeRecurringDue({month=null,year=null}={}){
   const params=new URLSearchParams();
   if(month)params.set('month',month);else if(year)params.set('year',String(year));
   const suffix=params.toString()?'?'+params.toString():'';
-  return api('/api/recurring/materialize-due'+suffix,{method:'POST'});
+  const [bookings,transfers]=await Promise.all([
+    api('/api/recurring/materialize-due'+suffix,{method:'POST'}),
+    api('/api/recurring-transfers/materialize-due'+suffix,{method:'POST'})
+  ]);
+  return {bookings,transfers};
 }
 async function boot(){
   const st=await fetch('/api/status').then(r=>r.json());runtimeStatus=st;
@@ -337,11 +341,18 @@ async function transferDialog(transferId=null){
   if(accountsCache.length<2)return toast('Für einen Transfer werden mindestens zwei aktive Konten benötigt.');
   let tr=null;if(transferId)tr=await api('/api/transfers/'+transferId);
   const today=new Date().toISOString().slice(0,10),from=tr?.from_account_id||accountsCache[0]?.id,to=tr?.to_account_id||accountsCache.find(a=>a.id!==from)?.id;
-  openModal(`<h2>${tr?'Transfer bearbeiten':'Transfer anlegen'}</h2><p class="muted">Interne Umbuchung zwischen deinen eigenen Konten. Sie verändert die Kontostände, zählt aber nicht als Einnahme oder Ausgabe des Haushalts.</p><label>Von Konto<select name="from_account_id">${accountOptions(from)}</select></label><label>Auf Konto<select name="to_account_id">${accountOptions(to)}</select></label><label>Betrag EUR<input name="amount" type="number" min="0.01" step="0.01" required value="${tr?Number(tr.amount).toFixed(2):''}"></label><label>Datum<input name="booking_date" type="date" required value="${tr?.booking_date||today}"></label><label>Name<input name="name" maxlength="160" required value="${esc(tr?.name||'Interner Transfer')}"></label><label>Notiz<input name="note" value="${esc(tr?.note||'')}"></label>`,async f=>{
-    const body={from_account_id:Number(f.get('from_account_id')),to_account_id:Number(f.get('to_account_id')),amount:String(f.get('amount')),booking_date:f.get('booking_date'),name:f.get('name')||'Interner Transfer',note:f.get('note')||null};
+  const repeatFields=!tr?`<label class="check"><input id="transferRecurring" name="recurring" type="checkbox"> ${esc(hpText('Wiederholen'))}</label><div id="transferRecurringFields" hidden>${recurrenceRuleFields('transferRecurrence','monthly',1,'recurring_frequency','recurring_interval_count')}<label>${esc(hpText('Enddatum (optional)'))}<input name="recurring_until" type="date"><small>${esc(hpText('Leer lassen für unbegrenzt.'))}</small></label></div>`:'';
+  const seriesNote=tr?.recurring_transfer_id?`<p class="muted">${esc(hpText('Dieser Termin gehört zu einer wiederkehrenden Transfer-Serie. Hier änderst du nur diesen einzelnen Transfer; die Serie verwaltest du unter „Wiederkehrende Buchungen“.'))}</p>`:'';
+  openModal(`<h2>${tr?'Transfer bearbeiten':'Transfer anlegen'}</h2><p class="muted">Interne Umbuchung zwischen deinen eigenen Konten. Sie verändert die Kontostände, zählt aber nicht als Einnahme oder Ausgabe des Haushalts.</p>${seriesNote}<label>Von Konto<select name="from_account_id">${accountOptions(from)}</select></label><label>Auf Konto<select name="to_account_id">${accountOptions(to)}</select></label><label>Betrag EUR<input name="amount" type="number" min="0.01" step="0.01" required value="${tr?Number(tr.amount).toFixed(2):''}"></label><label>Datum<input name="booking_date" type="date" required value="${tr?.booking_date||today}"></label><label>Name<input name="name" maxlength="160" required value="${esc(tr?.name||'Interner Transfer')}"></label><label>Notiz<input name="note" value="${esc(tr?.note||'')}"></label>${repeatFields}`,async f=>{
+    const recurring=!tr&&f.get('recurring')==='on';
+    const body={from_account_id:Number(f.get('from_account_id')),to_account_id:Number(f.get('to_account_id')),amount:String(f.get('amount')),booking_date:f.get('booking_date'),name:f.get('name')||'Interner Transfer',note:f.get('note')||null,recurring,recurring_frequency:recurring?f.get('recurring_frequency'):null,recurring_interval_count:recurring?Number(f.get('recurring_interval_count')||1):1,recurring_until:recurring?(f.get('recurring_until')||null):null};
     if(body.from_account_id===body.to_account_id)throw new Error('Quell- und Zielkonto müssen verschieden sein.');
-    await api(tr?'/api/transfers/'+tr.id:'/api/transfers',{method:tr?'PUT':'POST',body:JSON.stringify(body)});await loadTransactions();await loadDashboard();
+    await api(tr?'/api/transfers/'+tr.id:'/api/transfers',{method:tr?'PUT':'POST',body:JSON.stringify(body)});await loadTransactions();await loadRecurring();await loadDashboard();
   });
+  if(!tr){
+    bindRecurrencePreset('transferRecurrence','recurring_frequency','recurring_interval_count');
+    const cb=$('transferRecurring'),fields=$('transferRecurringFields');if(cb)cb.onchange=()=>{fields.hidden=!cb.checked};
+  }
 }
 $('quickTx').onclick=()=>txDialog();$('newTx').onclick=()=>txDialog();$('newTransfer').onclick=()=>transferDialog();$('newRecurringTx').onclick=()=>recDialog(null);
 async function loadAccountManager(){const month=ensureMonthControls('accountMonthName','accountYear',selectedMonth);const rows=await api('/api/accounts?month='+encodeURIComponent(month));accountsCache=rows;fillAccountSelects();$('accountManager').innerHTML=rows.length?rows.map(a=>`<article class="panel account-manage-card"><div class="account-head"><span><b>${esc(a.name)}</b><small>${esc(accountTypeLabel(a.type))} · ${esc(hpText('Start'))} ${formatDateValue(a.start_date)}</small></span><strong>${fmt(a.balance)}</strong></div><div class="account-month"><span>Monatsanfang <b>${fmt(a.month_start_balance)}</b></span><span>Bis Stichtag <b>${fmt(a.balance)}</b></span><span>Monatsende <b>${fmt(a.month_end_balance)}</b></span></div><div class="account-actions"><button data-aedit="${a.id}">Kontodaten bearbeiten</button><button class="ghost" data-acorrect="${a.id}">Monatsanfang korrigieren</button><button class="ghost" data-areconcile="${a.id}">Kontostand abgleichen</button></div></article>`).join(''):'<article class="panel"><p class="muted">Für diesen Monat gibt es noch kein aktives Konto.</p></article>';document.querySelectorAll('[data-aedit]').forEach(b=>b.onclick=()=>accountDialog(rows.find(a=>a.id===Number(b.dataset.aedit))));document.querySelectorAll('[data-acorrect]').forEach(b=>b.onclick=()=>accountCorrectionDialog(rows.find(a=>a.id===Number(b.dataset.acorrect)),month));document.querySelectorAll('[data-areconcile]').forEach(b=>b.onclick=()=>accountReconcileDialog(rows.find(a=>a.id===Number(b.dataset.areconcile))))}
@@ -426,14 +437,31 @@ function recurringOverrideDialog(rec){
 function recurringTransactionOverrideDialog(tx){
   openModal(`<h2>${esc(hpText('Einzelnen Serientermin anpassen'))}</h2><p class="muted">${esc(hpText('Diese Änderung gilt nur für diesen Termin. Die Serienvorlage bleibt unverändert.'))}</p><label>${esc(hpText('Termin'))}<input name="due_date" type="date" readonly value="${esc(tx.booking_date)}"></label><label>${esc(hpText('Betrag EUR'))}<input name="amount" type="number" min="0" step="0.01" required value="${Math.abs(Number(tx.amount)).toFixed(2)}"></label><label>${esc(hpText('Notiz'))}<input name="note" value="${esc(tx.note||'')}"></label><small>${esc(hpText('Die Serienänderung ab einem Stichtag erfolgt unter „Wiederkehrende Buchungen“.'))}</small>`,async f=>{await api('/api/recurring/'+tx.recurring_id+'/override',{method:'PUT',body:JSON.stringify({due_date:tx.booking_date,amount:String(f.get('amount')),note:f.get('note')||null})});await loadTransactions();await loadRecurring();await loadDashboard();toast(hpText('Einzeltermin gespeichert'))});
 }
+async function recurringTransferDialog(seriesId){
+  const r=await api('/api/recurring-transfers/'+seriesId);
+  const today=new Date().toISOString().slice(0,10),intervalCount=Math.max(1,Number(r.interval_count||1));
+  openModal(`<h2>${esc(hpText('Wiederkehrenden Transfer bearbeiten'))}</h2><p class="muted">${esc(hpText('Die Transfer-Serie verschiebt Geld zwischen deinen eigenen Konten und bleibt in der Einnahmen-/Ausgaben-Auswertung neutral. Änderungen bauen nur noch nicht ausgeführte zukünftige Termine neu auf.'))}</p><label>${esc(hpText('Von Konto'))}<select name="from_account_id">${accountOptions(r.from_account_id)}</select></label><label>${esc(hpText('Auf Konto'))}<select name="to_account_id">${accountOptions(r.to_account_id)}</select></label><label>${esc(hpText('Betrag EUR'))}<input name="amount" type="number" min="0.01" step="0.01" required value="${Number(r.amount).toFixed(2)}"></label><label>${esc(hpText('Nächster offener Termin'))}<input name="booking_date" type="date" required value="${esc(r.next_date||today)}"></label><label>${esc(hpText('Name'))}<input name="name" maxlength="160" required value="${esc(r.name||'Interner Transfer')}"></label><label>${esc(hpText('Notiz'))}<input name="note" value="${esc(r.note||'')}"></label>${recurrenceRuleFields('transferSeriesRecurrence',r.frequency||'monthly',intervalCount,'recurring_frequency','recurring_interval_count')}<label>${esc(hpText('Enddatum (optional)'))}<input name="recurring_until" type="date" value="${esc(r.valid_until||'')}"><small>${esc(hpText('Leer lassen für unbegrenzt.'))}</small></label>`,async f=>{
+    const body={from_account_id:Number(f.get('from_account_id')),to_account_id:Number(f.get('to_account_id')),amount:String(f.get('amount')),booking_date:f.get('booking_date'),name:f.get('name')||'Interner Transfer',note:f.get('note')||null,recurring:true,recurring_frequency:f.get('recurring_frequency'),recurring_interval_count:Number(f.get('recurring_interval_count')||1),recurring_until:f.get('recurring_until')||null};
+    if(body.from_account_id===body.to_account_id)throw new Error('Quell- und Zielkonto müssen verschieden sein.');
+    await api('/api/recurring-transfers/'+seriesId,{method:'PUT',body:JSON.stringify(body)});await loadRecurring();await loadTransactions();await loadDashboard();
+  });
+  bindRecurrencePreset('transferSeriesRecurrence','recurring_frequency','recurring_interval_count');
+}
+
 async function loadRecurring(){
   try{
     await materializeRecurringDue();
-    const rows=await api('/api/recurring');
+    const [rows,transferRows]=await Promise.all([api('/api/recurring'),api('/api/recurring-transfers')]);
     const amap=Object.fromEntries(accountsCache.map(a=>[a.id,a.name]));
     const freqLabel={monthly:'Monatlich',weekly:'Wöchentlich',yearly:'Jährlich',daily:'Täglich'};
-    if($('txRecurringCount'))$('txRecurringCount').textContent=String(rows.length);
+    if($('txRecurringCount'))$('txRecurringCount').textContent=String(rows.length+transferRows.length);
     $('recBody').innerHTML=rows.map(r=>`<tr><td>${esc(formatDateValue(r.next_date))}</td><td class="recurring-name-cell"><b>${esc(r.name)}</b><small class="recurring-series-meta">${esc(hpT('recurring.series','Serie'))} #${r.series_id} · ${esc(hpT('recurring.since','seit'))} ${esc(formatDateValue(r.first_date))}${(r.journal_count??r.executed_count)?` · ${r.journal_count??r.executed_count}× ${esc(hpT('recurring.inJournal','in Buchungen'))}`:''}</small>${r.future_change_from?`<small class="recurring-future-change">${esc(hpText('Änderung vorgemerkt ab'))} ${esc(formatDateValue(r.future_change_from))}</small>`:''}</td><td>${esc(amap[r.account_id]||'?')}</td><td>${esc(recurrenceLabel(r.frequency,r.interval_count))}</td><td>${r.valid_until?esc(formatDateValue(r.valid_until)):hpText('Unbegrenzt')}</td><td class="right amount ${r.amount<0?'neg':'pos'}">${fmt(r.amount)}</td><td class="actions"><button data-redit="${r.id}">${esc(hpText('Serie bearbeiten'))}</button><button class="ghost" data-roverride="${r.id}">${esc(hpText('Monat anpassen'))}</button><button class="ghost" data-stop="${r.id}">${esc(hpText('Stoppen'))}</button><button class="ghost danger-outline" data-rdel="${r.id}">${esc(hpText('Serie löschen'))}</button></td></tr>`).join('')||'<tr><td colspan="7">Keine wiederkehrenden Buchungen.</td></tr>';
+    const transferHtml=transferRows.map(r=>`<tr><td>${esc(formatDateValue(r.next_date))}</td><td class="recurring-name-cell"><b>↔ ${esc(r.name)}</b><small class="recurring-series-meta">${esc(hpText('Transfer-Serie'))} #${r.id} · ${esc(formatDateValue(r.first_date))}</small></td><td>${esc(r.from_account_name)} → ${esc(r.to_account_name)}</td><td>${esc(recurrenceLabel(r.frequency,r.interval_count))}</td><td>${r.valid_until?esc(formatDateValue(r.valid_until)):hpText('Unbegrenzt')}</td><td class="right amount">${fmt(r.amount)}</td><td class="actions"><button data-rtedit="${r.id}">${esc(hpText('Serie bearbeiten'))}</button><button class="ghost" data-rtstop="${r.id}">${esc(hpText('Stoppen'))}</button><button class="ghost danger-outline" data-rtdel="${r.id}">${esc(hpText('Serie löschen'))}</button></td></tr>`).join('');
+    if(transferRows.length&&!rows.length)$('recBody').innerHTML='';
+    if(transferHtml)$('recBody').insertAdjacentHTML('beforeend',transferHtml);
+    document.querySelectorAll('[data-rtedit]').forEach(b=>b.onclick=()=>recurringTransferDialog(Number(b.dataset.rtedit)));
+    document.querySelectorAll('[data-rtstop]').forEach(b=>b.onclick=async()=>{if(hpConfirm(hpText('Transfer-Serie stoppen? Noch nicht ausgeführte zukünftige Transfers werden entfernt.'))){await api('/api/recurring-transfers/'+b.dataset.rtstop,{method:'DELETE'});await loadRecurring();await loadTransactions();await loadDashboard()}});
+    document.querySelectorAll('[data-rtdel]').forEach(b=>b.onclick=async()=>{if(hpConfirm(hpText('Transfer-Serie endgültig löschen? Bereits ausgeführte Transfers bleiben als Historie bestehen.'))){await api('/api/recurring-transfers/'+b.dataset.rtdel+'?hard=true',{method:'DELETE'});await loadRecurring();await loadTransactions();await loadDashboard()}});
     document.querySelectorAll('[data-redit]').forEach(b=>b.onclick=()=>recDialog(rows.find(r=>r.id===Number(b.dataset.redit))));
     document.querySelectorAll('[data-roverride]').forEach(b=>b.onclick=()=>recurringOverrideDialog(rows.find(r=>r.id===Number(b.dataset.roverride))));
     document.querySelectorAll('[data-stop]').forEach(b=>b.onclick=async()=>{if(hpConfirm('Serie ab jetzt stoppen? Zukünftige geplante Serienbuchungen werden entfernt; bereits ausgeführte Buchungen bleiben erhalten.')){await api('/api/recurring/'+b.dataset.stop,{method:'DELETE'});await loadRecurring();await loadTransactions();await loadDashboard()}});
@@ -608,8 +636,11 @@ function drawDonut(canvasId,legendId,items){
 }
 async function loadReports(){
   const period=$('reportPeriod').value,anchor=period==='month'?monthValue('reportMonthName','reportYear')+'-01':$('reportYear').value+'-01-01';$('reportMonthName').hidden=period!=='month';
+  if(period==='month')await materializeRecurringDue({month:anchor.slice(0,7)});
   const r=await cachedApi('/api/reports/categories?period='+period+'&anchor='+encodeURIComponent(anchor),25000);$('reportIncome').textContent=fmt(r.income);$('reportExpense').textContent=fmt(r.expense);$('reportSavings').textContent=fmt(r.savings||0);$('reportNet').textContent=fmt(r.net);
   const income=Number(r.income||0),expense=Number(r.expense||0),savings=Number(r.savings||0),net=Number(r.net??(income-expense-savings));
+  const reportTitle=r.mode==='forecast'?hpText('Monatsprognose inklusive bereits bekannter/geplanter Buchungen bis Monatsende.'):hpText('Ist-Auswertung der tatsächlich gebuchten Werte.');
+  ['reportIncome','reportExpense','reportSavings','reportNet'].forEach(id=>{const el=$(id)?.closest('.metric');if(el)el.title=reportTitle});
   // Derive the displayed rate from the same visible report figures. This prevents
   // a stale/legacy savings_rate_pct from showing 0 % while savings are visible.
   const totalSaved=Number.isFinite(Number(r.total_saved))?Number(r.total_saved):(savings+Math.max(0,net));

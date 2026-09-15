@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- The current-month analysis now includes known/planned bookings through month end, including materialized recurring expenses and income. Historical months and yearly analysis remain actual-only.
+
 ### Changed
 
 - The dedicated “+ Wiederkehrende Buchung” entry point remains available and now supports saved/free-text payees. The payee is stored on the recurring series and propagated to generated planned transactions.
@@ -9,6 +13,8 @@
 - Removed the duplicate “+ Wiederkehrende Buchung” creation button from the recurring-series tab. New recurring series are created through the normal “+ Buchung” dialog, while existing series remain manageable in the recurring tab.
 
 ### Added
+
+- Transfers can now repeat with the same calendar interval model as recurring bookings (daily, weekly, monthly, quarterly, half-yearly, yearly or custom). Recurring transfers remain neutral in income/expense analysis while moving the source and destination account forecasts.
 
 - Recurring transactions support quarterly and half-yearly presets plus arbitrary calendar intervals such as every 10 days, 2 weeks, 5 months or 2 years. Existing recurring series keep their previous rhythm with an interval multiplier of 1.
 

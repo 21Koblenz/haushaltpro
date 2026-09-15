@@ -307,6 +307,25 @@ def init_schema(c) -> None:
             UNIQUE(parent_id, name)
         );
 
+        CREATE TABLE IF NOT EXISTS recurring_transfers(
+            id INTEGER PRIMARY KEY,
+            from_account_id INTEGER NOT NULL,
+            to_account_id INTEGER NOT NULL,
+            amount INTEGER NOT NULL CHECK(amount > 0),
+            next_date TEXT NOT NULL,
+            frequency TEXT NOT NULL CHECK(frequency IN ('daily','weekly','monthly','yearly')),
+            interval_count INTEGER NOT NULL DEFAULT 1 CHECK(interval_count >= 1),
+            name TEXT NOT NULL DEFAULT 'Transfer',
+            note TEXT,
+            valid_until TEXT,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(from_account_id) REFERENCES accounts(id) ON DELETE RESTRICT,
+            FOREIGN KEY(to_account_id) REFERENCES accounts(id) ON DELETE RESTRICT,
+            CHECK(from_account_id <> to_account_id)
+        );
+
         CREATE TABLE IF NOT EXISTS transfers(
             id INTEGER PRIMARY KEY,
             from_account_id INTEGER NOT NULL,
@@ -315,11 +334,13 @@ def init_schema(c) -> None:
             booking_date TEXT NOT NULL,
             name TEXT NOT NULL DEFAULT 'Transfer',
             note TEXT,
+            recurring_transfer_id INTEGER,
             active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY(from_account_id) REFERENCES accounts(id) ON DELETE RESTRICT,
             FOREIGN KEY(to_account_id) REFERENCES accounts(id) ON DELETE RESTRICT,
+            FOREIGN KEY(recurring_transfer_id) REFERENCES recurring_transfers(id) ON DELETE SET NULL,
             CHECK(from_account_id <> to_account_id)
         );
 
@@ -550,6 +571,8 @@ def init_schema(c) -> None:
         CREATE INDEX IF NOT EXISTS idx_tx_date_status ON transactions(booking_date, status);
         CREATE INDEX IF NOT EXISTS idx_tx_transfer ON transactions(transfer_id);
         CREATE INDEX IF NOT EXISTS idx_transfer_date ON transfers(booking_date, active);
+        CREATE INDEX IF NOT EXISTS idx_recurring_transfer_active_date ON recurring_transfers(active, next_date);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_transfer_recurring_due ON transfers(recurring_transfer_id, booking_date) WHERE recurring_transfer_id IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_payee_usage ON payee_presets(usage_count DESC, last_used_at DESC);
         CREATE INDEX IF NOT EXISTS idx_recurring_account_date ON recurring(account_id, active, next_date);
         CREATE INDEX IF NOT EXISTS idx_occurrence_recurring_date ON recurring_occurrences(recurring_id, due_date);
@@ -563,7 +586,7 @@ def init_schema(c) -> None:
         CREATE INDEX IF NOT EXISTS idx_reconcile_learning ON reconciliation_learning(account_id,direction,amount_cents);
 
         INSERT OR REPLACE INTO app_meta(key,value) VALUES('db_magic','HAUSHALTPRO_V3_SQLCIPHER4');
-        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','24');
+        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','25');
         INSERT OR IGNORE INTO settings(key,value) VALUES('investment_tracking','false');
         INSERT OR IGNORE INTO settings(key,value) VALUES('autolock_minutes','15');
         INSERT OR IGNORE INTO settings(key,value) VALUES('budget_strategy','hybrid');
@@ -713,6 +736,16 @@ def migrate_schema(c) -> None:
     if "name" not in tcols3:
         c.execute("ALTER TABLE transactions ADD COLUMN name TEXT")
         c.execute("UPDATE transactions SET name=COALESCE(NULLIF(TRIM(payee),''),NULLIF(TRIM(note),''),'Buchung') WHERE name IS NULL OR TRIM(name)=''")
+    c.execute("""CREATE TABLE IF NOT EXISTS recurring_transfers(
+        id INTEGER PRIMARY KEY,from_account_id INTEGER NOT NULL,to_account_id INTEGER NOT NULL,
+        amount INTEGER NOT NULL CHECK(amount > 0),next_date TEXT NOT NULL,
+        frequency TEXT NOT NULL CHECK(frequency IN ('daily','weekly','monthly','yearly')),
+        interval_count INTEGER NOT NULL DEFAULT 1 CHECK(interval_count >= 1),
+        name TEXT NOT NULL DEFAULT 'Transfer',note TEXT,valid_until TEXT,active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,updated_at TEXT NOT NULL,
+        FOREIGN KEY(from_account_id) REFERENCES accounts(id) ON DELETE RESTRICT,
+        FOREIGN KEY(to_account_id) REFERENCES accounts(id) ON DELETE RESTRICT,
+        CHECK(from_account_id <> to_account_id))""")
     c.execute("""CREATE TABLE IF NOT EXISTS transfers(
         id INTEGER PRIMARY KEY,from_account_id INTEGER NOT NULL,to_account_id INTEGER NOT NULL,
         amount INTEGER NOT NULL CHECK(amount > 0),booking_date TEXT NOT NULL,name TEXT NOT NULL DEFAULT 'Transfer',
@@ -720,6 +753,9 @@ def migrate_schema(c) -> None:
         FOREIGN KEY(from_account_id) REFERENCES accounts(id) ON DELETE RESTRICT,
         FOREIGN KEY(to_account_id) REFERENCES accounts(id) ON DELETE RESTRICT,
         CHECK(from_account_id <> to_account_id))""")
+    transfer_cols = {r[1] for r in c.execute("PRAGMA table_info(transfers)").fetchall()}
+    if "recurring_transfer_id" not in transfer_cols:
+        c.execute("ALTER TABLE transfers ADD COLUMN recurring_transfer_id INTEGER")
     tcols4 = {r[1] for r in c.execute("PRAGMA table_info(transactions)").fetchall()}
     if "transfer_id" not in tcols4:
         c.execute("ALTER TABLE transactions ADD COLUMN transfer_id INTEGER")
@@ -730,10 +766,12 @@ def migrate_schema(c) -> None:
         created_at TEXT NOT NULL,last_used_at TEXT NOT NULL)""")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tx_transfer ON transactions(transfer_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_transfer_date ON transfers(booking_date,active)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_recurring_transfer_active_date ON recurring_transfers(active,next_date)")
+    c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_transfer_recurring_due ON transfers(recurring_transfer_id,booking_date) WHERE recurring_transfer_id IS NOT NULL")
     c.execute("CREATE INDEX IF NOT EXISTS idx_payee_usage ON payee_presets(usage_count DESC,last_used_at DESC)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tx_category_date ON transactions(category_id,booking_date,status)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag_tx ON transaction_tags(tag,transaction_id)")
-    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','24') ON CONFLICT(key) DO UPDATE SET value='24'")
+    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','25') ON CONFLICT(key) DO UPDATE SET value='24'")
     c.commit()
 
 def rekey(new_key: str) -> None:

@@ -489,7 +489,7 @@
     "Keine Buchungen.": "No transactions.",
     "Wiederholungsserie bearbeiten": "Edit recurring series",
     "Die Serie gehört zu deinen Buchungen. Änderungen können ab einem Stichtag gelten, ohne frühere Monate umzuschreiben.": "The series belongs to your transactions. Changes can take effect from a cutoff date without rewriting earlier months.",
-    "Nächster offener Termin": "Next open date",
+    "Nächster offener Termin": "Next open occurrence",
     "Änderung gültig ab": "Change effective from",
     "Ab diesem Datum gilt die neue Serienversion. Frühere Monate bleiben unverändert.": "The new series version applies from this date. Earlier months remain unchanged.",
     "Steuert konservative/optimistische Prognosen.": "Controls conservative/optimistic forecasts.",
@@ -771,7 +771,16 @@
     "Einzeltermin gespeichert": "Occurrence saved",
     "Termin anpassen": "Adjust occurrence",
     "Einnahmekategorien": "Income categories",
-    "Aktive Serien. Neue Serien legst du über „+ Buchung“ an und aktivierst dort „Wiederkehrende Zahlung / Einnahme“. Einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.": "Active series. Create new series via “+ Transaction” and enable “Recurring payment / income” there. Individual executed occurrences also appear under “All transactions”. Changes can take effect from a freely selected date."
+    "Aktive Serien. Neue Serien legst du über „+ Buchung“ an und aktivierst dort „Wiederkehrende Zahlung / Einnahme“. Einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.": "Active series. Create new series via “+ Transaction” and enable “Recurring payment / income” there. Individual executed occurrences also appear under “All transactions”. Changes can take effect from a freely selected date.",
+    "Wiederholen": "Repeat",
+    "Dieser Termin gehört zu einer wiederkehrenden Transfer-Serie. Hier änderst du nur diesen einzelnen Transfer; die Serie verwaltest du unter „Wiederkehrende Buchungen“.": "This occurrence belongs to a recurring transfer series. Here you only edit this individual transfer; manage the series under ‘Recurring transactions’.",
+    "Wiederkehrenden Transfer bearbeiten": "Edit recurring transfer",
+    "Die Transfer-Serie verschiebt Geld zwischen deinen eigenen Konten und bleibt in der Einnahmen-/Ausgaben-Auswertung neutral. Änderungen bauen nur noch nicht ausgeführte zukünftige Termine neu auf.": "The transfer series moves money between your own accounts and stays neutral in income/expense reports. Changes rebuild only future occurrences that have not been executed.",
+    "Transfer-Serie": "Transfer series",
+    "Transfer-Serie stoppen? Noch nicht ausgeführte zukünftige Transfers werden entfernt.": "Stop transfer series? Future transfers that have not been executed will be removed.",
+    "Transfer-Serie endgültig löschen? Bereits ausgeführte Transfers bleiben als Historie bestehen.": "Permanently delete transfer series? Already executed transfers remain in history.",
+    "Monatsprognose inklusive bereits bekannter/geplanter Buchungen bis Monatsende.": "Month forecast including known/planned bookings through month end.",
+    "Ist-Auswertung der tatsächlich gebuchten Werte.": "Actual report of executed bookings."
   },
   "patterns": [
     {
