@@ -570,6 +570,7 @@ def init_schema(c) -> None:
         CREATE INDEX IF NOT EXISTS idx_tx_account_date ON transactions(account_id, booking_date);
         CREATE INDEX IF NOT EXISTS idx_tx_date_status ON transactions(booking_date, status);
         CREATE INDEX IF NOT EXISTS idx_tx_transfer ON transactions(transfer_id);
+        CREATE INDEX IF NOT EXISTS idx_splits_tx ON splits(transaction_id);
         CREATE INDEX IF NOT EXISTS idx_transfer_date ON transfers(booking_date, active);
         CREATE INDEX IF NOT EXISTS idx_recurring_transfer_active_date ON recurring_transfers(active, next_date);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_transfer_recurring_due ON transfers(recurring_transfer_id, booking_date) WHERE recurring_transfer_id IS NOT NULL;
@@ -765,6 +766,7 @@ def migrate_schema(c) -> None:
         id INTEGER PRIMARY KEY,name TEXT NOT NULL COLLATE NOCASE UNIQUE,usage_count INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,last_used_at TEXT NOT NULL)""")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tx_transfer ON transactions(transfer_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_splits_tx ON splits(transaction_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_transfer_date ON transfers(booking_date,active)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_recurring_transfer_active_date ON recurring_transfers(active,next_date)")
     c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_transfer_recurring_due ON transfers(recurring_transfer_id,booking_date) WHERE recurring_transfer_id IS NOT NULL")
