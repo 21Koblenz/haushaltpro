@@ -68,8 +68,9 @@ assert ('2026-10-01','Miete','transaction') in np and ('2026-10-25','Gehalt','tr
 # Category reports: September real/manual bookings and savings semantics.
 rep=ok(client.get('/api/reports/categories?period=month&anchor=2026-09-01'))
 assert rep['actual_through']=='2026-09-11',rep
-assert rep['income']==0.0 and rep['expense']==1000.0 and rep['savings']==0.0,rep
-assert rep['net']==-1000.0 and rep['total_saved']==0.0 and rep['savings_rate_pct']==0.0,rep
+assert rep['mode']=='forecast' and rep['includes_planned'] is True,rep
+assert rep['income']==2000.0 and rep['expense']==1000.0 and rep['savings']==500.0,rep
+assert rep['net']==500.0 and rep['total_saved']==1000.0 and rep['savings_rate_pct']==50.0,rep
 
 # Planning page plausibility.
 p=ok(client.get('/api/planning/overview?month=2026-10'))

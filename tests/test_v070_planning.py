@@ -48,6 +48,6 @@ raw=client.get(f"/api/attachments/{up['id']}")
 assert raw.status_code==200 and raw.content.startswith(b'%PDF'),raw.status_code
 h=ok(client.get('/api/history'))
 assert len(h['recurring'])>=3,h
-assert tuple(map(int,main.APP_VERSION.split('.'))) >= (0,7,0)
+assert tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.'))) >= (0,7,0)
 print('v0.7.0 planning/documentation plausibility: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

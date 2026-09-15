@@ -86,6 +86,6 @@ assert 'Wiederkehrende Buchungen' in html and 'Serienänderung gültig ab' in js
 for term in ['Zero-Based Budgeting','Envelope / Umschlag','50/30/20-Regel','Pay Yourself First']:
     assert term in html or term in js,term
 assert 'data-bedit' in js and 'usage_pct' in js
-assert tuple(map(int,main.APP_VERSION.split('.'))) >= (0,6,0)
+assert tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.'))) >= (0,6,0)
 print('v0.6.0 plausibility: recurring propagation/editing/anchor + actionable budgets + CSV-sign analytics: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

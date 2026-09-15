@@ -1,0 +1,38 @@
+import sqlite3,sys,types,tempfile
+from pathlib import Path
+shim=types.ModuleType('sqlcipher3');shim.dbapi2=sqlite3;sys.modules['sqlcipher3']=shim
+root=Path(__file__).resolve().parents[1];sys.path.insert(0,str(root))
+from app import db
+fd,tmp=tempfile.mkstemp(suffix='.db');Path(tmp).unlink(missing_ok=True)
+c=sqlite3.connect(tmp,check_same_thread=False);c.row_factory=sqlite3.Row;c.execute('PRAGMA foreign_keys=ON')
+db._conn=c;db.DB_PATH=Path(tmp);db.init_schema(c);db.migrate_schema(c)
+assert c.execute("SELECT value FROM app_meta WHERE key='schema_version'").fetchone()[0]=='26'
+assert c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='client_mutations'").fetchone()
+from app import main
+main.db._conn=c;main.session=lambda request,write=False:('test',1,'csrf',0);main.require_book_owner=lambda request:None;main.require_system_admin=lambda request:None
+c.execute("INSERT OR IGNORE INTO users(id,username,password_hash,created_at) VALUES(1,'admin','x','2026-01-01T00:00:00+00:00')");c.commit()
+from fastapi.testclient import TestClient
+client=TestClient(main.app)
+def ok(r):assert r.status_code<300,(r.status_code,r.text);return r.json()
+giro=ok(client.post('/api/accounts',json={'name':'Giro','type':'checking','opening_balance':'1000','currency':'EUR','start_date':'2026-09-01'}))['id']
+cash=ok(client.post('/api/accounts',json={'name':'Cash','type':'cash','opening_balance':'0','currency':'EUR','start_date':'2026-09-01'}))['id']
+food=ok(client.post('/api/categories',json={'name':'OfflineFood','direction':'expense'}))['id']
+headers={'X-Idempotency-Key':'offline-tx-00000001'}
+payload={'account_id':giro,'amount':'12.34','booking_date':'2026-09-15','name':'Offline Einkauf','payee':'Markt','category_id':food,'tags':[],'splits':[],'remember_payee':False}
+a=ok(client.post('/api/transactions',json=payload,headers=headers));b=ok(client.post('/api/transactions',json=payload,headers=headers));assert a['id']==b['id'] and b.get('idempotent_replay') is True
+assert c.execute("SELECT COUNT(*) FROM transactions WHERE name='Offline Einkauf'").fetchone()[0]==1
+th={'X-Idempotency-Key':'offline-transfer-0001'}
+tr={'from_account_id':giro,'to_account_id':cash,'amount':'50','booking_date':'2026-09-15','name':'Offline Transfer','note':None,'recurring':False,'recurring_frequency':None,'recurring_interval_count':1,'recurring_until':None}
+ta=ok(client.post('/api/transfers',json=tr,headers=th));tb=ok(client.post('/api/transfers',json=tr,headers=th));assert ta['id']==tb['id'] and tb.get('idempotent_replay') is True
+assert c.execute("SELECT COUNT(*) FROM transfers WHERE name='Offline Transfer'").fetchone()[0]==1
+rh={'X-Idempotency-Key':'offline-recurring-01'}
+rec={'account_id':giro,'category_id':food,'name':'Offline Serie','payee':'Provider','amount':'20','next_date':'2026-10-01','frequency':'monthly','interval_count':1,'kind':'direct_debit','max_amount':None,'active':True,'valid_until':'2026-12-01','confidence':'fixed','fixed_cost':True}
+ra=ok(client.post('/api/recurring',json=rec,headers=rh));rb=ok(client.post('/api/recurring',json=rec,headers=rh));assert ra['id']==rb['id'] and rb.get('idempotent_replay') is True
+assert c.execute("SELECT COUNT(*) FROM recurring WHERE name='Offline Serie'").fetchone()[0]==1
+bad=client.post('/api/transactions',json=payload,headers={'X-Idempotency-Key':'bad key'});assert bad.status_code==400,bad.text
+off=(root/'static/offline-sync.js').read_text(encoding='utf-8');idx=(root/'static/index.html').read_text(encoding='utf-8');app=(root/'static/app.js').read_text(encoding='utf-8')
+for needle in ('indexedDB.open','POST /api/transactions','POST /api/transfers','POST /api/recurring','X-Idempotency-Key','hp-offline-synced','setInterval(ping,HEARTBEAT_MS)'):assert needle in off,needle
+assert 'id="connectionStatus"' in idx and '/assets/offline-sync.js?v=0.21.8-offline1' in idx
+assert 'HaushaltProOffline.request' in app and 'offlineSaveActive' in app
+print('offline queue + idempotency regression: PASS')
+c.close();Path(tmp).unlink(missing_ok=True)

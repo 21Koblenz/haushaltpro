@@ -5,12 +5,14 @@
 ### Fixed
 
 - The current-month analysis now includes known/planned bookings through month end, including materialized recurring expenses and income. Historical months and yearly analysis remain actual-only.
+- Offline queue for new bookings, transfers and recurring series: entries are stored locally when the server is unreachable and synchronized automatically after reconnecting.
+- Client-generated idempotency keys prevent duplicate financial entries when a request reached the server but the response was lost.
 
 ### Changed
 
 - The dedicated “+ Wiederkehrende Buchung” entry point remains available and now supports saved/free-text payees. The payee is stored on the recurring series and propagated to generated planned transactions.
 
-- Removed the duplicate “+ Wiederkehrende Buchung” creation button from the recurring-series tab. New recurring series are created through the normal “+ Buchung” dialog, while existing series remain manageable in the recurring tab.
+- The top bar now shows live server reachability, pending offline entries and synchronization state; clicking the indicator triggers an immediate connectivity/sync check.
 
 ### Added
 

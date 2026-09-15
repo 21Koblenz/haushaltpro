@@ -70,6 +70,6 @@ assert y['savings_rate_pct']==0.0 and y['average_saved']==0.0,y
 js=(root/'static/app.js').read_text(); html=(root/'static/index.html').read_text(); css=(root/'static/style.css').read_text()
 assert 'recurring-mark' in js and '↻' in js and 'analysisAnnualSavingsRate' in html
 assert 'reportSavingsRateCard' in html and 'savings_rate_pct' in js and '.recurring-mark' in css
-assert tuple(map(int,main.APP_VERSION.split('.'))) >= (0,6,5)
+assert tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.'))) >= (0,6,5)
 print('v0.6.5 documentation/forecast/savings plausibility: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

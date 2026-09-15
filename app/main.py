@@ -7,6 +7,7 @@ import ipaddress
 import io
 import json
 import os
+import re
 import secrets
 import shutil
 import statistics
@@ -33,7 +34,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from . import db
 
-APP_VERSION = "0.21.8"
+APP_VERSION = "0.21.9-dev"
 
 PUBLIC_MODE = os.getenv("HAUSHALTPRO_MODE", "lan").strip().lower() == "public"
 SECURE_COOKIES = os.getenv("SECURE_COOKIES", "true" if PUBLIC_MODE else "false").lower() == "true"
@@ -2140,7 +2141,11 @@ def transfer_get(transfer_id: int, request: Request):
 
 @app.post("/api/transfers")
 def transfer_create(x: TransferIn, request: Request):
-    sess=session(request,True);amount=abs(cents(x.amount));ts=iso(utcnow())
+    sess=session(request,True);request_id=client_request_id(request);endpoint="POST /api/transfers"
+    replay=client_mutation_replay(db.db(),request_id,endpoint)
+    if replay is not None:
+        return replay
+    amount=abs(cents(x.amount));ts=iso(utcnow())
     if amount<=0:
         raise HTTPException(400,"Transferbetrag muss größer als 0 sein")
     if x.recurring and not x.recurring_frequency:
@@ -2169,7 +2174,9 @@ def transfer_create(x: TransferIn, request: Request):
                             "interval_count":x.recurring_interval_count,"valid_until":x.recurring_until.isoformat() if x.recurring_until else None,
                             "generated_transfers":generated})
         audit_append(c,sess[1],"transfer.create","transfer",tid,details)
-    return {"id":tid,"recurring_transfer_id":recurring_transfer_id,"generated_transfers":generated}
+        result={"id":tid,"recurring_transfer_id":recurring_transfer_id,"generated_transfers":generated}
+        client_mutation_store(c,request_id,endpoint,result)
+    return result
 
 
 @app.put("/api/transfers/{transfer_id}")
@@ -2392,10 +2399,48 @@ def transactions_paged(request: Request, account_id: int | None = None, q: str |
     return {"items":items,"total":total,"page":page,"page_size":0 if page_size==0 else effective,"pages":pages,"period":period}
 
 
+
+IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
+
+
+def client_request_id(request: Request) -> str | None:
+    value=(request.headers.get("X-Idempotency-Key") or "").strip()
+    if not value:
+        return None
+    if not IDEMPOTENCY_KEY_RE.fullmatch(value):
+        raise HTTPException(400,"Ungültiger Idempotency-Key")
+    return value
+
+
+def client_mutation_replay(c, request_id: str | None, endpoint: str):
+    if not request_id:
+        return None
+    row=c.execute("SELECT endpoint,response_json FROM client_mutations WHERE request_id=?",(request_id,)).fetchone()
+    if not row:
+        return None
+    if row["endpoint"] != endpoint:
+        raise HTTPException(409,"Idempotency-Key wurde bereits für eine andere Aktion verwendet")
+    payload=json.loads(row["response_json"])
+    if isinstance(payload,dict):
+        payload=dict(payload);payload["idempotent_replay"]=True
+    return payload
+
+
+def client_mutation_store(c, request_id: str | None, endpoint: str, payload: dict) -> None:
+    if not request_id:
+        return
+    c.execute("DELETE FROM client_mutations WHERE created_at<?",(iso(utcnow()-timedelta(days=365)),))
+    c.execute("INSERT INTO client_mutations(request_id,endpoint,response_json,created_at) VALUES(?,?,?,?)",
+              (request_id,endpoint,json.dumps(payload,ensure_ascii=False,separators=(",",":")),iso(utcnow())))
+
 @app.post("/api/transactions")
 def transaction_create(x: TransactionIn, request: Request):
     sess=session(request, True)
+    request_id=client_request_id(request); endpoint="POST /api/transactions"
     c0 = db.db()
+    replay=client_mutation_replay(c0,request_id,endpoint)
+    if replay is not None:
+        return replay
     if x.category_id is not None:
         cat = c0.execute("SELECT direction FROM categories WHERE id=? AND active=1", (x.category_id,)).fetchone()
         if not cat:
@@ -2454,7 +2499,9 @@ def transaction_create(x: TransactionIn, request: Request):
         if x.remember_payee:
             remember_payee(c,x.payee)
         audit_append(c,sess[1],"transaction.create","transaction",cur.lastrowid,{"name":created_tx.get("name"),"added":audit_pick(created_tx,("name","amount","booking_date","value_date","account_name","payee","category_name","note","confidence","fixed_cost","tags"))})
-        return {"id": cur.lastrowid, "recurring_id": recurring_id, "generated_transactions": len(generated_transactions)}
+        result={"id":cur.lastrowid,"recurring_id":recurring_id,"generated_transactions":len(generated_transactions)}
+        client_mutation_store(c,request_id,endpoint,result)
+        return result
 
 
 @app.put("/api/transactions/{tx_id}")
@@ -2997,7 +3044,11 @@ def recurring(request: Request):
 @app.post("/api/recurring")
 def recurring_create(x: RecurringIn, request: Request):
     sess=session(request, True)
+    request_id=client_request_id(request);endpoint="POST /api/recurring"
     c0=db.db()
+    replay=client_mutation_replay(c0,request_id,endpoint)
+    if replay is not None:
+        return replay
     cat=c0.execute("SELECT direction FROM categories WHERE id=? AND active=1",(x.category_id,)).fetchone() if x.category_id else None
     kind = "income" if cat and cat["direction"]=="income" else x.kind
     if cat and cat["direction"] in {"expense","savings"}: kind="direct_debit"
@@ -3012,7 +3063,9 @@ def recurring_create(x: RecurringIn, request: Request):
         created=recurring_snapshot(c,cur.lastrowid)
         generated=_materialize_recurring_series(c,cur.lastrowid,sess[1],from_day=max(date.today(),x.next_date)) if x.active else []
         audit_append(c,sess[1],"recurring.create","recurring",cur.lastrowid,{"name":created.get("name"),"added":audit_pick(created,("name","payee","amount","next_date","frequency","interval_count","account_name","category_name","valid_until","confidence","fixed_cost","max_amount")),"generated_transactions":len(generated)})
-        return {"id":cur.lastrowid,"generated_transactions":len(generated)}
+        result={"id":cur.lastrowid,"generated_transactions":len(generated)}
+        client_mutation_store(c,request_id,endpoint,result)
+        return result
 
 
 @app.put("/api/recurring/{recurring_id}")

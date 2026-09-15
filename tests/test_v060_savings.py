@@ -54,6 +54,6 @@ nov=ok(client.get('/api/dashboard?month=2026-11')); dec=ok(client.get('/api/dash
 assert nov['month_end_balance']-dec['month_end_balance']>=100, (nov['month_end_balance'],dec['month_end_balance'])
 js=(root/'static/app.js').read_text(); html=(root/'static/index.html').read_text()
 assert '<label>Art<select' not in js and 'Sparen' in js and 'analysisDailyIncome' in html and 'analysisDailySavings' in html
-assert tuple(map(int,main.APP_VERSION.split('.'))) >= (0,6,0)
+assert tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.'))) >= (0,6,0)
 print('v0.6.0 savings/category-only/12-month/recurring plausibility: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

@@ -118,12 +118,14 @@ assert ('2026-09-20','Werkstatt','transaction') in np,np
 assert ('2026-09-25','Gehalt','transaction') in np,np
 assert ('2026-09-28','Sparplan','transaction') in np,np
 
-# Documentary reports exclude future-dated manual entries (car on Sep20) until their date arrives.
+# Current-month report combines actuals through today with known/planned remainder through month end.
 rep=ok(client.get('/api/reports/categories?period=month&anchor=2026-09-01'))
 eq(rep['actual_through'],'2026-09-11','report actual cutoff')
-eq(rep['income'],0.0,'Sep report income actual only')
-eq(rep['expense'],1851.0,'Sep report expense actual only')
-eq(rep['savings'],0.0,'Sep report savings actual only')
+eq(rep['mode'],'forecast','Sep report mode')
+eq(rep['includes_planned'],True,'Sep report includes planned')
+eq(rep['income'],3000.0,'Sep report forecast income')
+eq(rep['expense'],2526.0,'Sep report forecast expense')
+eq(rep['savings'],500.0,'Sep report forecast savings')
 # Current-year report also excludes future manual/planned entries.
 yrep=ok(client.get('/api/reports/categories?period=year&anchor=2026-01-01'))
 eq(yrep['income'],24000.0,'YTD report income')

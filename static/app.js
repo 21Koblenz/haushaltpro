@@ -61,6 +61,7 @@ let txPage = 1;
 let txPages = 1;
 let currentMe = null;
 let runtimeStatus = {registration_enabled:true,public_mode:false,setup_token_required:false};
+let offlineSaveActive=false;
 const viewDataCache=new Map();
 function viewCacheGet(key,maxAge=20000){const x=viewDataCache.get(key);return x&&Date.now()-x.time<=maxAge?x.data:null}
 function viewCacheSet(key,data){viewDataCache.set(key,{time:Date.now(),data});return data}
@@ -109,26 +110,32 @@ function monthValue(monthId,yearId){return ensureMonthControls(monthId,yearId,se
 function initMonthControls(){MONTH_CONTROL_PAIRS.forEach(([m,y])=>setMonthControls(m,y,selectedMonth));}
 async function shiftSelectedMonth(delta){const [y,m]=selectedMonth.split('-').map(Number),d=new Date(y,m-1+delta,1),target=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;if(earliestMonth&&target<earliestMonth){toast('Vor dem Start des ersten Kontos gibt es keine Haushaltsdaten.');return}selectedMonth=target;setMonthControls('dashMonthName','dashYear',selectedMonth);await loadDashboard();}
 function toast(msg){const e=$('toast');e.textContent=hpText(msg);e.classList.add('show');setTimeout(()=>e.classList.remove('show'),3000)}
+window.HaushaltProSyncContext=()=>({csrf,bookId:currentMe?.book?.id||null});
+window.addEventListener('hp-offline-synced',e=>{clearViewCache();const n=Number(e.detail?.count||0);toast(hpLang()==='en'?`${n} offline ${n===1?'entry':'entries'} synced.`:`${n} Offline-${n===1?'Eintrag':'Einträge'} synchronisiert.`);if(currentMe)loadCommon().catch(()=>{})});
+window.addEventListener('hp-offline-sync-error',e=>toast((hpLang()==='en'?'Sync error: ':'Sync-Fehler: ')+(e.detail?.message||'')));
 async function api(url,opt={}){
   const headers={...(opt.headers||{})};
   if(opt.body && !(opt.body instanceof FormData)) headers['Content-Type']='application/json';
   if(csrf) headers['X-CSRF-Token']=csrf;
-  const r=await fetch(url,{credentials:'same-origin',...opt,headers});
+  let r;
+  if(window.HaushaltProOffline){
+    const outcome=await window.HaushaltProOffline.request(url,{credentials:'same-origin',...opt,headers},{bookId:currentMe?.book?.id||null});
+    if(outcome.queued){offlineSaveActive=true;clearViewCache();return {offline_queued:true,queue_id:outcome.id}}
+    r=outcome.response;
+  }else r=await fetch(url,{credentials:'same-origin',...opt,headers});
   if(r.status===401){showAuth(false,'Sitzung gesperrt. Bitte erneut anmelden.');throw new Error('Nicht angemeldet')}
   if(!r.ok){
     const j=await r.json().catch(()=>({detail:r.statusText}));
-    const detail=j?.detail;
-    let message=r.statusText||'Fehler';
+    const detail=j?.detail;let message=r.statusText||'Fehler';
     if(typeof detail==='string')message=detail;
     else if(Array.isArray(detail))message=detail.map(x=>x?.msg||x?.message||JSON.stringify(x)).join(' · ');
     else if(detail&&typeof detail==='object')message=detail.msg||detail.message||JSON.stringify(detail);
     throw new Error(hpText(message))
   }
-  const ct=r.headers.get('content-type')||'';
-  const result=ct.includes('application/json')?await r.json():r;
-  if((opt.method||'GET').toUpperCase()!=='GET')clearViewCache();
-  return result;
+  const ct=r.headers.get('content-type')||'';const result=ct.includes('application/json')?await r.json():r;
+  if((opt.method||'GET').toUpperCase()!=='GET')clearViewCache();return result;
 }
+
 async function materializeRecurringDue({month=null,year=null}={}){
   const params=new URLSearchParams();
   if(month)params.set('month',month);else if(year)params.set('year',String(year));
@@ -140,10 +147,15 @@ async function materializeRecurringDue({month=null,year=null}={}){
   return {bookings,transfers};
 }
 async function boot(){
-  const st=await fetch('/api/status').then(r=>r.json());runtimeStatus=st;
-  if($('appVersion'))$('appVersion').textContent='Version '+(st.version||'–');
-  try{const me=await api('/api/me');csrf=me.csrf;showApp(me)}catch{showAuth(!st.initialized)}
+  try{
+    const st=await fetch('/api/status',{cache:'no-store'}).then(r=>r.json());runtimeStatus=st;
+    if($('appVersion'))$('appVersion').textContent='Version '+(st.version||'–');
+    try{const me=await api('/api/me');csrf=me.csrf;showApp(me);window.HaushaltProOffline?.sync?.(false)}catch{showAuth(!st.initialized)}
+  }catch(err){
+    showAuth(false,hpLang()==='en'?'Server is currently unreachable. Offline entries can be created after a successful login and page load.':'Server ist derzeit nicht erreichbar. Offline-Einträge sind nach einer erfolgreichen Anmeldung und geladenen Seite möglich.');
+  }
 }
+
 function showAuth(setup=false,msg=''){
   $('app').hidden=true;$('register').hidden=true;$('auth').hidden=false;
   $('authSubtitle').textContent=setup?'Ersten Benutzer anlegen – ein Passwort genügt.':'Verschlüsseltes Haushaltsbuch';
@@ -308,7 +320,8 @@ function drawChart(points){
 async function selectDashboardMonth(){selectedMonth=monthValue('dashMonthName','dashYear');if(earliestMonth&&selectedMonth<earliestMonth){selectedMonth=earliestMonth;setMonthControls('dashMonthName','dashYear',selectedMonth);toast('Ansicht beginnt mit dem ersten Konto.')}await loadDashboard()}
 $('dashMonthName').onchange=selectDashboardMonth;$('dashYear').onchange=selectDashboardMonth;
 $('dashPrevMonth').onclick=()=>shiftSelectedMonth(-1);$('dashNextMonth').onclick=()=>shiftSelectedMonth(1);$('dashPeriod').onchange=reloadDashboardByMode;$('dashYear').onchange=async()=>{if($('dashPeriod').value==='year')await loadDashboardYear();else await selectDashboardMonth()};$('dashToday').onclick=async()=>{selectedMonth=`${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}`;setMonthControls('dashMonthName','dashYear',selectedMonth);$('dashYear').value=nowLocal.getFullYear();await reloadDashboardByMode()};
-function openModal(html,onSave){$('modalContent').innerHTML=html;$('modalForm').reset();modal.showModal();$('modalCancel').onclick=()=>modal.close();$('modalForm').onsubmit=async e=>{e.preventDefault();try{await onSave(new FormData(e.currentTarget));modal.close();await loadCommon();toast('Gespeichert')}catch(err){toast(err.message)}}}
+function openModal(html,onSave){$('modalContent').innerHTML=html;$('modalForm').reset();modal.showModal();$('modalCancel').onclick=()=>modal.close();$('modalForm').onsubmit=async e=>{e.preventDefault();offlineSaveActive=false;try{await onSave(new FormData(e.currentTarget));if(offlineSaveActive){modal.close();offlineSaveActive=false;toast(hpLang()==='en'?'Saved offline – will sync automatically.':'Offline gespeichert – wird automatisch synchronisiert.');return}modal.close();await loadCommon();toast('Gespeichert')}catch(err){if(offlineSaveActive){modal.close();offlineSaveActive=false;toast(hpLang()==='en'?'Saved offline – will sync automatically.':'Offline gespeichert – wird automatisch synchronisiert.');return}toast(err.message)}}}
+
 function accountOptions(selected=''){return accountsCache.map(a=>`<option value="${a.id}" ${String(a.id)===String(selected)?'selected':''}>${esc(a.name)}</option>`).join('')}
 function categoryTypeLabel(t){return hpText(t==='income'?'Einnahme':t==='savings'?'Sparen':'Ausgabe')}
 function categoryOptions(selected=''){return `<option value="">${esc(hpText('Kategorie wählen …'))}</option>`+categoriesCache.map(c=>`<option value="${c.id}" ${String(c.id)===String(selected)?'selected':''}>${esc(categoryDisplayName(c.name))} · ${esc(categoryTypeLabel(c.direction))}</option>`).join('')}

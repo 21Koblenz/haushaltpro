@@ -47,6 +47,6 @@ assert a['average_daily_savings']==expected_savings,(a['average_daily_savings'],
 html=(root/'static/index.html').read_text(); js=(root/'static/app.js').read_text()
 assert 'Kontostand bis heute' in html and 'Einnahmen bis heute' in html and 'Monatsprognose inkl. geplanter Einnahmen' in html
 assert 'fmt(a.balance_to_cutoff)' in js
-assert tuple(map(int,main.APP_VERSION.split('.'))) >= (0,6,1)
+assert tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.'))) >= (0,6,1)
 print('v0.6.1 cutoff balance + projected daily averages + cent rounding: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

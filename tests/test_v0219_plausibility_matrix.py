@@ -110,6 +110,6 @@ count=c.execute('SELECT COUNT(*) FROM transfers WHERE recurring_transfer_id=?',(
 assert count==1,count
 
 schema=c.execute("SELECT value FROM app_meta WHERE key='schema_version'").fetchone()[0]
-assert schema=='25',schema
+assert schema=='26',schema
 print('v0.21.9 plausibility matrix: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

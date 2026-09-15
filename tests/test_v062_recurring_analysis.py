@@ -48,6 +48,6 @@ js=(root/'static/app.js').read_text()
 assert "Array.isArray(detail)" in js and "x?.msg" in js
 html=(root/'static/index.html').read_text()
 assert 'Kennzahlen bis heute im ausgewählten Monat' in html
-assert tuple(map(int,main.APP_VERSION.split('.'))) >= (0,6,2)
+assert tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.'))) >= (0,6,2)
 print('v0.6.2 recurring due-on-first + cutoff balance + averages + readable errors: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

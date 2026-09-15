@@ -447,6 +447,14 @@ def init_schema(c) -> None:
             UNIQUE(category_id, month, strategy)
         );
 
+
+        CREATE TABLE IF NOT EXISTS client_mutations(
+            request_id TEXT PRIMARY KEY,
+            endpoint TEXT NOT NULL,
+            response_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS settings(
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -575,6 +583,7 @@ def init_schema(c) -> None:
         CREATE INDEX IF NOT EXISTS idx_recurring_transfer_active_date ON recurring_transfers(active, next_date);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_transfer_recurring_due ON transfers(recurring_transfer_id, booking_date) WHERE recurring_transfer_id IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_payee_usage ON payee_presets(usage_count DESC, last_used_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_client_mutations_created ON client_mutations(created_at);
         CREATE INDEX IF NOT EXISTS idx_recurring_account_date ON recurring(account_id, active, next_date);
         CREATE INDEX IF NOT EXISTS idx_occurrence_recurring_date ON recurring_occurrences(recurring_id, due_date);
         CREATE INDEX IF NOT EXISTS idx_recurring_override_date ON recurring_overrides(series_id, due_date);
@@ -587,7 +596,7 @@ def init_schema(c) -> None:
         CREATE INDEX IF NOT EXISTS idx_reconcile_learning ON reconciliation_learning(account_id,direction,amount_cents);
 
         INSERT OR REPLACE INTO app_meta(key,value) VALUES('db_magic','HAUSHALTPRO_V3_SQLCIPHER4');
-        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','25');
+        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','26');
         INSERT OR IGNORE INTO settings(key,value) VALUES('investment_tracking','false');
         INSERT OR IGNORE INTO settings(key,value) VALUES('autolock_minutes','15');
         INSERT OR IGNORE INTO settings(key,value) VALUES('budget_strategy','hybrid');
@@ -765,15 +774,18 @@ def migrate_schema(c) -> None:
     c.execute("""CREATE TABLE IF NOT EXISTS payee_presets(
         id INTEGER PRIMARY KEY,name TEXT NOT NULL COLLATE NOCASE UNIQUE,usage_count INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,last_used_at TEXT NOT NULL)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS client_mutations(
+        request_id TEXT PRIMARY KEY,endpoint TEXT NOT NULL,response_json TEXT NOT NULL,created_at TEXT NOT NULL)""")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tx_transfer ON transactions(transfer_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_splits_tx ON splits(transaction_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_transfer_date ON transfers(booking_date,active)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_recurring_transfer_active_date ON recurring_transfers(active,next_date)")
     c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_transfer_recurring_due ON transfers(recurring_transfer_id,booking_date) WHERE recurring_transfer_id IS NOT NULL")
     c.execute("CREATE INDEX IF NOT EXISTS idx_payee_usage ON payee_presets(usage_count DESC,last_used_at DESC)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_client_mutations_created ON client_mutations(created_at)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tx_category_date ON transactions(category_id,booking_date,status)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag_tx ON transaction_tags(tag,transaction_id)")
-    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','25') ON CONFLICT(key) DO UPDATE SET value='25'")
+    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','26') ON CONFLICT(key) DO UPDATE SET value='26'")
     c.commit()
 
 def rekey(new_key: str) -> None:
