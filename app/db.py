@@ -375,6 +375,7 @@ def init_schema(c) -> None:
             amount INTEGER NOT NULL,
             next_date TEXT NOT NULL,
             frequency TEXT NOT NULL CHECK(frequency IN ('daily','weekly','monthly','yearly')),
+            interval_count INTEGER NOT NULL DEFAULT 1 CHECK(interval_count >= 1),
             kind TEXT NOT NULL DEFAULT 'direct_debit' CHECK(kind IN ('direct_debit','standing_order','income')),
             max_amount INTEGER,
             active INTEGER NOT NULL DEFAULT 1,
@@ -561,7 +562,7 @@ def init_schema(c) -> None:
         CREATE INDEX IF NOT EXISTS idx_reconcile_learning ON reconciliation_learning(account_id,direction,amount_cents);
 
         INSERT OR REPLACE INTO app_meta(key,value) VALUES('db_magic','HAUSHALTPRO_V3_SQLCIPHER4');
-        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','22');
+        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','23');
         INSERT OR IGNORE INTO settings(key,value) VALUES('investment_tracking','false');
         INSERT OR IGNORE INTO settings(key,value) VALUES('autolock_minutes','15');
         INSERT OR IGNORE INTO settings(key,value) VALUES('budget_strategy','hybrid');
@@ -648,6 +649,9 @@ def migrate_schema(c) -> None:
         c.execute("ALTER TABLE recurring ADD COLUMN confidence TEXT NOT NULL DEFAULT 'fixed'")
     if "fixed_cost" not in rcols:
         c.execute("ALTER TABLE recurring ADD COLUMN fixed_cost INTEGER NOT NULL DEFAULT 0")
+    if "interval_count" not in rcols:
+        c.execute("ALTER TABLE recurring ADD COLUMN interval_count INTEGER NOT NULL DEFAULT 1")
+    c.execute("UPDATE recurring SET interval_count=1 WHERE interval_count IS NULL OR interval_count<1")
     c.execute("""CREATE TABLE IF NOT EXISTS attachments(
         id INTEGER PRIMARY KEY, transaction_id INTEGER NOT NULL, filename TEXT NOT NULL,
         content_type TEXT, data BLOB NOT NULL, size INTEGER NOT NULL, created_at TEXT NOT NULL,
@@ -719,7 +723,7 @@ def migrate_schema(c) -> None:
     c.execute("CREATE INDEX IF NOT EXISTS idx_payee_usage ON payee_presets(usage_count DESC,last_used_at DESC)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tx_category_date ON transactions(category_id,booking_date,status)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag_tx ON transaction_tags(tag,transaction_id)")
-    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','22') ON CONFLICT(key) DO UPDATE SET value='22'")
+    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','23') ON CONFLICT(key) DO UPDATE SET value='23'")
     c.commit()
 
 def rekey(new_key: str) -> None:
