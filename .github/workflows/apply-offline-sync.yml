@@ -51,8 +51,8 @@ jobs:
 
           old_version="tuple(map(int,main.APP_VERSION.split('.')))"
           new_version="tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.')))"
-          source_old="'APP_VERSION = \\\"0.21.8\\\"' in main"
-          source_new="('APP_VERSION = \\\"0.21.8\\\"' in main or 'APP_VERSION = \\\"0.21.9-dev\\\"' in main)"
+          source_old='\'APP_VERSION = "0.21.8"\' in main'
+          source_new='(\'APP_VERSION = "0.21.8"\' in main or \'APP_VERSION = "0.21.9-dev"\' in main)'
           changed=[]
           for test in Path('tests').glob('test_*.py'):
               text=test.read_text(encoding='utf-8')
