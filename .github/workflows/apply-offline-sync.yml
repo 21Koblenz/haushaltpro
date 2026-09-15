@@ -49,6 +49,25 @@ jobs:
           if old_report not in vs: raise SystemExit('v071 report forecast anchor not found')
           v.write_text(vs.replace(old_report,new_report,1),encoding='utf-8')
 
+          deep=Path('tests/test_v086_deep_plausibility.py')
+          ds=deep.read_text(encoding='utf-8')
+          old_deep="""# Documentary reports exclude future-dated manual entries (car on Sep20) until their date arrives.
+rep=ok(client.get('/api/reports/categories?period=month&anchor=2026-09-01'))
+eq(rep['actual_through'],'2026-09-11','report actual cutoff')
+eq(rep['income'],0.0,'Sep report income actual only')
+eq(rep['expense'],1851.0,'Sep report expense actual only')
+eq(rep['savings'],0.0,'Sep report savings actual only')"""
+          new_deep="""# Current-month report combines actuals through today with known/planned remainder through month end.
+rep=ok(client.get('/api/reports/categories?period=month&anchor=2026-09-01'))
+eq(rep['actual_through'],'2026-09-11','report actual cutoff')
+eq(rep['mode'],'forecast','Sep report mode')
+eq(rep['includes_planned'],True,'Sep report includes planned')
+eq(rep['income'],3000.0,'Sep report forecast income')
+eq(rep['expense'],2526.0,'Sep report forecast expense')
+eq(rep['savings'],500.0,'Sep report forecast savings')"""
+          if old_deep not in ds: raise SystemExit('v086 current report anchor not found')
+          deep.write_text(ds.replace(old_deep,new_deep,1),encoding='utf-8')
+
           old_version="tuple(map(int,main.APP_VERSION.split('.')))"
           new_version="tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.')))"
           source_old='\'APP_VERSION = "0.21.8"\' in main'
