@@ -20,6 +20,11 @@ if "assert schema=='25',schema" in s:
     s = s.replace("assert schema=='25',schema", "assert schema=='26',schema", 1)
 matrix.write_text(s, encoding="utf-8")
 
+migration = Path("tests/test_v090_migration.py")
+s = migration.read_text(encoding="utf-8")
+s = s.replace("assert ver2=='23',ver2", "assert ver2=='26',ver2", 1)
+migration.write_text(s, encoding="utf-8")
+
 # Current-month reports intentionally combine actuals through today with the
 # already-known remainder through month end. Historical month/year reports stay
 # actual-only.
