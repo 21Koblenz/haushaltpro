@@ -1,4 +1,4 @@
-# Apply the offline queue only after the complete regression suite passes.
+# Apply the offline queue only after the complete regression suite passes; recurring entrypoints stay intact.
 name: Apply offline sync feature
 
 on:
@@ -29,15 +29,12 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          # Keep the existing dedicated recurring-booking entry point. The user
-          # explicitly chose to retain it after payee support was added there.
           index=Path('static/index.html')
           s=index.read_text(encoding='utf-8')
           s=s.replace('<span id="connectionText">Server prüfen …</span>','<span id="connectionText"></span>',1)
           s=s.replace('0.21.9-offline1','0.21.8-offline1')
           index.write_text(s,encoding='utf-8')
 
-          # The offline feature adds schema 26.
           t=Path('tests/test_offline_sync.py')
           t.write_text(t.read_text(encoding='utf-8').replace('0.21.9-offline1','0.21.8-offline1'),encoding='utf-8')
           q=Path('tests/test_v0219_plausibility_matrix.py')
@@ -45,8 +42,6 @@ jobs:
           if "assert schema=='25',schema" not in qs: raise SystemExit('schema regression anchor not found')
           q.write_text(qs.replace("assert schema=='25',schema","assert schema=='26',schema",1),encoding='utf-8')
 
-          # Current month reports intentionally include the known remainder of
-          # the month; align one legacy regression with that now-established rule.
           v=Path('tests/test_v071_full_plausibility.py')
           vs=v.read_text(encoding='utf-8')
           old_report="assert rep['income']==0.0 and rep['expense']==1000.0 and rep['savings']==0.0,rep\nassert rep['net']==-1000.0 and rep['total_saved']==0.0 and rep['savings_rate_pct']==0.0,rep"
@@ -54,8 +49,6 @@ jobs:
           if old_report not in vs: raise SystemExit('v071 report forecast anchor not found')
           v.write_text(vs.replace(old_report,new_report,1),encoding='utf-8')
 
-          # Development versions may carry a -dev suffix. Normalize old numeric
-          # comparisons and extend direct allow-lists used by historical tests.
           old_version="tuple(map(int,main.APP_VERSION.split('.')))"
           new_version="tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.')))"
           changed=[]
@@ -70,8 +63,6 @@ jobs:
                   changed.append(test.name)
           print('prerelease-aware version checks:',changed)
 
-          # Remove a stale changelog sentence from an earlier abandoned UI idea;
-          # the dedicated recurring button remains available with payee support.
           ch=Path('CHANGELOG.md')
           cs=ch.read_text(encoding='utf-8')
           stale='- Removed the duplicate “+ Wiederkehrende Buchung” creation button from the recurring-series tab. New recurring series are created through the normal “+ Buchung” dialog, while existing series remain manageable in the recurring tab.\n'
