@@ -1,4 +1,4 @@
-# Final rerun after cache-bust, i18n, recurring-entrypoint, test-alignment and schema fixes.
+# Final rerun after cache-bust, i18n, recurring-entrypoint, test-alignment, schema and prerelease-version fixes.
 name: Apply offline sync feature
 
 on:
