@@ -31,10 +31,11 @@ jobs:
           p=Path('scripts/apply_recurring_transfer_report.py')
           s=p.read_text(encoding='utf-8')
           old='main = replace_once(main, old_report, new_report, "category report current-month forecast")'
-          new='''report_pattern = r"    today=date\\.today\\(\\)\\n    actual_end=min\\(end,today\\)\\n.*?    \\\"\\\"\\\", \\(start\\.isoformat\\(\\), query_end\\.isoformat\\(\\), start\\.isoformat\\(\\), query_end\\.isoformat\\(\\)\\)\\)\\.fetchall\\(\\)\\n"
-          main, n = re.subn(report_pattern, lambda _m: new_report, main, count=1, flags=re.S)
-          if n != 1:
-              raise SystemExit("failed to patch category report current-month forecast")'''
+          new='''report_fn = main.index('def category_report')
+          report_start = main.index('    today=date.today()\\n    actual_end=min(end,today)\\n', report_fn)
+          report_end_marker = '    """, (start.isoformat(), query_end.isoformat(), start.isoformat(), query_end.isoformat())).fetchall()\\n'
+          report_end = main.index(report_end_marker, report_start) + len(report_end_marker)
+          main = main[:report_start] + new_report + main[report_end:]'''
           if old not in s:
               raise SystemExit('report patch call anchor missing')
           p.write_text(s.replace(old,new,1),encoding='utf-8')
