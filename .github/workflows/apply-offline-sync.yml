@@ -56,6 +56,12 @@ jobs:
           qs=q.read_text(encoding='utf-8')
           if "assert schema=='25',schema" not in qs: raise SystemExit('schema regression anchor not found')
           q.write_text(qs.replace("assert schema=='25',schema","assert schema=='26',schema",1),encoding='utf-8')
+          v=Path('tests/test_v071_full_plausibility.py')
+          vs=v.read_text(encoding='utf-8')
+          old_report="assert rep['income']==0.0 and rep['expense']==1000.0 and rep['savings']==0.0,rep\nassert rep['net']==-1000.0 and rep['total_saved']==0.0 and rep['savings_rate_pct']==0.0,rep"
+          new_report="assert rep['mode']=='forecast' and rep['includes_planned'] is True,rep\nassert rep['income']==2000.0 and rep['expense']==1000.0 and rep['savings']==500.0,rep\nassert rep['net']==500.0 and rep['total_saved']==1000.0 and rep['savings_rate_pct']==50.0,rep"
+          if old_report not in vs: raise SystemExit('v071 report forecast anchor not found')
+          v.write_text(vs.replace(old_report,new_report,1),encoding='utf-8')
           old_version="tuple(map(int,main.APP_VERSION.split('.')))"
           new_version="tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.')))"
           changed=[]
