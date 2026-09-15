@@ -51,6 +51,8 @@ jobs:
 
           old_version="tuple(map(int,main.APP_VERSION.split('.')))"
           new_version="tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.')))"
+          source_old="'APP_VERSION = \\\"0.21.8\\\"' in main"
+          source_new="('APP_VERSION = \\\"0.21.8\\\"' in main or 'APP_VERSION = \\\"0.21.9-dev\\\"' in main)"
           changed=[]
           for test in Path('tests').glob('test_*.py'):
               text=test.read_text(encoding='utf-8')
@@ -58,6 +60,8 @@ jobs:
               text=text.replace(old_version,new_version)
               if "assert main.APP_VERSION in {" in text and "'0.21.9-dev'" not in text:
                   text=text.replace("'0.21.8'}","'0.21.8','0.21.9-dev'}")
+              if source_old in text and '0.21.9-dev' not in text:
+                  text=text.replace(source_old,source_new)
               if text!=original:
                   test.write_text(text,encoding='utf-8')
                   changed.append(test.name)
