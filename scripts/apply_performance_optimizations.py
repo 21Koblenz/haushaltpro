@@ -30,7 +30,6 @@ main_path=Path('app/main.py')
 main=main_path.read_text(encoding='utf-8')
 start=main.index('def recurring_events(c, account_id: int | None, from_day: date, to_day: date):')
 end=main.index('\n\ndef _materialize_recurring_window',start)
-old=main[start:end]
 new='''def recurring_events(c, account_id: int | None, from_day: date, to_day: date):
     """Return unmaterialized recurring events with batched lookup tables.
 
@@ -55,24 +54,25 @@ new='''def recurring_events(c, account_id: int | None, from_day: date, to_day: d
     done=set()
     for ids in chunks(recurring_ids):
         marks=",".join("?" for _ in ids)
-        sql=f"""SELECT recurring_id,due_date FROM recurring_occurrences
-                 WHERE recurring_id IN ({marks}) AND due_date BETWEEN ? AND ?
-                   AND status IN ('executed','skipped')"""
+        sql=("SELECT recurring_id,due_date FROM recurring_occurrences "
+             "WHERE recurring_id IN ({}) AND due_date BETWEEN ? AND ? "
+             "AND status IN ('executed','skipped')").format(marks)
         for x in c.execute(sql,[*ids,low_s,high_s]).fetchall():
             done.add((int(x["recurring_id"]),x["due_date"]))
 
     overrides={}
     for ids in chunks(series_ids):
         marks=",".join("?" for _ in ids)
-        sql=f"""SELECT series_id,due_date,amount,note FROM recurring_overrides
-                 WHERE series_id IN ({marks}) AND due_date BETWEEN ? AND ?"""
+        sql=("SELECT series_id,due_date,amount,note FROM recurring_overrides "
+             "WHERE series_id IN ({}) AND due_date BETWEEN ? AND ?").format(marks)
         for x in c.execute(sql,[*ids,low_s,high_s]).fetchall():
             overrides[(int(x["series_id"]),x["due_date"])]=x
 
     category_direction={}
     for ids in chunks(category_ids):
         marks=",".join("?" for _ in ids)
-        for x in c.execute(f"SELECT id,direction FROM categories WHERE id IN ({marks})",ids).fetchall():
+        sql="SELECT id,direction FROM categories WHERE id IN ({})".format(marks)
+        for x in c.execute(sql,ids).fetchall():
             category_direction[int(x["id"])]=x["direction"]
 
     def signed(r, raw_amount: int) -> int:
