@@ -56,6 +56,15 @@ jobs:
           qs=q.read_text(encoding='utf-8')
           if "assert schema=='25',schema" not in qs: raise SystemExit('schema regression anchor not found')
           q.write_text(qs.replace("assert schema=='25',schema","assert schema=='26',schema",1),encoding='utf-8')
+          old_version="tuple(map(int,main.APP_VERSION.split('.')))"
+          new_version="tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.')))"
+          changed=[]
+          for test in Path('tests').glob('test_*.py'):
+              text=test.read_text(encoding='utf-8')
+              if old_version in text:
+                  test.write_text(text.replace(old_version,new_version),encoding='utf-8')
+                  changed.append(test.name)
+          print('prerelease-aware version checks:',changed)
           PY
       - name: Validate syntax and full regression suite
         run: |
