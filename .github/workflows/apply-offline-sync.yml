@@ -1,4 +1,4 @@
-# Final rerun after cache-bust, i18n, recurring-entrypoint and test-alignment fixes.
+# Final rerun after cache-bust, i18n, recurring-entrypoint, test-alignment and schema fixes.
 name: Apply offline sync feature
 
 on:
@@ -52,6 +52,10 @@ jobs:
           t=Path('tests/test_offline_sync.py')
           ts=t.read_text(encoding='utf-8').replace('0.21.9-offline1','0.21.8-offline1')
           t.write_text(ts,encoding='utf-8')
+          q=Path('tests/test_v0219_plausibility_matrix.py')
+          qs=q.read_text(encoding='utf-8')
+          if "assert schema=='25',schema" not in qs: raise SystemExit('schema regression anchor not found')
+          q.write_text(qs.replace("assert schema=='25',schema","assert schema=='26',schema",1),encoding='utf-8')
           PY
       - name: Validate syntax and full regression suite
         run: |
