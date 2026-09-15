@@ -24,12 +24,24 @@ jobs:
           cache: pip
       - name: Install test dependencies
         run: python -m pip install -r requirements.txt httpx2==2.12.0
-      - name: Make report patch anchor resilient
+      - name: Make patch anchors resilient
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('scripts/apply_recurring_transfer_report.py')
           s=p.read_text(encoding='utf-8')
+
+          # The original transfer regex was deliberately conservative, but the
+          # legacy block contains multiple endpoints. Replace that script fragment
+          # with exact API-boundary slicing instead.
+          transfer_anchor=s.index("pattern = r'@app", s.index('transfer_block ='))
+          transfer_end_marker='    raise SystemExit("failed to replace transfer API block")'
+          transfer_end=s.index(transfer_end_marker,transfer_anchor)+len(transfer_end_marker)
+          transfer_replacement='''transfer_start = main.index('@app.get("/api/transfers/{transfer_id}")')
+          transfer_end = main.index('@app.get("/api/transactions")', transfer_start)
+          main = main[:transfer_start] + transfer_block + main[transfer_end:]'''
+          s=s[:transfer_anchor]+transfer_replacement+s[transfer_end:]
+
           old='main = replace_once(main, old_report, new_report, "category report current-month forecast")'
           new='''report_fn = main.index('def category_report')
           report_start = main.index('    today=date.today()\\n    actual_end=min(end,today)\\n', report_fn)
@@ -38,7 +50,8 @@ jobs:
           main = main[:report_start] + new_report + main[report_end:]'''
           if old not in s:
               raise SystemExit('report patch call anchor missing')
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
           PY
       - name: Apply patch
         run: python scripts/apply_recurring_transfer_report.py
