@@ -35,7 +35,9 @@ ok(client.put(f"/api/recurring/{created['id']}",json=payload))
 r=c.execute("SELECT payee FROM recurring WHERE id=?",(created["id"],)).fetchone(); assert r["payee"]=="Neuer Stadtwerke Name",r
 tx=c.execute("SELECT payee FROM transactions WHERE recurring_id=? AND booking_date=? AND status='planned'",(created["id"],due.isoformat())).fetchone(); assert tx and tx["payee"]=="Neuer Stadtwerke Name",tx
 index=(root/"static/index.html").read_text(encoding="utf-8"); appjs=(root/"static/app.js").read_text(encoding="utf-8")
-assert 'id="newRecurringTx"' in index and '+ Wiederkehrende Buchung' in index
-assert "$('newRecurringTx').onclick=()=>recDialog(null)" in appjs
+assert 'id="newTx"' in index
+assert 'id="newRecurringTx"' not in index
+assert "$('newRecurringTx').onclick" not in appjs
+assert 'Wiederkehrende Zahlung / Einnahme' in appjs
 assert 'name="payee" list="payeeSuggestions"' in appjs
-print("recurring payee + dedicated add button: PASS")
+print("recurring payee + unified add entrypoint: PASS")
