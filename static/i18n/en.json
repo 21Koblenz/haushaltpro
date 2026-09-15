@@ -780,7 +780,9 @@
     "Transfer-Serie stoppen? Noch nicht ausgeführte zukünftige Transfers werden entfernt.": "Stop transfer series? Future transfers that have not been executed will be removed.",
     "Transfer-Serie endgültig löschen? Bereits ausgeführte Transfers bleiben als Historie bestehen.": "Permanently delete transfer series? Already executed transfers remain in history.",
     "Monatsprognose inklusive bereits bekannter/geplanter Buchungen bis Monatsende.": "Month forecast including known/planned bookings through month end.",
-    "Ist-Auswertung der tatsächlich gebuchten Werte.": "Actual report of executed bookings."
+    "Ist-Auswertung der tatsächlich gebuchten Werte.": "Actual report of executed bookings.",
+    "z. B. Vermieter, Versicherung, Stadtwerke": "e.g. landlord, insurer, utility company",
+    "Aktive Serien. Neue Serien werden hier direkt angelegt; einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.": "Active series. Create new series directly here; individual executed occurrences also appear under “All transactions”. Changes can take effect from any chosen date."
   },
   "patterns": [
     {
