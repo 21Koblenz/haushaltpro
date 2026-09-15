@@ -1,4 +1,3 @@
-# Apply the offline queue only after the complete regression suite passes; recurring entrypoints stay intact.
 name: Apply offline sync feature
 
 on:
@@ -26,72 +25,7 @@ jobs:
       - name: Apply offline sync patch
         run: |
           python scripts/apply_offline_sync.py
-          python - <<'PY'
-          from pathlib import Path
-
-          index=Path('static/index.html')
-          s=index.read_text(encoding='utf-8')
-          s=s.replace('<span id="connectionText">Server prüfen …</span>','<span id="connectionText"></span>',1)
-          s=s.replace('0.21.9-offline1','0.21.8-offline1')
-          index.write_text(s,encoding='utf-8')
-
-          t=Path('tests/test_offline_sync.py')
-          t.write_text(t.read_text(encoding='utf-8').replace('0.21.9-offline1','0.21.8-offline1'),encoding='utf-8')
-          q=Path('tests/test_v0219_plausibility_matrix.py')
-          qs=q.read_text(encoding='utf-8')
-          if "assert schema=='25',schema" not in qs: raise SystemExit('schema regression anchor not found')
-          q.write_text(qs.replace("assert schema=='25',schema","assert schema=='26',schema",1),encoding='utf-8')
-
-          v=Path('tests/test_v071_full_plausibility.py')
-          vs=v.read_text(encoding='utf-8')
-          old_report="assert rep['income']==0.0 and rep['expense']==1000.0 and rep['savings']==0.0,rep\nassert rep['net']==-1000.0 and rep['total_saved']==0.0 and rep['savings_rate_pct']==0.0,rep"
-          new_report="assert rep['mode']=='forecast' and rep['includes_planned'] is True,rep\nassert rep['income']==2000.0 and rep['expense']==1000.0 and rep['savings']==500.0,rep\nassert rep['net']==500.0 and rep['total_saved']==1000.0 and rep['savings_rate_pct']==50.0,rep"
-          if old_report not in vs: raise SystemExit('v071 report forecast anchor not found')
-          v.write_text(vs.replace(old_report,new_report,1),encoding='utf-8')
-
-          deep=Path('tests/test_v086_deep_plausibility.py')
-          ds=deep.read_text(encoding='utf-8')
-          old_deep="""# Documentary reports exclude future-dated manual entries (car on Sep20) until their date arrives.
-rep=ok(client.get('/api/reports/categories?period=month&anchor=2026-09-01'))
-eq(rep['actual_through'],'2026-09-11','report actual cutoff')
-eq(rep['income'],0.0,'Sep report income actual only')
-eq(rep['expense'],1851.0,'Sep report expense actual only')
-eq(rep['savings'],0.0,'Sep report savings actual only')"""
-          new_deep="""# Current-month report combines actuals through today with known/planned remainder through month end.
-rep=ok(client.get('/api/reports/categories?period=month&anchor=2026-09-01'))
-eq(rep['actual_through'],'2026-09-11','report actual cutoff')
-eq(rep['mode'],'forecast','Sep report mode')
-eq(rep['includes_planned'],True,'Sep report includes planned')
-eq(rep['income'],3000.0,'Sep report forecast income')
-eq(rep['expense'],2526.0,'Sep report forecast expense')
-eq(rep['savings'],500.0,'Sep report forecast savings')"""
-          if old_deep not in ds: raise SystemExit('v086 current report anchor not found')
-          deep.write_text(ds.replace(old_deep,new_deep,1),encoding='utf-8')
-
-          old_version="tuple(map(int,main.APP_VERSION.split('.')))"
-          new_version="tuple(map(int,main.APP_VERSION.split('-',1)[0].split('.')))"
-          source_old='\'APP_VERSION = "0.21.8"\' in main'
-          source_new='(\'APP_VERSION = "0.21.8"\' in main or \'APP_VERSION = "0.21.9-dev"\' in main)'
-          changed=[]
-          for test in Path('tests').glob('test_*.py'):
-              text=test.read_text(encoding='utf-8')
-              original=text
-              text=text.replace(old_version,new_version)
-              if "assert main.APP_VERSION in {" in text and "'0.21.9-dev'" not in text:
-                  text=text.replace("'0.21.8'}","'0.21.8','0.21.9-dev'}")
-              if source_old in text and '0.21.9-dev' not in text:
-                  text=text.replace(source_old,source_new)
-              if text!=original:
-                  test.write_text(text,encoding='utf-8')
-                  changed.append(test.name)
-          print('prerelease-aware version checks:',changed)
-
-          ch=Path('CHANGELOG.md')
-          cs=ch.read_text(encoding='utf-8')
-          stale='- Removed the duplicate “+ Wiederkehrende Buchung” creation button from the recurring-series tab. New recurring series are created through the normal “+ Buchung” dialog, while existing series remain manageable in the recurring tab.\n'
-          cs=cs.replace(stale,'',1)
-          ch.write_text(cs,encoding='utf-8')
-          PY
+          python scripts/align_offline_tests.py
       - name: Validate syntax and full regression suite
         run: |
           set -e
@@ -109,7 +43,7 @@ eq(rep['savings'],500.0,'Sep report forecast savings')"""
       - name: Commit tested feature
         run: |
           set -e
-          git rm scripts/apply_offline_sync.py .github/workflows/apply-offline-sync.yml
+          git rm scripts/apply_offline_sync.py scripts/align_offline_tests.py .github/workflows/apply-offline-sync.yml
           git add -A
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
