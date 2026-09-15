@@ -22,7 +22,7 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: python -m pip install -r requirements.txt httpx2==2.12.0
-      - name: Repair test fixture and English placeholder
+      - name: Repair validated fixtures and English translations
         run: |
           python - <<'PY'
           import json
@@ -42,7 +42,9 @@ jobs:
           test.write_text(s,encoding='utf-8')
           p=Path('static/i18n/en.json')
           data=json.loads(p.read_text(encoding='utf-8'))
-          data.setdefault('legacy',{})['z. B. Vermieter, Versicherung, Stadtwerke']='e.g. landlord, insurer, utility company'
+          legacy=data.setdefault('legacy',{})
+          legacy['z. B. Vermieter, Versicherung, Stadtwerke']='e.g. landlord, insurer, utility company'
+          legacy['Aktive Serien. Neue Serien werden hier direkt angelegt; einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.']='Active series. Create new series directly here; individual executed occurrences also appear under “All transactions”. Changes can take effect from any chosen date.'
           p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
       - name: Plausibility matrix
