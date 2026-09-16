@@ -29,7 +29,7 @@ Das vorhandene Volume `haushaltpro_data` und die übrige Konfiguration beibehalt
 
 Offline-Erfassung funktioniert in einer vorher online geladenen, angemeldeten App. Ein vollständiger Start ohne Serververbindung sowie Offline-Bearbeiten/Löschen sind noch nicht enthalten. Nur wartende Schreibdaten liegen lokal in IndexedDB; diese sind derzeit nicht zusätzlich verschlüsselt. Nach dem Synchronisieren werden sie entfernt.
 
-83 Python-Testskripte, 9 JavaScript-Tests, 52 statische Sicherheitsprüfungen sowie Syntax-/Compile-Checks bestanden lokal. Die Migration wurde mit SQLCipher 4.12.0 geprüft. Eine interaktive Browserprüfung war wegen des gesperrten lokalen Testzugriffs nicht möglich; [Testanleitung](OFFLINE-DEV.md).
+84 Python-Testskripte, 9 JavaScript-Tests, 52 statische Sicherheitsprüfungen sowie Syntax-/Compile-Checks bestanden lokal. Die Migration wurde mit SQLCipher 4.12.0 geprüft. Eine interaktive Browserprüfung war wegen des gesperrten lokalen Testzugriffs nicht möglich; [Testanleitung](OFFLINE-DEV.md).
 
 ## English
 
@@ -39,4 +39,4 @@ New offline transactions, transfers and series are persisted before sending and 
 
 Use `21koblenz/haushaltpro:0.21.9-dev.2` for this exact build or `:dev` for the moving test channel, then pull and recreate the existing container while retaining its volume. Source builds can use tag `v0.21.9-dev.2`. Stable image tags are unaffected by this prerelease.
 
-Schema 27 is an additive migration. Offline creation requires a previously loaded/authenticated page; cold start and offline editing/deletion are not included. Pending browser payloads are not yet encrypted. Local checks: 83 Python scripts, 9 JavaScript tests and 52 static security checks passed. Interactive browser verification was blocked by local-URL access restrictions.
+Schema 27 is an additive migration. Offline creation requires a previously loaded/authenticated page; cold start and offline editing/deletion are not included. Pending browser payloads are not yet encrypted. Local checks: 84 Python scripts, 9 JavaScript tests and 52 static security checks passed. Interactive browser verification was blocked by local-URL access restrictions.

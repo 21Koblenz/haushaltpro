@@ -83,7 +83,7 @@ npm test
 
 `tests/test_recurring_occurrence_dates.py` checks independent cent totals after same-month, cross-month and cross-year moves, repeated edits, series version cutoffs, regeneration, reset and cache freshness. `tests/test_occurrence_encrypted_migration.py` upgrades a real encrypted schema-26 database twice and checks preservation and integrity. `tests/test_offline_sync.py` includes concurrent replay with separate connections and wrong-user/book rejection.
 
-Local result: 83 Python scripts, 9 JavaScript tests, 52 static security checks passed. The earlier date-sensitive v0.10.3 regression now fixes its reference date explicitly.
+Local result: 84 Python scripts, 9 JavaScript tests, 52 static security checks passed. The earlier date-sensitive v0.10.3 regression now fixes its reference date explicitly.
 
 Performance probe (10,000 transactions, 4,000 splits, 8 accounts, 80 series; local SQLite diagnostic without persistent view cache):
 

@@ -19,7 +19,7 @@
 
 ### Validation and scope
 
-- 83 Python regression scripts, 9 JavaScript queue tests and 52 static security checks passed locally; Python compile and JavaScript syntax checks passed.
+- 84 Python regression scripts, 9 JavaScript queue tests and 52 static security checks passed locally; Python compile and JavaScript syntax checks passed.
 - Offline mode covers new transactions, transfers and recurring series after the app has been loaded online. Full offline cold start and offline edits/deletes are not included. Pending payloads remain unencrypted in the browser's IndexedDB.
 - Dev tags publish `:dev` and the explicit prerelease version; they do not update stable `:latest` or `:0.21`.
 - Browser UI validation could not run in this environment because the browser blocked the local test URL. See the manual checklist in `docs/OFFLINE-DEV.md`.
