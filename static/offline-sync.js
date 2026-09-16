@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const DB_NAME='haushaltpro-offline-v1',STORE='queue',DB_VERSION=1,HEARTBEAT_MS=15000;
-const QUEUEABLE=new Set(['POST /api/transactions','POST /api/transfers','POST /api/recurring']);
+const QUEUEABLE=new Set(['POST /api/transactions','POST /api/transfers','POST /api/recurring','POST /api/open-items']);
 let reachable=null,syncing=false,pinging=false,lastSuccess=null,lastError='',started=false,dbPromise=null,cachedRows=[];
 const sending=new Set();
 const isEn=()=>((window.HaushaltProI18n?.language?.()||localStorage.getItem('hp_lang')||'de')==='en');
@@ -33,7 +33,7 @@ async function refresh(){cachedRows=await rows();render()}
 async function put(item){await withStore('readwrite',s=>s.put(item));await refresh()}
 async function remove(id){await withStore('readwrite',s=>s.delete(id));await refresh()}
 function normalized(url){const u=new URL(url,location.origin);return u.pathname+u.search}
-function queueable(url,method){const u=new URL(url,location.origin);return u.origin===location.origin&&QUEUEABLE.has(method+' '+u.pathname)}
+function queueable(url,method){const u=new URL(url,location.origin);return u.origin===location.origin&&(QUEUEABLE.has(method+' '+u.pathname)||(method==='POST'&&/^\/api\/open-items\/[1-9][0-9]*\/payments$/.test(u.pathname)))}
 function render(){
   const el=document.getElementById('connectionStatus'),text=document.getElementById('connectionText'),badge=document.getElementById('connectionQueue');if(!el||!text||!badge)return;
   const ctx=context(),legacy=cachedRows.filter(x=>!x.user&&x.bookId===String(ctx.bookId)),all=cachedRows.filter(x=>x.user===owner(ctx)),n=all.length+legacy.length,current=all.filter(x=>belongs(x,ctx)).length+legacy.length;

@@ -37,7 +37,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from . import db
 
-APP_VERSION = "0.21.9-dev.2"
+APP_VERSION = "0.21.9-dev.3"
 
 PUBLIC_MODE = os.getenv("HAUSHALTPRO_MODE", "lan").strip().lower() == "public"
 SECURE_COOKIES = os.getenv("SECURE_COOKIES", "true" if PUBLIC_MODE else "false").lower() == "true"
@@ -87,6 +87,12 @@ class RequestBodyLimitMiddleware:
             raise
 
 app = FastAPI(title="HaushaltPro", version=APP_VERSION, docs_url=None, redoc_url=None, openapi_url=None)
+
+
+@app.exception_handler(db.PaymentConflict)
+async def payment_conflict_handler(request: Request, exc: db.PaymentConflict):
+    return JSONResponse({"detail": str(exc)}, status_code=409)
+
 app.add_middleware(GZipMiddleware, minimum_size=700)
 app.add_middleware(RequestBodyLimitMiddleware, max_bytes=MAX_REQUEST_BYTES)
 if PUBLIC_MODE:
@@ -1989,7 +1995,7 @@ def serialize_transaction_rows(c, rows) -> list[dict]:
             if tr:
                 item.update({"transfer":True,"transfer_name":tr["name"],"transfer_from_account_id":tr["from_account_id"],
                              "transfer_to_account_id":tr["to_account_id"],"transfer_from_account_name":tr["from_account_name"],
-                             "transfer_to_account_name":tr["to_account_name"],"transfer_note":tr["note"]})
+                             "transfer_to_account_name":tr["to_account_name"],"transfer_note":tr["note"],"recurring_transfer_id":tr.get("recurring_transfer_id")})
         out.append(item)
     return out
 
@@ -4521,3 +4527,9 @@ def investment_delete(asset_id: int, request: Request):
         require_investments(c)
         c.execute("UPDATE investment_assets SET active=0 WHERE id=?", (asset_id,))
     return {"ok":True}
+
+
+from .open_items import router as open_items_router
+from .exports import router as exports_router
+app.include_router(open_items_router)
+app.include_router(exports_router)

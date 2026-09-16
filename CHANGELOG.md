@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.21.9-dev.3 - 2026-09-16 (prerelease)
+
+### Deutsch
+
+- Offene Zahlungen, Verbindlichkeiten und Forderungen mit Fälligkeit, Überfälligkeit, Status und Teilzahlungen. Vorhandene Buchungen zuordnen oder eine neue Zahlung atomar erstellen; keine doppelte Kontobewegung.
+- Schutz vor Überzahlung und widersprüchlichen Buchungsänderungen. Storno/Löschung öffnet zugeordnete Restbeträge wieder. Haushaltsbuch-/Benutzerrechte und idempotente Offline-Wiederholung gelten auch für die neuen Einträge.
+- CSV-Export nach Zeitraum, Konto, Kategorie, Status und Suche, mit centgenauen Split-Zeilen sowie sicher behandelten Textfeldern. Fixkosten-Jahresplan mit Monatsspalten, Fälligkeiten und verschobenen Serienterminen.
+- Eingeklappte Buchungskarten mit Name, Wiederholungssymbol, Datum, Betrag und Konto; Details und Aktionen per Antippen oder Tastatur öffnen.
+- Additive SQLCipher-Migration auf Schema 28; bisherige Daten bleiben erhalten.
+
+### English
+
+- Payables, receivables, partial payments and overdue highlighting. Link existing bookings or create a single payment atomically with allocation guards, permissions and safe offline replay.
+- Filtered CSV exports, cent-exact split rows and monthly/yearly fixed-cost plans respecting effective recurring dates.
+- Collapsed mobile booking cards with keyboard-accessible details and actions. Additive schema 28 migration.
+
+### Validation and scope
+
+- 87 Python regression scripts, 16 JavaScript tests and 52 static security checks passed locally, plus compile/syntax checks. npm audit reports no known vulnerabilities.
+- Real encrypted migration and DOM interaction tests included. Interactive visual browser checks were blocked by local-URL access restrictions.
+- Open items are EUR-only and affect cash/projections through their account bookings. Fixed-cost exports are plan values. See [dev.3 release notes](docs/RELEASE-NOTES-v0.21.9-dev.3.md) for update and manual checks.
+
 ## v0.21.9-dev.2 - 2026-09-16 (prerelease)
 
 ### Deutsch

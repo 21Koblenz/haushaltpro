@@ -122,8 +122,8 @@ assert stop.status_code == 200, stop.text
 assert c.execute("SELECT COUNT(*) FROM transactions WHERE recurring_id=? AND status='planned'",(future_id,)).fetchone()[0] == 0
 
 # UI no longer exposes a manual 'materialize future' action and marks planned recurring rows.
-js=(root/'static/app.js').read_text(encoding='utf-8')
-assert "recurring.planned" in js and "recurring.executed" in js
+js=(root/'static/app.js').read_text(encoding='utf-8')+(root/'static/transaction-cards.js').read_text(encoding='utf-8')
+# Planned/posted card labels are exercised in payments-ui.test.cjs.
 assert "data-exec" not in js
 assert "recurring.materializeNow" not in js
 

@@ -194,7 +194,7 @@ function setMobileNav(open){if(!mainNav||!mobileNavToggle)return;mainNav.classLi
 if(mobileNavToggle)mobileNavToggle.onclick=()=>setMobileNav(!mainNav.classList.contains('mobile-open'));
 document.addEventListener('click',e=>{if(window.innerWidth<=800&&mainNav?.classList.contains('mobile-open')&&!mainNav.contains(e.target)&&e.target!==mobileNavToggle)setMobileNav(false)});
 document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>{switchView(b.dataset.view);if(window.innerWidth<=800)setMobileNav(false)});
-function switchView(name){document.querySelectorAll('.view').forEach(v=>v.hidden=true);$('view-'+name).hidden=false;document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.view===name));if(name==='dashboard')reloadDashboardByMode();if(name==='accounts-page')loadAccountManager();if(name==='transactions'){loadTransactions();loadRecurring();}if(name==='budgets')loadBudgets();if(name==='reports')loadReports();if(name==='planning')loadPlanning();if(name==='finance-check')loadFinanceCheck();if(name==='investments')loadInvestments();if(name==='settings')loadSettings()}
+function switchView(name){document.querySelectorAll('.view').forEach(v=>v.hidden=true);$('view-'+name).hidden=false;document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.view===name));if(name==='dashboard')reloadDashboardByMode();if(name==='accounts-page')loadAccountManager();if(name==='transactions'){loadTransactions();loadRecurring();}if(name==='budgets')loadBudgets();if(name==='reports')loadReports();if(name==='planning')loadPlanning();if(name==='finance-check')loadFinanceCheck();if(name==='investments')loadInvestments();if(name==='settings')loadSettings();if(name==='open-items')loadOpenItems()}
 async function loadCommon(){const [categories,settings,payees]=await Promise.all([api('/api/categories'),api('/api/settings'),api('/api/payees')]);categoriesCache=categories;payeePresetsCache=payees;$('navInvestments').hidden=settings.investment_tracking!=='true';await materializeRecurringDue();await loadDashboard();const prefetch=()=>{const y=nowLocal.getFullYear(),m=selectedMonth;Promise.allSettled([cachedApi('/api/planning/overview?month='+encodeURIComponent(m),25000),cachedApi('/api/reports/categories?period=month&anchor='+encodeURIComponent(m+'-01'),25000),cachedApi('/api/planning/year?year='+y,30000),cachedApi('/api/dashboard/year?year='+y,30000)])};if('requestIdleCallback' in window)requestIdleCallback(prefetch,{timeout:1200});else setTimeout(prefetch,80)}
 function fillAccountSelects(){const options=accountsCache.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');$('csvAccount').innerHTML=options;$('txAccountFilter').innerHTML='<option value="">Alle Konten</option>'+options}
 const accountTypeLabels={checking:'Girokonto',savings:'Sparkonto',cash:'Bargeld',credit_card:'Kreditkarte',paypal:'PayPal'};
@@ -321,7 +321,8 @@ function drawChart(points){
 async function selectDashboardMonth(){selectedMonth=monthValue('dashMonthName','dashYear');if(earliestMonth&&selectedMonth<earliestMonth){selectedMonth=earliestMonth;setMonthControls('dashMonthName','dashYear',selectedMonth);toast('Ansicht beginnt mit dem ersten Konto.')}await loadDashboard()}
 $('dashMonthName').onchange=selectDashboardMonth;$('dashYear').onchange=selectDashboardMonth;
 $('dashPrevMonth').onclick=()=>shiftSelectedMonth(-1);$('dashNextMonth').onclick=()=>shiftSelectedMonth(1);$('dashPeriod').onchange=reloadDashboardByMode;$('dashYear').onchange=async()=>{if($('dashPeriod').value==='year')await loadDashboardYear();else await selectDashboardMonth()};$('dashToday').onclick=async()=>{selectedMonth=`${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}`;setMonthControls('dashMonthName','dashYear',selectedMonth);$('dashYear').value=nowLocal.getFullYear();await reloadDashboardByMode()};
-function openModal(html,onSave){
+function openModal(html,onSave,{refresh=true,success='Gespeichert',saveLabel='Speichern'}={}){
+  $('modalSave').textContent=hpText(saveLabel);$('modalSave').hidden=false;
   $('modalContent').innerHTML=html;$('modalForm').reset();modal.showModal();$('modalCancel').onclick=()=>modal.close();
   let saving=false;
   $('modalForm').onsubmit=async e=>{
@@ -330,7 +331,7 @@ function openModal(html,onSave){
     try{
       await onSave(new FormData(e.currentTarget));
       if(offlineSaveActive){offlineSaved();return}
-      modal.close();await loadCommon();toast('Gespeichert');
+      modal.close();if(refresh)await loadCommon();toast(success);
     }catch(err){
       if(offlineSaveActive){offlineSaved();return}
       toast(err.message);
@@ -429,7 +430,7 @@ async function loadTransactions(resetPage=false){
   if(q)url+='&q='+encodeURIComponent(q);
   const data=await api(url),rows=data.items||[];
   txPage=data.page||1;txPages=data.pages||1;
-  $('txBody').innerHTML=rows.map(t=>`<tr><td>${esc(formatDateValue(t.booking_date))}</td><td><b>${esc(t.name||t.recurring_name||'Buchung')}</b>${t.tags?.length?`<small class="table-sub">${t.tags.map(esc).join(' · ')}</small>`:''}</td><td>${esc(t.account_name)}</td><td>${esc(t.transfer?(t.transfer_side==='out'?t.transfer_to_account_name:t.transfer_from_account_name):(t.payee||'—'))}</td><td>${t.transfer?'<span class="muted">Interner Transfer</span>':esc(t.category_name?categoryDisplayName(t.category_name):'—')}</td><td>${t.transfer?`<span class="badge transfer-badge">↔ Transfer ${t.transfer_side==='out'?'Ausgang':'Eingang'}</span>`:(t.recurring?`<span class="badge"><span class="recurring-mark">↻</span>${esc(hpT('recurring.label','Wiederkehrend'))} · ${esc(recurrenceLabel(t.recurring_frequency,t.recurring_interval_count))} · ${esc(t.status==='planned'?hpT('recurring.planned','Geplant'):hpT('recurring.executed','Gebucht'))}</span>`:'—')}</td><td class="right amount ${t.amount<0?'neg':'pos'}">${fmt(t.amount)}</td><td class="actions"><button data-edit="${t.id}">${esc(t.recurring?hpText('Termin anpassen'):hpText('Bearbeiten'))}</button><button class="ghost" data-cancel="${t.id}">Storno</button><button class="ghost" data-attach="${t.id}">Belege</button><button class="ghost" data-delete="${t.id}">Löschen</button></td></tr>`).join('')||'<tr><td colspan="8">Keine Buchungen.</td></tr>';
+  $('txBody').innerHTML=transactionCards(rows);
   $('txPageInfo').textContent=`Seite ${txPage} / ${txPages} · ${data.total||0} Einträge`;
   $('txFirst').disabled=$('txPrev').disabled=txPage<=1;
   $('txNext').disabled=$('txLast').disabled=txPage>=txPages;
@@ -1008,5 +1009,6 @@ document.addEventListener('haushaltpro:language-changed',async()=>{
     else if(active==='finance-check')await loadFinanceCheck();
     else if(active==='investments')await loadInvestments();
     else if(active==='settings')await loadSettings();
+    else if(active==='open-items')await loadOpenItems();
   }catch(err){console.warn('Language refresh failed',err)}
 });

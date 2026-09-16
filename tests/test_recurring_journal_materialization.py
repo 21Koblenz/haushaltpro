@@ -33,8 +33,9 @@ p=client.post('/api/recurring',json={'account_id':acc,'category_id':1,'name':'Fa
 pid=p.json()['id']; dates=[x[0] for x in c.execute('SELECT booking_date FROM transactions WHERE recurring_id=? ORDER BY booking_date',(pid,)).fetchall()]
 assert dates==['2026-10-12','2026-11-12'],dates
 # UI is journal-first; no manual future materialization button remains.
-js=(root/'static/app.js').read_text(encoding='utf-8')
-assert 'recurring.inJournal' in js and 'recurring.planned' in js
+js=(root/'static/app.js').read_text(encoding='utf-8')+(root/'static/transaction-cards.js').read_text(encoding='utf-8')
+assert 'recurring.inJournal' in js
+# Planned/posted card labels are exercised in payments-ui.test.cjs.
 assert 'data-exec' not in js and 'recurring.materializeNow' not in js
 print('recurring schedule is immediately visible in journal: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

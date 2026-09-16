@@ -10,7 +10,8 @@ Aktuell offline puffern lassen sich:
 
 - neue Buchungen,
 - neue Transfers,
-- neue wiederkehrende Buchungsserien.
+- neue wiederkehrende Buchungsserien,
+- neue offene Posten und Zahlungen zu bestehenden Posten (Zahlungsdialog vorher online öffnen).
 
 Oben in der Oberfläche zeigt HaushaltPro den Verbindungs- und Sync-Status sowie die Zahl wartender Änderungen. Ein Klick auf die Anzeige stößt eine erneute Serverprüfung bzw. Synchronisierung an.
 
@@ -37,9 +38,9 @@ Aus Datenschutzgründen wird bewusst kein vollständiger unverschlüsselter Fina
 
 Nicht offline gepuffert werden in dieser ersten Version unter anderem Datei-Uploads, Benutzer-/Rechteverwaltung, Backups/Restore sowie Bearbeiten/Löschen bestehender Datensätze.
 
-## v0.21.9-dev.2 testen
+## v0.21.9-dev.3 testen
 
-Die vollständigen Update-Schritte stehen in den [Release Notes](RELEASE-NOTES-v0.21.9-dev.2.md). `main` bezeichnet Quellcode, `:dev` ein Docker-Image. Erst Pull/Neuerstellung des Containers installiert ein Update. Dieses Testrelease besitzt zusätzlich den festen Image-Tag `:0.21.9-dev.2` und den Git-Tag `v0.21.9-dev.2` auf dem Testbranch `dev`.
+Die vollständigen Update-Schritte stehen in den [Release Notes](RELEASE-NOTES-v0.21.9-dev.3.md). `main` bezeichnet Quellcode, `:dev` ein Docker-Image. Erst Pull/Neuerstellung des Containers installiert ein Update. Dieses Testrelease besitzt zusätzlich den festen Image-Tag `:0.21.9-dev.3` und den Git-Tag `v0.21.9-dev.3` auf dem Testbranch `dev`.
 
 Zusätzliche Prüfungen:
 

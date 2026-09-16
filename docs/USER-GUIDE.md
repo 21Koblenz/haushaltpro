@@ -21,6 +21,26 @@ Jede Buchung kann enthalten:
 
 Der Name ist die primäre Bezeichnung, z. B. „KFZ-Versicherung“. Der Empfänger kann z. B. „HUK24“ sein.
 
+Die Buchungsliste startet eingeklappt. Name, Wiederholungssymbol, Datum, Betrag und Konto bleiben sichtbar. Antippen oder per Tastatur Öffnen zeigt Kategorie, Empfänger, Notizen, Belege und Bearbeitungsaktionen. Bei verschobenen Serienterminen steht der ursprüngliche Termin in den Details.
+
+## Offene Zahlungen
+
+Unter **Offene Zahlungen → + Offener Posten** eine Verbindlichkeit („ich muss bezahlen“) oder Forderung („ich bekomme Geld“) anlegen. Bezeichnung, Gegenpartei und Gesamtbetrag sind Pflicht; Fälligkeit und Notiz sind optional. Die Übersicht zeigt Restbeträge, Status und überfällige Posten. Der Status ergibt sich aus den zugeordneten Zahlungen; erledigte und stornierte Posten sind über den Filter erreichbar.
+
+Über **Zahlung erfassen** entweder eine bereits gebuchte Zahlung zuordnen oder eine neue Kontobuchung erstellen. Nur den tatsächlich gezahlten Teilbetrag angeben. Beispiel: Eine Forderung über 200 EUR mit einer Rückzahlung von 50 EUR bleibt mit 150 EUR offen. Die ursprüngliche Auszahlung muss als eigene Kontobuchung vorliegen; das Anlegen der Forderung bucht kein Geld.
+
+Vorhandene Buchungen lassen sich mit ihrem freien Betrag auf mehrere Posten verteilen. Die Zuordnung verändert keinen Kontostand. Eine neue Zahlung erzeugt genau eine Kontobuchung. Zuordnungen können gelöst werden, ohne die Buchung zu löschen. Storno oder Löschung einer verknüpften Buchung erhöht den offenen Rest wieder. Änderungen, die bestehende Zahlungen unterschreiten oder die Zahlungsrichtung umkehren, werden abgewiesen.
+
+Die Posten werden in EUR geführt. Sie verändern allein weder Kontostände noch Prognosen. Die Fälligkeit dient der Übersicht; für zukünftige Kontobewegungen wie bisher eine geplante Buchung nutzen und diese nach der tatsächlichen Zahlung zuordnen. Leseberechtigte können Posten und Zahlungen sehen, aber nicht verändern. Alle Daten gehören zum aktiven Haushaltsbuch.
+
+## CSV-Export
+
+**Buchungen → CSV-Export** exportiert alle passenden Buchungen nach Zeitraum, Konto, Kategorie, Status und Suchtext. Die aktuelle Listen-Seite begrenzt den Export nicht. Stornierte Buchungen werden ausgeschlossen. Split-Buchungen haben eine Zeile je Teilbetrag; mit Kategorie-Filter werden ausschließlich die passenden Teilbeträge exportiert. Ein Export ist auf 100.000 Zeilen begrenzt; bei größeren Beständen den Zeitraum eingrenzen.
+
+**Planung & Prognose → Fixkosten als CSV exportieren** liefert den Jahresplan mit zwölf Monatsspalten und einer Jahressumme. Jahreszahlungen stehen vollständig im Fälligkeitsmonat. Verschobene Einzeltermine, Serienversionen und Betragsausnahmen werden berücksichtigt. Der Export zeigt Planwerte, nicht den Nachweis tatsächlich geleisteter Zahlungen.
+
+Die Dateien verwenden UTF-8 mit BOM, Semikolon und Dezimalkomma. Text, den Tabellenprogramme als Formel interpretieren könnten, erhält ein führendes Apostroph. CSV-Dateien enthalten lesbare Finanzdaten.
+
 ## Kategorien
 Die Kategorie bestimmt die Art:
 - Einnahme

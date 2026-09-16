@@ -1,0 +1,60 @@
+/* Compact booking list: the same five summary fields at every screen size. */
+.transaction-list,.open-items-list{display:grid;gap:10px;min-width:0}
+.transaction-card,.open-item-card{border:1px solid var(--line);border-radius:14px;background:var(--panel);min-width:0;max-width:100%}
+.tx-summary{display:grid;grid-template-columns:minmax(0,2fr) 110px minmax(0,1fr) minmax(110px,auto) 22px;gap:12px;align-items:center;padding:16px;min-height:64px;cursor:pointer;list-style:none}
+.tx-summary::-webkit-details-marker,.open-item-card summary::-webkit-details-marker{display:none}
+.tx-summary::marker,.open-item-card summary::marker{content:""}
+.tx-summary:focus-visible,.open-item-card summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:12px}
+.tx-summary-name{display:flex;align-items:baseline;gap:7px;min-width:0;overflow-wrap:anywhere}
+.tx-summary-name b{min-width:0;line-height:1.4}
+.tx-summary .recurring-mark{flex-shrink:0;color:var(--accent);font-size:1.2rem}
+.tx-summary-date,.tx-summary-account{color:var(--muted);font-size:.88rem;min-width:0;overflow-wrap:anywhere}
+.tx-summary-amount{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tx-chevron{font-size:1.3rem;text-align:center;color:var(--muted);transition:transform .15s}
+details[open]>.tx-summary .tx-chevron,details[open]>summary>.tx-chevron{transform:rotate(180deg)}
+.tx-expanded,.open-item-expanded{border-top:1px solid var(--line);padding:16px;min-width:0}
+.tx-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 22px;margin:0 0 16px}
+.tx-detail-grid>div{min-width:0}.tx-detail-grid dt{font-size:.78rem;color:var(--muted);margin-bottom:4px}.tx-detail-grid dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.tx-card-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tx-card-actions button{min-height:44px;margin:0;white-space:normal}
+.tx-splits{margin:12px 0;overflow-wrap:anywhere}.tx-splits p{margin:5px 0}
+.open-items-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+.open-item-card.is-overdue{border-color:var(--danger)}
+.open-item-card summary{display:grid;grid-template-columns:minmax(0,1fr) auto 22px;align-items:center;gap:8px 12px;padding:16px;cursor:pointer;list-style:none}
+.open-item-title,.open-item-balance{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}
+.open-item-balance{text-align:right;font-variant-numeric:tabular-nums}
+.open-item-card small,.open-item-meta{color:var(--muted);font-size:.82rem}
+.open-item-meta{grid-row:2;grid-column:1/3}
+.open-item-card summary>.tx-chevron{grid-column:3;grid-row:1/3}
+.open-item-card.is-overdue .open-item-meta{color:var(--danger);font-weight:700}
+.payment-note{white-space:pre-wrap;overflow-wrap:anywhere}
+.open-items-toolbar input{flex:1;min-width:180px}
+.linked-payment{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
+.linked-payment>span{display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px;overflow-wrap:anywhere}
+.linked-payment button,.payment-search-actions button{min-height:44px}
+.payment-search-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.export-toolbar{display:flex;justify-content:flex-end;margin-bottom:12px}
+#modalContent textarea{width:100%;min-height:84px;resize:vertical;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--text);padding:10px;font:inherit}
+#paymentCandidate{width:100%;min-width:0}
+@media(max-width:760px){
+  .tx-summary{grid-template-columns:minmax(0,1fr) auto 18px;grid-template-areas:"name amount arrow" "date date arrow" "account account arrow";gap:5px 10px;padding:14px}
+  .tx-summary-name{grid-area:name}.tx-summary-date{grid-area:date}.tx-summary-account{grid-area:account}
+  .tx-summary-amount{grid-area:amount;align-self:start}.tx-summary>.tx-chevron{grid-area:arrow}
+  .tx-expanded,.open-item-expanded{padding:14px}
+  .tx-detail-grid{gap:12px;grid-template-columns:1fr}
+  .tx-card-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tx-card-actions button{width:100%}
+  .open-items-summary{grid-template-columns:1fr}
+  .open-items-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .open-items-toolbar input{grid-column:1/-1;min-width:0}
+  .open-items-toolbar>*{min-width:0;width:100%;margin:0}
+}
+@media(max-width:380px){
+  .tx-summary{grid-template-columns:minmax(0,1fr) 18px;grid-template-areas:"name arrow" "amount arrow" "date arrow" "account arrow"}
+  .tx-summary-amount{text-align:left}
+  .open-item-card summary{grid-template-columns:minmax(0,1fr) 20px}
+  .open-item-card summary>.open-item-balance{grid-row:2;grid-column:1;text-align:left}
+  .open-item-card summary>.open-item-meta{grid-row:3;grid-column:1}
+  .open-item-card summary>.tx-chevron{grid-column:2;grid-row:1/4}
+}
+@media(prefers-reduced-motion:reduce){.tx-chevron{transition:none}}

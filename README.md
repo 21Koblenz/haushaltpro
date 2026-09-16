@@ -1,8 +1,8 @@
 # HaushaltPro
 
-Stable: **v0.21.8** · Testversion / prerelease: **v0.21.9-dev.2**
+Stable: **v0.21.8** · Testversion / prerelease: **v0.21.9-dev.3**
 
-[Testversion und Grenzen / Dev setup and limitations](docs/OFFLINE-DEV.md) · [Release notes](docs/RELEASE-NOTES-v0.21.9-dev.2.md)
+[Testversion und Grenzen / Dev setup and limitations](docs/OFFLINE-DEV.md) · [Release notes](docs/RELEASE-NOTES-v0.21.9-dev.3.md)
 
 [![License: AGPL v3+](https://img.shields.io/badge/License-AGPL_v3%2B-blue.svg)](LICENSE)
 [![Vibe Coding](https://img.shields.io/badge/development-Vibe%20Coding-orange.svg)](VIBE_CODING.md)
@@ -24,6 +24,8 @@ HaushaltPro verwaltet Finanzdaten auf dem eigenen Server. Konten, Buchungen, int
 - wiederkehrende Buchungen mit Serienversionen und Stichtagsänderungen
 - Budgets und Plan/Ist-Vergleich
 - 3/6/12-Monats-Prognosen, Jahresansicht und What-if-Szenarien
+- offene Zahlungen, Schulden und Forderungen mit Teilzahlungen und Buchungszuordnung
+- CSV-Export nach Zeitraum, Konto und Kategorie sowie Fixkostenplan mit Monats-/Jahressummen
 - CSV-Bankimport mit Decimal-Verarbeitung und Dublettenprüfung
 - Kontenabgleich und Korrekturbuchungen
 - Finanz-Check und Audit-Hashkette
@@ -31,7 +33,7 @@ HaushaltPro verwaltet Finanzdaten auf dem eigenen Server. Konten, Buchungen, int
 - mehrere getrennte Haushaltsbücher mit eigener SQLCipher-Datenbank
 - optionale Investment-Übersicht
 - verschlüsselte portable Backups und interne Snapshot-Rotation
-- responsive Smartphone-Ansicht
+- responsive Smartphone-Ansicht mit standardmäßig eingeklappten Buchungskarten
 
 ### Weitere Hinweise
 

@@ -1,4 +1,4 @@
-# Testing / Plausibility - v0.21.0
+# Testing / Plausibility
 
 ## Test strategy
 
@@ -94,3 +94,18 @@ Performance probe (10,000 transactions, 4,000 splits, 8 accounts, 80 series; loc
 | Annual planning | 533 | 533 | 73.14 | 74.82 |
 
 Timing differences depend on the runner. Query count reduction is deterministic; no cross-request financial calculation cache was added. Interactive browser verification was blocked by local-URL access restrictions in the test environment.
+
+## v0.21.9-dev.3
+
+Use Python 3.12 and Node.js 22.22.2+ (or 24.15.0+) for the current tests. Install Python dependencies with `python -m pip install -r requirements.txt httpx2==2.12.0`, then use the commands above. JavaScript tests now include jsdom interaction checks; they do not launch a browser.
+
+- `test_open_items.py`: independent 200/50/150 EUR balances, cash neutrality when linking/unlinking, payment-direction and allocation bounds, cancellation/deletion, protected edits, concurrent idempotent retries, currency isolation and audit integrity.
+- `test_open_items_permissions.py`: real login, CSRF, viewer/editor rights and household isolation for open items and both CSV endpoints.
+- `test_csv_exports.py`: exact cent totals, BOM and safe formula handling, pagination-independent filters, split-category exports, shifted monthly/yearly occurrences, and agreement with monthly fixed-cost planning.
+- `test_occurrence_encrypted_migration.py`: real SQLCipher schema 26 → 28 upgrade and repeated migration, preserving existing occurrences and new open items.
+- `payments-ui.test.cjs`: native collapsed details/summary, visible summary fields, recurring icons, escaped content, read-only actions, overdue partial items, lazy payment loading, actual dialog form submissions, retry pagination and CSV downloads.
+- `offline-sync.test.cjs`: lost-reply and single-replay coverage also for new open items and partial payments.
+
+Local result: all 87 Python regression scripts, 16 JavaScript tests and 52 static security checks pass. Python compilation and JavaScript syntax checks pass. npm audit reports zero known vulnerabilities for the test dependencies.
+
+The browser rejected the local test URL with `ERR_BLOCKED_BY_CLIENT`. DOM checks passed, but visual mobile layout and browser-native date/download controls still need the manual checks in the dev.3 release notes.

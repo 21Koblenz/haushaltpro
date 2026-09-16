@@ -19,6 +19,15 @@ _master_key: str | None = None
 _conn = None
 
 
+class PaymentConflict(Exception):
+    """A linked payment would no longer match its booking or open item."""
+
+
+def _payment_conflict(exc):
+    if str(exc).startswith("HP_PAYMENT:"):
+        raise PaymentConflict(str(exc).split(":", 1)[1]) from exc
+
+
 def _quoted(value: str) -> str:
     # PRAGMA key/rekey do not support normal DB-API bind parameters reliably.
     # SQLCipher accepts a quoted passphrase; doubled quotes keep this safe.
@@ -210,8 +219,9 @@ def transaction():
                 _conn.execute("BEGIN IMMEDIATE")
                 yield _conn
                 _conn.commit()
-            except Exception:
+            except Exception as exc:
                 _conn.rollback()
+                _payment_conflict(exc)
                 raise
         return
     key=current_key()
@@ -224,8 +234,9 @@ def transaction():
             c.execute("BEGIN IMMEDIATE")
             yield c
             c.commit()
-        except Exception:
+        except Exception as exc:
             c.rollback()
+            _payment_conflict(exc)
             raise
         finally:
             c.close()
@@ -598,7 +609,7 @@ def init_schema(c) -> None:
         CREATE INDEX IF NOT EXISTS idx_reconcile_learning ON reconciliation_learning(account_id,direction,amount_cents);
 
         INSERT OR REPLACE INTO app_meta(key,value) VALUES('db_magic','HAUSHALTPRO_V3_SQLCIPHER4');
-        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','27');
+        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','28');
         INSERT OR IGNORE INTO settings(key,value) VALUES('investment_tracking','false');
         INSERT OR IGNORE INTO settings(key,value) VALUES('autolock_minutes','15');
         INSERT OR IGNORE INTO settings(key,value) VALUES('budget_strategy','hybrid');
@@ -610,6 +621,8 @@ def init_schema(c) -> None:
         INSERT OR IGNORE INTO categories(id,parent_id,name,direction) VALUES(6,NULL,'Sparen & Rücklagen','savings');
         """
     )
+    from .open_items import init_schema as init_open_items
+    init_open_items(c)
     c.commit()
 
 
@@ -791,7 +804,9 @@ def migrate_schema(c) -> None:
     c.execute("CREATE INDEX IF NOT EXISTS idx_client_mutations_created ON client_mutations(created_at)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tx_category_date ON transactions(category_id,booking_date,status)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag_tx ON transaction_tags(tag,transaction_id)")
-    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','27') ON CONFLICT(key) DO UPDATE SET value='27'")
+    from .open_items import init_schema as init_open_items
+    init_open_items(c)
+    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','28') ON CONFLICT(key) DO UPDATE SET value='28'")
     c.commit()
 
 def rekey(new_key: str) -> None:

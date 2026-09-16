@@ -88,6 +88,20 @@ test('ordinary GET responses do not reopen or read IndexedDB',async()=>{
   assert.equal(opens,0);
 });
 
+test('open items and partial payments survive a lost reply and replay once',async()=>{
+  for(const url of ['/api/open-items','/api/open-items/7/payments']){
+    const seen=new Set();let lost=true;
+    const h=harness({fetch:async(u,opt)=>{
+      seen.add(new Headers(opt.headers).get('X-Idempotency-Key'));
+      if(lost){lost=false;throw new TypeError('reply lost')}
+      return json({id:12});
+    }});
+    assert.equal((await h.api.request(url,input,h.ctx)).queued,true);
+    await h.api.sync();
+    assert.equal(seen.size,1);assert.equal((await h.api.pending()).length,0);
+  }
+});
+
 test('unresponsive writes time out without losing the persisted draft',async()=>{
   const h=harness({fastTimeout:true,fetch:(url,opt)=>new Promise((resolve,reject)=>opt.signal.addEventListener('abort',()=>reject(new Error('timeout'))))});
   assert.equal((await h.api.request('/api/transactions',input,h.ctx)).queued,true);assert.equal((await h.api.pending()).length,1);

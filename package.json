@@ -1,6 +1,11 @@
 {
   "name": "haushaltpro-browser-tests",
   "private": true,
-  "scripts": {"test": "node --test tests/*.test.cjs"},
-  "devDependencies": {"fake-indexeddb": "6.2.4"}
+  "scripts": {
+    "test": "node --test tests/*.test.cjs"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "6.2.4",
+    "jsdom": "30.0.1"
+  }
 }

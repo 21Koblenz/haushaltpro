@@ -6,7 +6,7 @@ from app import db
 fd,tmp=tempfile.mkstemp(suffix='.db');Path(tmp).unlink(missing_ok=True)
 c=sqlite3.connect(tmp,check_same_thread=False);c.row_factory=sqlite3.Row;c.execute('PRAGMA foreign_keys=ON')
 db._conn=c;db.DB_PATH=Path(tmp);db.init_schema(c);db.migrate_schema(c)
-assert c.execute("SELECT value FROM app_meta WHERE key='schema_version'").fetchone()[0]=='27'
+assert c.execute("SELECT value FROM app_meta WHERE key='schema_version'").fetchone()[0]=='28'
 assert c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='client_mutations'").fetchone()
 from app import main
 real_session=main.session
@@ -79,7 +79,7 @@ for req in (request(book='book-b'),request(user='Bob')):
 main._session_record=original_record;main._activate_session_book=original_activate
 off=(root/'static/offline-sync.js').read_text(encoding='utf-8');idx=(root/'static/index.html').read_text(encoding='utf-8');app=(root/'static/app.js').read_text(encoding='utf-8')
 for needle in ('indexedDB.open','POST /api/transactions','POST /api/transfers','POST /api/recurring','X-Idempotency-Key','hp-offline-synced','HEARTBEAT_MS'):assert needle in off,needle
-assert 'id="connectionStatus"' in idx and '/assets/offline-sync.js?v=0.21.9-dev.2' in idx
+assert 'id="connectionStatus"' in idx and '/assets/offline-sync.js?v=0.21.9-dev.3' in idx
 assert 'HaushaltProOffline.request' in app and 'offlineSaveActive' in app
 print('offline queue + idempotency regression: PASS')
 c.close();Path(tmp).unlink(missing_ok=True)

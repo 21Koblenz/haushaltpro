@@ -120,7 +120,7 @@ assert d1['month_end_balance']!=d2['month_end_balance'],(d1.keys(),d2.keys())
 # Migration remains repeatable and preserves amounts from schema 26.
 c.execute('ALTER TABLE recurring_overrides DROP COLUMN booking_date');c.commit()
 db.migrate_schema(c);db.migrate_schema(c)
-assert c.execute("SELECT value FROM app_meta WHERE key='schema_version'").fetchone()[0]=='27'
+assert c.execute("SELECT value FROM app_meta WHERE key='schema_version'").fetchone()[0]=='28'
 assert c.execute('SELECT amount FROM recurring_overrides WHERE series_id=?',(rid2,)).fetchone()[0]==-5000
 print('recurring dates: same month, month/year boundaries, repeat edits, version cutoff, forecasts, rebuild, reset and migration: PASS')
 c.close();Path(tmp).unlink(missing_ok=True)
