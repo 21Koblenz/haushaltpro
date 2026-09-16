@@ -28,7 +28,7 @@ c.commit()
 
 new.migrate_schema(c)
 ver2=c.execute("SELECT value FROM app_meta WHERE key='schema_version'").fetchone()[0]
-assert ver2=='26',ver2
+assert ver2=='27',ver2
 cols={r[1] for r in c.execute('PRAGMA table_info(transactions)').fetchall()}
 assert {'transfer_id','transfer_side'} <= cols, cols
 rcols={r[1] for r in c.execute('PRAGMA table_info(recurring)').fetchall()}

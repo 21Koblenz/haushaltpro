@@ -6,6 +6,12 @@ Path('/app').mkdir(exist_ok=True);static=Path('/app/static')
 if not static.exists(): static.symlink_to(root/'static',target_is_directory=True)
 from app import db
 from app import main
+from datetime import date as real_date
+class FixedDate(real_date):
+    @classmethod
+    def today(cls): return cls(2026,9,14)
+main.date=FixedDate
+
 base=Path(tempfile.mkdtemp(prefix='hp103-'))
 def plain_connect(key,path=None):
     target=Path(path or db.DB_PATH);target.parent.mkdir(parents=True,exist_ok=True)
@@ -55,6 +61,6 @@ js=(root/'static/app.js').read_text();html=(root/'static/index.html').read_text(
 assert "$('newRecurringTx').onclick=()=>recDialog(null);" in js
 assert 'data-membership-user' in js and 'membership-grid' in css
 assert 'txRecurringCount' in html and 'Aktive Serien' in html
-assert main.APP_VERSION in {'0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4','0.21.5','0.21.6','0.21.7','0.21.8','0.21.9-dev'}
+assert main.APP_VERSION in {'0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4','0.21.5','0.21.6','0.21.7','0.21.8','0.21.9-dev.2'}
 print('v0.10.3 UI source: PASS')
 shutil.rmtree(base,ignore_errors=True)

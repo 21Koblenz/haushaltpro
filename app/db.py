@@ -416,6 +416,7 @@ def init_schema(c) -> None:
             id INTEGER PRIMARY KEY,
             series_id INTEGER NOT NULL,
             due_date TEXT NOT NULL,
+            booking_date TEXT,
             amount INTEGER NOT NULL,
             note TEXT,
             created_at TEXT NOT NULL,
@@ -587,6 +588,7 @@ def init_schema(c) -> None:
         CREATE INDEX IF NOT EXISTS idx_recurring_account_date ON recurring(account_id, active, next_date);
         CREATE INDEX IF NOT EXISTS idx_occurrence_recurring_date ON recurring_occurrences(recurring_id, due_date);
         CREATE INDEX IF NOT EXISTS idx_recurring_override_date ON recurring_overrides(series_id, due_date);
+        CREATE INDEX IF NOT EXISTS idx_occurrence_transaction ON recurring_occurrences(transaction_id);
         CREATE INDEX IF NOT EXISTS idx_history_tx ON transaction_history(transaction_id, changed_at);
         CREATE INDEX IF NOT EXISTS idx_attachments_tx ON attachments(transaction_id);
         CREATE INDEX IF NOT EXISTS idx_reconcile_account_date ON account_reconciliations(account_id, checked_at);
@@ -596,7 +598,7 @@ def init_schema(c) -> None:
         CREATE INDEX IF NOT EXISTS idx_reconcile_learning ON reconciliation_learning(account_id,direction,amount_cents);
 
         INSERT OR REPLACE INTO app_meta(key,value) VALUES('db_magic','HAUSHALTPRO_V3_SQLCIPHER4');
-        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','26');
+        INSERT OR REPLACE INTO app_meta(key,value) VALUES('schema_version','27');
         INSERT OR IGNORE INTO settings(key,value) VALUES('investment_tracking','false');
         INSERT OR IGNORE INTO settings(key,value) VALUES('autolock_minutes','15');
         INSERT OR IGNORE INTO settings(key,value) VALUES('budget_strategy','hybrid');
@@ -658,6 +660,10 @@ def migrate_schema(c) -> None:
         id INTEGER PRIMARY KEY, series_id INTEGER NOT NULL, due_date TEXT NOT NULL, amount INTEGER NOT NULL,
         note TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(series_id,due_date))""")
     c.execute("CREATE INDEX IF NOT EXISTS idx_recurring_override_date ON recurring_overrides(series_id,due_date)")
+    ocols = {r[1] for r in c.execute("PRAGMA table_info(recurring_overrides)").fetchall()}
+    if "booking_date" not in ocols:
+        c.execute("ALTER TABLE recurring_overrides ADD COLUMN booking_date TEXT")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_occurrence_transaction ON recurring_occurrences(transaction_id)")
     icols = {r[1] for r in c.execute("PRAGMA table_info(investment_assets)").fetchall()}
     if "purchase_price" not in icols:
         c.execute("ALTER TABLE investment_assets ADD COLUMN purchase_price REAL NOT NULL DEFAULT 0")
@@ -785,7 +791,7 @@ def migrate_schema(c) -> None:
     c.execute("CREATE INDEX IF NOT EXISTS idx_client_mutations_created ON client_mutations(created_at)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tx_category_date ON transactions(category_id,booking_date,status)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tags_tag_tx ON transaction_tags(tag,transaction_id)")
-    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','26') ON CONFLICT(key) DO UPDATE SET value='26'")
+    c.execute("INSERT INTO app_meta(key,value) VALUES('schema_version','27') ON CONFLICT(key) DO UPDATE SET value='27'")
     c.commit()
 
 def rekey(new_key: str) -> None:

@@ -782,7 +782,9 @@
     "Monatsprognose inklusive bereits bekannter/geplanter Buchungen bis Monatsende.": "Month forecast including known/planned bookings through month end.",
     "Ist-Auswertung der tatsächlich gebuchten Werte.": "Actual report of executed bookings.",
     "z. B. Vermieter, Versicherung, Stadtwerke": "e.g. landlord, insurer, utility company",
-    "Aktive Serien. Neue Serien werden hier direkt angelegt; einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.": "Active series. Create new series directly here; individual executed occurrences also appear under “All transactions”. Changes can take effect from any chosen date."
+    "Aktive Serien. Neue Serien werden hier direkt angelegt; einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.": "Active series. Create new series directly here; individual executed occurrences also appear under “All transactions”. Changes can take effect from any chosen date.",
+    "Ursprünglicher Serientermin": "Original scheduled date",
+    "Nur diese Buchung verschieben – auch in einen anderen Monat.": "Move only this transaction, including to another month."
   },
   "patterns": [
     {

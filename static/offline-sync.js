@@ -2,72 +2,153 @@
 'use strict';
 const DB_NAME='haushaltpro-offline-v1',STORE='queue',DB_VERSION=1,HEARTBEAT_MS=15000;
 const QUEUEABLE=new Set(['POST /api/transactions','POST /api/transfers','POST /api/recurring']);
-let reachable=navigator.onLine!==false,syncing=false,lastSuccess=null,lastError='',started=false;
+let reachable=null,syncing=false,pinging=false,lastSuccess=null,lastError='',started=false,dbPromise=null,cachedRows=[];
+const sending=new Set();
 const isEn=()=>((window.HaushaltProI18n?.language?.()||localStorage.getItem('hp_lang')||'de')==='en');
 const tr=(de,en)=>isEn()?en:de;
 const makeId=()=>globalThis.crypto?.randomUUID?.()||('hp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
 const context=()=>window.HaushaltProSyncContext?.()||{};
-function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt')}};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
-async function withStore(mode,fn){const db=await openDb();try{return await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,mode),store=tx.objectStore(STORE);let result;try{result=fn(store,resolve,reject)}catch(e){reject(e)}tx.onerror=()=>reject(tx.error);if(result&&typeof result.then==='function')result.catch(reject)})}finally{db.close()}}
-async function rows(){return withStore('readonly',(s,resolve,reject)=>{const r=s.getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error)})}
-async function put(item){return withStore('readwrite',(s,resolve,reject)=>{const r=s.put(item);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
-async function remove(id){return withStore('readwrite',(s,resolve,reject)=>{const r=s.delete(id);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
+const owner=ctx=>String(ctx.username||'').toLowerCase();
+const belongs=(item,ctx)=>item.user===owner(ctx)&&item.bookId===String(ctx.bookId);
+function openDb(){
+  if(!dbPromise)dbPromise=new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,DB_VERSION);
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt')}};
+    req.onsuccess=()=>{const db=req.result;db.onversionchange=()=>{db.close();dbPromise=null};resolve(db)};
+    req.onerror=()=>{dbPromise=null;reject(req.error)};
+  });
+  return dbPromise;
+}
+async function withStore(mode,fn){
+  const db=await openDb();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,mode);let value;
+    // Request success alone is insufficient: quota/commit failures can follow it.
+    tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(tx.error||new Error('Offline storage aborted'));tx.onerror=()=>reject(tx.error);
+    try{const req=fn(tx.objectStore(STORE));req.onsuccess=()=>{value=req.result}}catch(err){tx.abort();reject(err)}
+  });
+}
+async function rows(){return (await withStore('readonly',s=>s.getAll()))||[]}
+async function refresh(){cachedRows=await rows();render()}
+async function put(item){await withStore('readwrite',s=>s.put(item));await refresh()}
+async function remove(id){await withStore('readwrite',s=>s.delete(id));await refresh()}
 function normalized(url){const u=new URL(url,location.origin);return u.pathname+u.search}
-function queueable(url,method){const u=new URL(url,location.origin);return QUEUEABLE.has(method+' '+u.pathname)}
-async function render(){
+function queueable(url,method){const u=new URL(url,location.origin);return u.origin===location.origin&&QUEUEABLE.has(method+' '+u.pathname)}
+function render(){
   const el=document.getElementById('connectionStatus'),text=document.getElementById('connectionText'),badge=document.getElementById('connectionQueue');if(!el||!text||!badge)return;
-  const all=await rows().catch(()=>[]),n=all.length,currentBook=context().bookId,current=all.filter(x=>x.bookId===currentBook).length;
+  const ctx=context(),legacy=cachedRows.filter(x=>!x.user&&x.bookId===String(ctx.bookId)),all=cachedRows.filter(x=>x.user===owner(ctx)),n=all.length+legacy.length,current=all.filter(x=>belongs(x,ctx)).length+legacy.length;
   el.classList.remove('online','offline','syncing','error','checking');
   if(syncing){el.classList.add('syncing');text.textContent=tr('Synchronisiere …','Syncing …')}
+  else if(reachable===null){el.classList.add('checking');text.textContent=tr('Verbindung prüfen …','Checking connection …')}
+  else if(legacy.length&&reachable){el.classList.add('error');text.textContent=tr('Offline-Einträge prüfen','Review offline entries')}
   else if(lastError&&reachable&&current){el.classList.add('error');text.textContent=tr('Sync-Fehler','Sync error')}
   else if(reachable){el.classList.add('online');text.textContent=tr('Server verbunden','Server connected')}
   else{el.classList.add('offline');text.textContent=tr('Keine Verbindung','Offline')}
   badge.hidden=n===0;badge.textContent=n?String(n):'';
   const parts=[];if(n)parts.push(tr(`${n} Änderung${n===1?'':'en'} wartet${n!==current?` (${current} in diesem Haushaltsbuch)`:''}`,`${n} change${n===1?'':'s'} pending${n!==current?` (${current} in this book)`:''}`));
+  if(cachedRows.some(x=>!x.user&&x.bookId===String(ctx.bookId)))parts.push(tr('Alte Offline-Einträge ohne Benutzerzuordnung sind zurückgehalten.','Legacy offline entries without an owner are held back.'));
   if(lastSuccess)parts.push(tr('Letzter Serverkontakt: ','Last server contact: ')+lastSuccess.toLocaleString());if(lastError)parts.push(lastError);
   parts.push(tr('Klicken: jetzt prüfen/synchronisieren','Click: check/sync now'));el.title=parts.join('\n');el.setAttribute('aria-label',text.textContent+(n?` · ${n}`:''));
 }
-async function enqueue(url,opt,requestId,bookId){
-  if(!bookId)throw new Error(tr('Offline-Speichern benötigt ein aktives Haushaltsbuch.','Offline save requires an active household book.'));
-  if(typeof opt.body!=='string')throw new Error(tr('Diese Aktion kann offline nicht gepuffert werden.','This action cannot be queued offline.'));
-  await put({id:requestId,url:normalized(url),method:(opt.method||'POST').toUpperCase(),body:opt.body,bookId:String(bookId),createdAt:new Date().toISOString(),tries:0,error:null});
-  await render();window.dispatchEvent(new CustomEvent('hp-offline-queued',{detail:{id:requestId}}));return {queued:true,id:requestId};
+function contact(response){
+  reachable=response.status<500;
+  if(reachable)lastSuccess=new Date();
+  render();
+}
+async function fetchTimed(url,options={},timeout=15000){
+  if(options.signal)return fetch(url,options);
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+  try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}
+}
+function writeHeaders(opt,ctx,id){
+  const headers=new Headers(opt.headers||{});
+  if(id)headers.set('X-Idempotency-Key',id);
+  if(ctx.bookId)headers.set('X-HaushaltPro-Book',String(ctx.bookId));
+  if(ctx.username)headers.set('X-HaushaltPro-User',encodeURIComponent(ctx.username));
+  return headers;
 }
 async function request(url,opt={},ctx={}){
-  const method=(opt.method||'GET').toUpperCase(),canQueue=queueable(url,method)&&!(opt.body instanceof FormData),headers=new Headers(opt.headers||{});
-  const requestId=canQueue?(headers.get('X-Idempotency-Key')||makeId()):null;if(requestId)headers.set('X-Idempotency-Key',requestId);
-  const options={...opt,headers};
-  try{
-    const response=await fetch(url,options);reachable=true;lastSuccess=new Date();
-    if(canQueue&&[502,503,504].includes(response.status)){lastError=tr('Server vorübergehend nicht erreichbar.','Server temporarily unavailable.');return await enqueue(url,options,requestId,ctx.bookId)}
-    lastError='';await render();return {response};
-  }catch(err){
-    reachable=false;lastError=String(err?.message||err||tr('Netzwerkfehler','Network error'));
-    if(canQueue)return await enqueue(url,options,requestId,ctx.bookId);
-    await render();throw err;
+  const method=(opt.method||'GET').toUpperCase(),canQueue=queueable(url,method)&&typeof opt.body==='string'&&!(opt.body instanceof FormData);
+  if(!canQueue){
+    try{const response=await fetchTimed(url,{...opt,headers:method==='GET'?opt.headers:writeHeaders(opt,ctx)},30000);contact(response);return {response}}
+    catch(err){reachable=false;render();throw err}
   }
+  if(!ctx.bookId||!ctx.username)throw new Error(tr('Offline-Speichern benötigt eine Anmeldung und ein aktives Haushaltsbuch.','Offline save requires a signed-in user and an active book.'));
+  JSON.parse(opt.body);
+  const requestId=new Headers(opt.headers||{}).get('X-Idempotency-Key')||makeId();
+  const item={id:requestId,url:normalized(url),method,body:opt.body,bookId:String(ctx.bookId),user:owner(ctx),createdAt:new Date().toISOString(),tries:0,error:null};
+  // Save before sending: closing the page or losing the reply must retain the same ID.
+  sending.add(requestId);
+  try{
+    await put(item);
+    if(navigator.onLine===false||reachable===false)return queued(item);
+    let response;
+    try{response=await fetchTimed(url,{...opt,headers:writeHeaders(opt,ctx,requestId)});contact(response)}
+    catch(err){reachable=false;lastError=String(err?.message||err);return queued(item)}
+    if(response.status>=500){reachable=false;lastError=tr('Server vorübergehend nicht erreichbar.','Server temporarily unavailable.');return queued(item)}
+    if(response.ok){
+      // A proxy login page or truncated JSON is not a confirmed server write.
+      try{const body=await response.clone().json();if(!body?.id)throw new Error('Invalid server response')}
+      catch(err){reachable=false;lastError=String(err?.message||err);return queued(item)}
+    }
+    // Explicit 4xx: the form remains open for correction; no silent background retry.
+    await remove(requestId);lastError='';render();return {response};
+  }finally{sending.delete(requestId);render()}
 }
+function queued(item){render();window.dispatchEvent(new CustomEvent('hp-offline-queued',{detail:{id:item.id}}));return {queued:true,id:item.id}}
 async function responseError(response){try{const j=await response.json();const d=j?.detail;return typeof d==='string'?d:JSON.stringify(d||j)}catch{return response.statusText||`HTTP ${response.status}`}}
 async function sync(manual=false){
-  if(syncing)return {synced:0};const ctx=context();if(!ctx.csrf||!ctx.bookId){await render();return {synced:0}}
-  const all=(await rows()).sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))),pending=all.filter(x=>String(x.bookId)===String(ctx.bookId));if(!pending.length){lastError='';await render();return {synced:0}}
-  syncing=true;lastError='';await render();let synced=0;
-  for(const item of pending){
-    const headers=new Headers({'Content-Type':'application/json','X-CSRF-Token':ctx.csrf,'X-Idempotency-Key':item.id});
-    try{
-      const response=await fetch(item.url,{method:item.method,body:item.body,headers,credentials:'same-origin'});reachable=true;lastSuccess=new Date();
-      if(response.status===401){lastError=tr('Sitzung gesperrt – nach Anmeldung erneut synchronisieren.','Session locked – sign in to sync.');break}
-      if(!response.ok){const message=await responseError(response);item.tries=Number(item.tries||0)+1;item.error=message;await put(item);lastError=message;break}
-      await remove(item.id);synced++;
-    }catch(err){reachable=false;lastError=String(err?.message||err||tr('Netzwerkfehler','Network error'));break}
-  }
-  syncing=false;await render();if(synced)window.dispatchEvent(new CustomEvent('hp-offline-synced',{detail:{count:synced}}));
+  if(syncing)return {synced:0};
+  const ctx=context();if(!ctx.csrf||!ctx.bookId||!ctx.username){render();return {synced:0}}
+  syncing=true;let synced=0;
+  try{
+    await refresh();
+    const legacy=cachedRows.filter(x=>!x.user&&x.bookId===String(ctx.bookId));
+    if(manual&&legacy.length&&window.confirm(tr(
+      `${legacy.length} Offline-Einträge aus einer älteren Version warten in diesem Haushaltsbuch. Hast du diese Einträge selbst erstellt? Mit OK ordnest du sie deinem Benutzer zu und synchronisierst sie.`,
+      `${legacy.length} offline entries from an older version are waiting in this book. Did you create these entries? OK assigns them to your user and syncs them.`))){
+      for(const item of legacy)await put({...item,user:owner(ctx)});
+    }
+    const pending=cachedRows.filter(x=>belongs(x,ctx)).sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||a.id.localeCompare(b.id));
+    for(const item of pending){
+      if(sending.has(item.id))break;
+      if(!belongs(item,context())||ctx.csrf!==context().csrf)break;
+      if(item.blocked&&!manual){lastError=item.error;break}
+      const headers=writeHeaders({headers:{'Content-Type':'application/json','X-CSRF-Token':ctx.csrf}},ctx,item.id);
+      try{
+        const response=await fetchTimed(item.url,{method:item.method,body:item.body,headers,credentials:'same-origin'});contact(response);
+        if(!response.ok){
+          item.error=await responseError(response);item.tries=Number(item.tries||0)+1;
+          item.blocked=response.status>=400&&response.status<500&&![401,403,408,429].includes(response.status);
+          await put(item);lastError=item.error;break;
+        }
+        const body=await response.json();if(!body?.id)throw new Error('Invalid server response');
+        await remove(item.id);lastError='';synced++;
+      }catch(err){reachable=false;lastError=String(err?.message||err);break}
+    }
+  }catch(err){lastError=String(err?.message||err)}
+  finally{syncing=false;render()}
+  if(synced)window.dispatchEvent(new CustomEvent('hp-offline-synced',{detail:{count:synced}}));
   if(manual&&lastError)window.dispatchEvent(new CustomEvent('hp-offline-sync-error',{detail:{message:lastError}}));return {synced};
 }
-async function ping(){
-  if(syncing)return;let controller=null,timer=null;try{controller=new AbortController();timer=setTimeout(()=>controller.abort(),5000);const r=await fetch('/api/status',{credentials:'same-origin',cache:'no-store',signal:controller.signal});reachable=r.ok;if(r.ok){lastSuccess=new Date();lastError='';await sync(false)}}catch(err){reachable=false;if(navigator.onLine!==false)lastError=tr('Server nicht erreichbar.','Server unreachable.')}finally{if(timer)clearTimeout(timer);await render()}
+async function ping(manual=false){
+  if(pinging||syncing)return;pinging=true;
+  try{
+    const r=await fetchTimed('/api/status',{credentials:'same-origin',cache:'no-store'},5000);
+    const status=r.ok?await r.json():null;reachable=!!(r.ok&&status&&typeof status.version==='string'&&typeof status.initialized==='boolean');
+    if(reachable){lastSuccess=new Date();await sync(manual)}
+    else lastError=tr('Server nicht erreichbar.','Server unreachable.');
+  }catch(err){reachable=false;lastError=tr('Server nicht erreichbar.','Server unreachable.')}
+  finally{pinging=false;render()}
 }
-function start(){if(started)return;started=true;window.addEventListener('online',()=>ping());window.addEventListener('offline',()=>{reachable=false;render()});document.addEventListener('visibilitychange',()=>{if(!document.hidden)ping()});document.getElementById('connectionStatus')?.addEventListener('click',()=>ping());render();setTimeout(ping,100);setInterval(ping,HEARTBEAT_MS)}
+function start(){
+  if(started)return;started=true;
+  window.addEventListener('online',()=>ping());window.addEventListener('offline',()=>{reachable=false;render()});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)ping()});
+  document.getElementById('connectionStatus')?.addEventListener('click',()=>ping(true));
+  refresh().catch(err=>{lastError=String(err?.message||err);render()});setTimeout(ping,100);
+  setInterval(()=>{if(!document.hidden)ping()},HEARTBEAT_MS);
+}
 window.HaushaltProOffline={request,sync,ping,start,pending:rows};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();

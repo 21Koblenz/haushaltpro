@@ -1,4 +1,8 @@
-# HaushaltPro v0.21.8
+# HaushaltPro
+
+Stable: **v0.21.8** · Testversion / prerelease: **v0.21.9-dev.2**
+
+[Testversion und Grenzen / Dev setup and limitations](docs/OFFLINE-DEV.md) · [Release notes](docs/RELEASE-NOTES-v0.21.9-dev.2.md)
 
 [![License: AGPL v3+](https://img.shields.io/badge/License-AGPL_v3%2B-blue.svg)](LICENSE)
 [![Vibe Coding](https://img.shields.io/badge/development-Vibe%20Coding-orange.svg)](VIBE_CODING.md)

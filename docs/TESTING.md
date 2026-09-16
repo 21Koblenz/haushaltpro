@@ -71,3 +71,26 @@ The existing suite covers accounts, transactions, recurring series, month-openin
 ## Limits
 
 Automated tests reduce regression risk but do not prove absence of every possible defect. The internal security audit is not an independent penetration test. Dependency vulnerability scans require external vulnerability databases and are run separately by `scripts/security-scan.sh` / CI where available.
+
+## v0.21.9-dev.2
+
+Run JavaScript offline-queue tests with Node.js 22 or later:
+
+```bash
+npm ci --ignore-scripts --no-audit --no-fund
+npm test
+```
+
+`tests/test_recurring_occurrence_dates.py` checks independent cent totals after same-month, cross-month and cross-year moves, repeated edits, series version cutoffs, regeneration, reset and cache freshness. `tests/test_occurrence_encrypted_migration.py` upgrades a real encrypted schema-26 database twice and checks preservation and integrity. `tests/test_offline_sync.py` includes concurrent replay with separate connections and wrong-user/book rejection.
+
+Local result: 83 Python scripts, 9 JavaScript tests, 52 static security checks passed. The earlier date-sensitive v0.10.3 regression now fixes its reference date explicitly.
+
+Performance probe (10,000 transactions, 4,000 splits, 8 accounts, 80 series; local SQLite diagnostic without persistent view cache):
+
+| View | SQL before | SQL after | Median before (ms) | Median after (ms) |
+|---|---:|---:|---:|---:|
+| Monthly planning | 365 | 197 | 83.40 | 65.90 |
+| Monthly dashboard | 580 | 540 | 70.49 | 65.87 |
+| Annual planning | 533 | 533 | 73.14 | 74.82 |
+
+Timing differences depend on the runner. Query count reduction is deterministic; no cross-request financial calculation cache was added. Interactive browser verification was blocked by local-URL access restrictions in the test environment.

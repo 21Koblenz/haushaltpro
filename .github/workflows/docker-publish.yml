@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev
     tags:
       - "v*"
   workflow_dispatch:
@@ -46,11 +47,21 @@ jobs:
       - name: Select published image
         id: target
         shell: bash
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]; then
+          version="${REQUESTED_VERSION:-${GITHUB_REF_NAME}}"
+          if [[ "${GITHUB_REF}" == "refs/heads/dev" ]]; then
+            version="$(python -c 'import ast; t=ast.parse(open("app/main.py").read()); print(next(n.value.value for n in t.body if isinstance(n,ast.Assign) and any(isinstance(v,ast.Name) and v.id=="APP_VERSION" for v in n.targets)))')"
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+$ ]] || exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF}" == "refs/heads/main" || "${GITHUB_REF}" == "refs/heads/dev" || "$version" == *-* ]]; then
             echo "image=21koblenz/haushaltpro:dev" >> "$GITHUB_OUTPUT"
+            echo "dev=true" >> "$GITHUB_OUTPUT"
           else
             echo "image=21koblenz/haushaltpro:latest" >> "$GITHUB_OUTPUT"
+            echo "dev=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract Docker metadata
@@ -58,13 +69,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: 21koblenz/haushaltpro
+          flavor: latest=false
           tags: |
-            type=raw,value=dev,enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+            type=raw,value=dev,enable=${{ steps.target.outputs.dev == 'true' }}
+            type=raw,value=${{ steps.target.outputs.version }},enable=${{ github.ref == 'refs/heads/dev' }}
             type=semver,pattern={{version}},value=${{ github.ref_name }},enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }},enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }},enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.target.outputs.dev == 'false' }}
             type=semver,pattern={{version}},value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
-            type=raw,value=latest,enable=${{ github.event_name != 'push' || startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' && steps.target.outputs.dev == 'false' }}
+            type=raw,value=latest,enable=${{ steps.target.outputs.dev == 'false' }}
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -123,3 +136,23 @@ jobs:
           only-severities: critical,high,medium
           exit-code: true
           write-comment: false
+
+  dev-release:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-dev.')))
+    needs: docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish dev prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(python -c 'import ast; t=ast.parse(open("app/main.py").read()); print(next(n.value.value for n in t.body if isinstance(n,ast.Assign) and any(isinstance(v,ast.Name) and v.id=="APP_VERSION" for v in n.targets)))')"
+          tag="v$version"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "HaushaltPro $tag (dev)" \
+              --notes-file "docs/RELEASE-NOTES-${tag}.md"
+          fi

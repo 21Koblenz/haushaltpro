@@ -1,6 +1,30 @@
 # Changelog
 
-## Unreleased
+## v0.21.9-dev.2 - 2026-09-16 (prerelease)
+
+### Deutsch
+
+- Einzelne wiederkehrende Buchungen lassen sich auf ein anderes Datum verschieben, auch über Monats- und Jahresgrenzen. Die ursprüngliche Serienzuordnung verhindert doppelte Termine; Planung, Fixkosten, Prognose und Journal folgen dem tatsächlichen Buchungsdatum.
+- Offline-Einträge werden vor dem Senden dauerhaft gespeichert. Verlorene Antworten, parallele Wiederholungen, abgelaufene Sitzungen und Benutzer-/Haushaltsbuchwechsel sind abgesichert. Offline-Speichern schließt den Dialog direkt, ohne nachfolgende Serverabfragen abzuwarten.
+- Serverstatus wird anhand einer echten Antwort geprüft; Fehlerseiten gelten nicht als erfolgreiche Verbindung. Alte Warteschlangen ohne Benutzerzuordnung werden erst nach ausdrücklicher Zuordnung synchronisiert.
+- Wiederholte Berechnungen innerhalb einer Leseanfrage werden wiederverwendet; die monatliche Planung benötigt im 10.000-Buchungen-Test 197 statt 365 SQL-Abfragen.
+- Additive SQLCipher-Schemamigration 26 → 27; vorhandene Buchungen und Betragsausnahmen bleiben erhalten.
+
+### English
+
+- Reschedule a single recurring occurrence across month/year boundaries while retaining its original schedule identity. Journal, planning, fixed costs and forecasts use the effective booking date.
+- Persist new offline writes before sending. Retry safely after lost replies, concurrent requests and expired sessions; isolate queued writes by user and book, including cross-tab switches.
+- Validate server reachability, avoid redundant IndexedDB reads, and reuse calculations within a GET request. Monthly planning uses 197 rather than 365 SQL statements in the 10,000-transaction probe.
+- Additive schema 26 → 27 migration tested with the actual SQLCipher runtime.
+
+### Validation and scope
+
+- 83 Python regression scripts, 9 JavaScript queue tests and 52 static security checks passed locally; Python compile and JavaScript syntax checks passed.
+- Offline mode covers new transactions, transfers and recurring series after the app has been loaded online. Full offline cold start and offline edits/deletes are not included. Pending payloads remain unencrypted in the browser's IndexedDB.
+- Dev tags publish `:dev` and the explicit prerelease version; they do not update stable `:latest` or `:0.21`.
+- Browser UI validation could not run in this environment because the browser blocked the local test URL. See the manual checklist in `docs/OFFLINE-DEV.md`.
+
+## Earlier changes included in v0.21.9-dev.2
 
 ### Fixed
 
