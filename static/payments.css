@@ -63,11 +63,14 @@ details[open]>.tx-summary .tx-chevron,details[open]>summary>.tx-chevron{transfor
 #accounts{display:grid;gap:10px;min-width:0}
 .account-manager-grid{align-items:start}
 .account-disclosure{border:1px solid var(--line);border-radius:14px;background:var(--panel);min-width:0;max-width:100%}
-.account-summary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 20px;gap:10px;align-items:center;padding:16px;list-style:none;cursor:pointer}
+.account-summary{display:grid;grid-template-columns:minmax(0,1fr) 20px;grid-template-areas:"name arrow" "balances balances";gap:12px;align-items:center;padding:16px;list-style:none;cursor:pointer}
 .account-summary::-webkit-details-marker{display:none}.account-summary::marker{content:""}
 .account-summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:12px}
 .account-summary-name,.account-summary-balance{display:flex;flex-direction:column;gap:5px;min-width:0;overflow-wrap:anywhere}
-.account-summary-name b{line-height:1.4}.account-summary-balance{text-align:right}
+.account-summary-name{grid-area:name}.account-summary-name b{line-height:1.4}
+.account-summary>.tx-chevron{grid-area:arrow}
+.account-summary-balances{grid-area:balances;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:12px;border-top:1px solid var(--line);min-width:0}
+.account-summary-balance{text-align:left}.account-summary-end{border-left:1px solid var(--line);padding-left:12px}
 .account-summary-balance strong{font-size:1.15rem;font-variant-numeric:tabular-nums}
 .account-summary small{color:var(--muted);font-size:.8rem;line-height:1.4}
 .account-expanded{border-top:1px solid var(--line);padding:16px}
@@ -96,9 +99,7 @@ details[open]>.tx-summary .tx-chevron,details[open]>summary>.tx-chevron{transfor
 #dashboardMonthPanels>.panel,.analysis-panels>.panel{min-width:0}
 @media(max-width:800px){#dashboardMonthPanels{grid-template-columns:1fr}}
 @media(max-width:600px){
-  .account-summary{grid-template-columns:minmax(0,1fr) 20px;grid-template-areas:"name arrow" "amount arrow";gap:8px 10px;padding:14px}
-  .account-summary-name{grid-area:name}.account-summary-balance{grid-area:amount;text-align:left}
-  .account-summary>.tx-chevron{grid-area:arrow}
+  .account-summary{gap:10px;padding:14px}
   .account-summary-balance strong{font-size:1.2rem}
   .account-expanded{padding:12px}
   .account-expanded .account-actions{grid-template-columns:1fr}

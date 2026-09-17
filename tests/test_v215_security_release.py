@@ -6,7 +6,7 @@ dockerfile = (root / "Dockerfile").read_text()
 compose = (root / "docker-compose.yml").read_text()
 changelog = (root / "CHANGELOG.md").read_text()
 
-assert ('APP_VERSION = "0.21.5"' in main or ('APP_VERSION = "0.21.6"' in main or ('APP_VERSION = "0.21.8"' in main or 'APP_VERSION = "0.21.9-dev.4"' in main)))
+assert ('APP_VERSION = "0.21.5"' in main or ('APP_VERSION = "0.21.6"' in main or ('APP_VERSION = "0.21.8"' in main or 'APP_VERSION = "0.21.9-dev.5"' in main)))
 assert 'python:3.12.14-alpine3.24@sha256:' in dockerfile
 assert 'apk upgrade --no-cache' in dockerfile
 assert 'pip==26.2' in dockerfile

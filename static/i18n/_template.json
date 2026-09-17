@@ -102,7 +102,13 @@
     "reports.flowSavings": "",
     "theme.switchLight": "",
     "theme.switchDark": "",
-    "theme.switchLabel": ""
+    "theme.switchLabel": "",
+    "reports.flowView": "",
+    "reports.flowViewLabel": "",
+    "reports.flowSure": "",
+    "reports.flowClassic": "",
+    "reports.flowSankeyHelp": "",
+    "reports.flowClassicHelp": ""
   },
   "legacy": {
     "Verschlüsseltes Haushaltsbuch": "",

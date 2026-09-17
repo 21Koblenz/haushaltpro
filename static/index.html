@@ -6,9 +6,10 @@
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <meta content="dark light" name="color-scheme"/>
 <title>HaushaltPro</title>
-<link href="/assets/style.css?v=0.21.9-dev.4" rel="stylesheet"/>
-<link href="/assets/ui-enhancements.css?v=0.21.9-dev.4" rel="stylesheet"/>
-<link href="/assets/payments.css?v=0.21.9-dev.4" rel="stylesheet"/>
+<link href="/assets/style.css?v=0.21.9-dev.5" rel="stylesheet"/>
+<link href="/assets/ui-enhancements.css?v=0.21.9-dev.5" rel="stylesheet"/>
+<link href="/assets/payments.css?v=0.21.9-dev.5" rel="stylesheet"/>
+<link href="/assets/report-flow.css?v=0.21.9-dev.5" rel="stylesheet"/>
 </head>
 <body>
 <main class="shell">
@@ -170,8 +171,9 @@
 <div class="toolbar"><select id="reportPeriod"><option value="month">Monat</option><option value="year">Jahr</option></select><select aria-label="Monat" id="reportMonthName"></select><input id="reportYear" max="2100" min="2000" type="number"/><button id="reportReload">Anzeigen</button></div>
 <div class="hero-grid"><article class="metric"><span>Einnahmen</span><strong id="reportIncome">–</strong></article><article class="metric"><span>Ausgaben</span><strong id="reportExpense">–</strong></article><article class="metric"><span>Sparen</span><strong id="reportSavings">–</strong></article><article class="metric accent"><span>Saldo</span><strong id="reportNet">–</strong></article><article class="metric" id="reportSavingsRateCard"><span id="reportSavingsRateLabel">Sparquote Monat</span><strong id="reportSavingsRate">–</strong></article><article class="metric" id="reportAvgSavingsCard"><span id="reportAvgSavingsLabel">Ø Sparen pro Tag</span><strong id="reportAvgSavings">–</strong></article></div>
 <article class="panel report-flow-panel">
-<div class="section-head"><div><h2 data-i18n="reports.flowTitle">Geldfluss</h2><p class="muted" data-i18n="reports.flowHelp">Jede Kategorie steht vollständig lesbar über ihrem Pfeil. Pfeillänge und Pfeildicke zeigen den Größenunterschied innerhalb der jeweiligen Gruppe; kleine Kategorien bleiben trotzdem sichtbar.</p></div><div class="report-flow-period muted" id="reportFlowPeriodLabel">–</div></div>
-<div class="report-flow-layout flow-sankey-layout">
+<div class="section-head report-flow-heading"><div><h2 data-i18n="reports.flowTitle">Geldfluss</h2><p class="muted" id="reportFlowHelp" data-i18n="reports.flowSankeyHelp">Verbundene Bänder zeigen, wohin dein Geld fließt. Ihre Breite entspricht dem Betrag. Auf dem Smartphone siehst du die Gruppen; alle Kategorien stehen darunter.</p></div><div class="report-flow-controls"><label><span data-i18n="reports.flowView">Darstellung</span><select id="reportFlowView" aria-label="Darstellung des Geldflusses" data-i18n-aria-label="reports.flowViewLabel"><option value="sure" data-i18n="reports.flowSure">Sankey · Sure-Stil</option><option value="classic" data-i18n="reports.flowClassic">HaushaltPro · Klassisch</option></select></label><div class="report-flow-period muted" id="reportFlowPeriodLabel">–</div></div></div>
+<div class="report-flow-view" id="reportFlowSankey"></div>
+<div class="report-flow-layout flow-sankey-layout report-flow-view" id="reportFlowClassic" hidden>
   <section class="flow-stream flow-stream-income">
     <div class="flow-stream-head">
       <span class="flow-stream-kicker">Einnahmekategorien</span>
@@ -358,13 +360,14 @@ docker compose up -d --build</pre><p class="muted">Für eine öffentliche Domain
 </main>
 <dialog id="modal"><form id="modalForm" method="dialog"><div id="modalContent"></div><div class="dialog-actions"><button class="ghost" id="modalCancel" type="button">Abbrechen</button><button id="modalSave" type="submit">Speichern</button></div></form></dialog>
 <div id="toast"></div>
-<script src="/assets/i18n.js?v=0.21.9-dev.4"></script>
-<script src="/assets/offline-sync.js?v=0.21.9-dev.4"></script>
-<script src="/assets/transaction-cards.js?v=0.21.9-dev.4"></script>
-<script src="/assets/overview-cards.js?v=0.21.9-dev.4"></script>
-<script src="/assets/dashboard-charts.js?v=0.21.9-dev.4"></script>
-<script src="/assets/app.js?v=0.21.9-dev.4"></script>
-<script src="/assets/open-items.js?v=0.21.9-dev.4"></script>
-<script src="/assets/ui-enhancements.js?v=0.21.9-dev.4"></script>
+<script src="/assets/i18n.js?v=0.21.9-dev.5"></script>
+<script src="/assets/offline-sync.js?v=0.21.9-dev.5"></script>
+<script src="/assets/transaction-cards.js?v=0.21.9-dev.5"></script>
+<script src="/assets/overview-cards.js?v=0.21.9-dev.5"></script>
+<script src="/assets/dashboard-charts.js?v=0.21.9-dev.5"></script>
+<script src="/assets/report-flow.js?v=0.21.9-dev.5"></script>
+<script src="/assets/app.js?v=0.21.9-dev.5"></script>
+<script src="/assets/open-items.js?v=0.21.9-dev.5"></script>
+<script src="/assets/ui-enhancements.js?v=0.21.9-dev.5"></script>
 </body>
 </html>

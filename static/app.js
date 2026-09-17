@@ -628,7 +628,10 @@ function renderReportFlow(r,period,anchorLabel){
   renderFlowCategoryStack('reportFlowIncomeCategories',flowCategoryRows(items,'income'),income,'income',maxValue);
   renderFlowCategoryStack('reportFlowExpenseCategories',flowCategoryRows(items,'expense'),expense,'expense',maxValue);
   renderFlowCategoryStack('reportFlowSavingsCategories',flowCategoryRows(items,'savings'),savings,'savings',maxValue);
+  updateReportSankey(r,period,anchorLabel);
 }
+
+initReportFlowView();
 
 const DONUT_COLORS=['#0f766e','#2563eb','#9333ea','#c2410c','#be123c','#4d7c0f','#0369a1','#7c3aed','#b45309','#047857','#475569','#a21caf'];
 function drawDonut(canvasId,legendId,items){

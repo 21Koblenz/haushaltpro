@@ -6,10 +6,11 @@ const root=path.resolve(__dirname,'../..');
 const source=name=>fs.readFileSync(path.join(root,'static',name),'utf8');
 const settle=async()=>{for(let i=0;i<4;i++)await new Promise(setImmediate)};
 const emptyList={items:[],page:1,pages:1,total:0,totals:{payable:0,receivable:0,overdue:0}};
-async function fixture(t) {
+async function fixture(t,{storage={}}={}) {
   const dom = new JSDOM(source('index.html'), {url:'https://haushaltpro.test', runScripts:'outside-only', pretendToBeVisual:true});
   t.after(() => dom.window.close());
   const w = dom.window, $ = id => w.document.getElementById(id);
+  for(const [key,value] of Object.entries(storage))w.localStorage.setItem(key,value);
   w.matchMedia = () => ({matches:false, addEventListener(){}});
   w.HTMLDialogElement.prototype.showModal = function(){this.open=true;};
   w.HTMLDialogElement.prototype.close = function(){this.open=false;};
@@ -24,7 +25,7 @@ async function fixture(t) {
     if (body?.csv) return {ok:true,status:200,headers:{get:()=> 'text/csv'},blob:async()=>new w.Blob([body.csv])};
     return {ok:true,status:200,headers:{get:()=> 'application/json'},json:async()=>body};
   };
-  for (const script of ['transaction-cards.js','overview-cards.js','dashboard-charts.js','app.js','open-items.js']) {
+  for (const script of ['transaction-cards.js','overview-cards.js','dashboard-charts.js','report-flow.js','app.js','open-items.js']) {
     vm.runInContext(source(script), dom.getInternalVMContext(), {filename:script});
   }
   await settle();

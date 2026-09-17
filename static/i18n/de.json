@@ -102,7 +102,13 @@
     "reports.flowSavings": "Sparen",
     "theme.switchLight": "☀ Hell",
     "theme.switchDark": "🌙 Dunkel",
-    "theme.switchLabel": "Farbschema wechseln"
+    "theme.switchLabel": "Farbschema wechseln",
+    "reports.flowView": "Darstellung",
+    "reports.flowViewLabel": "Darstellung des Geldflusses",
+    "reports.flowSure": "Sankey · Sure-Stil",
+    "reports.flowClassic": "HaushaltPro · Klassisch",
+    "reports.flowSankeyHelp": "Verbundene Bänder zeigen, wohin dein Geld fließt. Ihre Breite entspricht dem Betrag. Auf dem Smartphone siehst du die Gruppen; alle Kategorien stehen darunter.",
+    "reports.flowClassicHelp": "Pfeile zeigen den Anteil und die Größe jeder Kategorie innerhalb ihrer Gruppe."
   },
   "legacy": {
     "Einzelnen Serientermin anpassen": "Einzelnen Serientermin anpassen",

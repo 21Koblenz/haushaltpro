@@ -1,8 +1,8 @@
 # HaushaltPro
 
-Stable: **v0.21.8** · Testversion / prerelease: **v0.21.9-dev.4**
+Stable: **v0.21.8** · Testversion / prerelease: **v0.21.9-dev.5**
 
-[Testversion und Grenzen / Dev setup and limitations](docs/OFFLINE-DEV.md) · [Release notes](docs/RELEASE-NOTES-v0.21.9-dev.4.md)
+[Testversion und Grenzen / Dev setup and limitations](docs/OFFLINE-DEV.md) · [Release notes](docs/RELEASE-NOTES-v0.21.9-dev.5.md)
 
 [![License: AGPL v3+](https://img.shields.io/badge/License-AGPL_v3%2B-blue.svg)](LICENSE)
 [![Vibe Coding](https://img.shields.io/badge/development-Vibe%20Coding-orange.svg)](VIBE_CODING.md)
@@ -18,7 +18,7 @@ HaushaltPro verwaltet Finanzdaten auf dem eigenen Server. Konten, Buchungen, int
 
 ### Hauptfunktionen
 
-- Konten mit Startsaldo, Monatsanfang, Stichtags- und Monatsendstand
+- Konten mit Startsaldo, Monatsanfang, Stichtags- und Monatsendstand; Stichtags- und Monatsendstand auch auf geschlossenen Karten
 - Einnahmen, Ausgaben, Sparen und interne Transfers
 - Buchungen mit Kategorien, Empfängern, Tags, Notizen, Splits und Belegen
 - wiederkehrende Buchungen mit Serienversionen und Stichtagsänderungen
@@ -34,6 +34,7 @@ HaushaltPro verwaltet Finanzdaten auf dem eigenen Server. Konten, Buchungen, int
 - optionale Investment-Übersicht
 - verschlüsselte portable Backups und interne Snapshot-Rotation
 - responsive Smartphone-Ansicht mit eingeklappten Buchungs-, Serien- und Kontenkarten
+- Geldfluss wahlweise als verbundenes Sankey im Sure-Stil oder klassisches Pfeildiagramm, mit gespeicherter Auswahl und vertikaler Smartphone-Ansicht
 - Dashboard-Grafiken mit Touch-Auswahl und lesbaren Achsen auf schmalen Displays
 
 ### Weitere Hinweise
@@ -115,6 +116,8 @@ Siehe [LICENSE](LICENSE).
 ### Features
 
 HaushaltPro combines accounts, transactions, internal transfers, categories, recurring payments, budgets, forecasts, bank CSV import, reconciliation, audit history, backups, multi-user permissions, multiple isolated household books and optional investment tracking in a self-hosted web application.
+
+The report flow chart defaults to a Sure-inspired connected Sankey with a vertical group overview on phones. The original diagram remains selectable; the browser remembers the choice. Collapsed account cards show both cutoff and month-end balances. See [design reference credits](docs/THIRD-PARTY-NOTICES.md).
 
 Financial data is stored in SQLCipher databases. The container is hardened and binds to `127.0.0.1:8080` by default. LAN/VPN access is preferred; public access should only be provided through an HTTPS reverse proxy.
 

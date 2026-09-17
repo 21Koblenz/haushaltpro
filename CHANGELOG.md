@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.21.9-dev.5 - 2026-09-17 (prerelease)
+
+### Deutsch
+
+- Stichtags- und Monatsendstand direkt auf eingeklappten Kontenkarten im Dashboard und in der Kontenverwaltung.
+- Neues verbundenes Sankey im Sure-Stil als Standard; bisheriges Diagramm als zweite Option mit gespeicherter Ansichtswahl.
+- Vertikale Gruppenansicht auf Smartphones, vollständige Kategorienliste, centgenau ausgeglichene Geldströme und gesonderte Fehlbeträge.
+- Touch-/Tastaturauswahl, lange Namen, kleine Beträge, viele Kategorien und Sprachwechsel berücksichtigt.
+- Schema bleibt 28. [Update und Testanleitung](docs/RELEASE-NOTES-v0.21.9-dev.5.md).
+
+### English
+
+- Collapsed accounts show both cutoff and month-end balances.
+- Sure-inspired Sankey becomes the default cash-flow view; the original chart remains selectable with a saved preference.
+- Mobile vertical overview, complete category list, exact-cent flow conservation, deficit handling and accessible selection. No additional runtime dependencies.
+
 ## v0.21.9-dev.4 - 2026-09-17 (prerelease)
 
 ### Deutsch

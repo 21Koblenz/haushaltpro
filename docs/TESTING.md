@@ -118,3 +118,10 @@ The browser rejected the local test URL with `ERR_BLOCKED_BY_CLIENT`. DOM checks
 Chart tests use a mocked canvas context to inspect drawing coordinates at widths of 280, 320, 360, 390, 768 and 1100 CSS pixels, with months of 28–31 days. Every date stays selectable, including first/last days; opening and negative balances remain represented. Tests cover pointer/range input, resize observers, empty/single-point data, yearly selection, analysis bars and the actual i18n script. These are DOM and drawing-command checks, not browser pixel comparisons.
 
 Local result: all 87 Python scripts, 23 JavaScript tests and 52 static security checks passed, with compile/syntax checks. The browser rejected the local URL with `ERR_BLOCKED_BY_CLIENT`; use the release notes' smartphone checklist for visual verification.
+
+
+## v0.21.9-dev.5
+
+`tests/report-flow-ui.test.cjs` adds seven executable jsdom/SVG checks using the shipped page and renderers: saved/default view selection, reload and month/year changes; independently specified cent totals with surplus/deficit/no income; layout at 240–1280 CSS px; touch/keyboard and resize selection; 60 categories with grouping, tiny/large amounts and escaping; actual i18n; and unavailable preference storage. Group totals and every category remain visible through the appropriate summary/list. The account DOM test now requires the month-end value, including its negative sign, in both collapsed overviews.
+
+All 87 Python regression scripts, 30 JavaScript tests and 52 static security checks passed locally, as did Python compilation, JavaScript syntax and whitespace checks. SVG output was rasterized and inspected at narrow/desktop widths in dark/light themes; a clipped narrow-desktop label was corrected. This verifies SVG output, not full browser CSS layout. Local browser access was previously blocked by `ERR_BLOCKED_BY_CLIENT`; the smartphone checklist is in the dev.5 release notes.

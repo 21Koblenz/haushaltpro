@@ -38,9 +38,9 @@ Aus Datenschutzgründen wird bewusst kein vollständiger unverschlüsselter Fina
 
 Nicht offline gepuffert werden in dieser ersten Version unter anderem Datei-Uploads, Benutzer-/Rechteverwaltung, Backups/Restore sowie Bearbeiten/Löschen bestehender Datensätze.
 
-## v0.21.9-dev.4 testen
+## v0.21.9-dev.5 testen
 
-Die vollständigen Update-Schritte stehen in den [Release Notes](RELEASE-NOTES-v0.21.9-dev.4.md). `main` bezeichnet Quellcode, `:dev` ein Docker-Image. Erst Pull/Neuerstellung des Containers installiert ein Update. Dieses Testrelease besitzt zusätzlich den festen Image-Tag `:0.21.9-dev.4` und den Git-Tag `v0.21.9-dev.4` auf dem Testbranch `dev`.
+Die vollständigen Update-Schritte stehen in den [Release Notes](RELEASE-NOTES-v0.21.9-dev.5.md). `main` bezeichnet Quellcode, `:dev` ein Docker-Image. Erst Pull/Neuerstellung des Containers installiert ein Update. Dieses Testrelease besitzt zusätzlich den festen Image-Tag `:0.21.9-dev.5` und den Git-Tag `v0.21.9-dev.5` auf dem Testbranch `dev`.
 
 Zusätzliche Prüfungen:
 

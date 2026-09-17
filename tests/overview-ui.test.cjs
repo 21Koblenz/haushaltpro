@@ -69,7 +69,9 @@ test('dashboard and account manager share collapsed balances with correct cutoff
   let card=f.$('accounts').querySelector('details');
   assert.equal(card.open,false);
   assert.match(card.querySelector('summary').textContent,/987,65.*Bis heute/s);
-  assert.doesNotMatch(card.querySelector('summary').textContent,/1.100,01|55,99/);
+  assert.doesNotMatch(card.querySelector('summary').textContent,/1.100,01/);
+  assert.match(card.querySelector('summary .account-summary-end').textContent,/-55,99.*Monatsende/s);
+  assert.ok(card.querySelector('summary .account-summary-end .neg'));
   assert.equal(card.querySelectorAll('svg').length,0);
   card.querySelector('summary').click();assert.equal(card.open,true);
   const amounts=Array.from(card.querySelectorAll('.account-balance-grid dd'),e=>e.textContent.replace(/\s/g,''));
@@ -86,6 +88,7 @@ test('dashboard and account manager share collapsed balances with correct cutoff
   card=f.$('accountManager').querySelector('details');
   assert.equal(card.open,false);
   assert.match(card.querySelector('summary').textContent,/Bis Stichtag.*29.2.2024/s);
+  assert.match(card.querySelector('summary .account-summary-end').textContent,/-55,99.*Monatsende/s);
   card.querySelector('summary').click();
   assert.match(card.textContent,/DE123456789/);
   for(const name of ['aedit','acorrect','areconcile'])card.querySelector('[data-'+name+']').click();

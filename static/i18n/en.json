@@ -102,7 +102,13 @@
     "reports.flowSavings": "Savings",
     "theme.switchLight": "☀ Light",
     "theme.switchDark": "🌙 Dark",
-    "theme.switchLabel": "Switch colour scheme"
+    "theme.switchLabel": "Switch colour scheme",
+    "reports.flowView": "View",
+    "reports.flowViewLabel": "Cash flow view",
+    "reports.flowSure": "Sankey · Sure style",
+    "reports.flowClassic": "HaushaltPro · Classic",
+    "reports.flowSankeyHelp": "Connected bands show where your money goes. Their width represents the amount. On phones you see the groups; all categories are listed below.",
+    "reports.flowClassicHelp": "Arrows show the share and size of each category within its group."
   },
   "legacy": {
     "Verschlüsseltes Haushaltsbuch": "Encrypted household finance book",

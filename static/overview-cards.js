@@ -13,7 +13,10 @@ function accountCards(rows,{manage=false}={}){
     return `<details class="account-disclosure" data-account-id="${a.id}">
       <summary class="account-summary">
         <span class="account-summary-name"><b>${esc(a.name)}</b>${a.type?`<small>${esc(accountTypeLabel(a.type))}</small>`:''}</span>
-        <span class="account-summary-balance"><strong class="amount ${a.balance<0?'neg':''}">${fmt(a.balance)}</strong><small>${text(currentLabel)}${cutoff?' · '+esc(formatDateValue(cutoff)):''}</small></span>
+        <span class="account-summary-balances">
+          <span class="account-summary-balance"><strong class="amount ${a.balance<0?'neg':''}">${fmt(a.balance)}</strong><small>${text(currentLabel)}${cutoff?' · '+esc(formatDateValue(cutoff)):''}</small></span>
+          <span class="account-summary-balance account-summary-end"><strong class="amount ${a.month_end_balance<0?'neg':''}">${fmt(a.month_end_balance)}</strong><small>${text('Monatsende')}</small></span>
+        </span>
         <span class="tx-chevron" aria-hidden="true">⌄</span>
       </summary>
       <div class="account-expanded">

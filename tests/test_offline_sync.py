@@ -79,7 +79,7 @@ for req in (request(book='book-b'),request(user='Bob')):
 main._session_record=original_record;main._activate_session_book=original_activate
 off=(root/'static/offline-sync.js').read_text(encoding='utf-8');idx=(root/'static/index.html').read_text(encoding='utf-8');app=(root/'static/app.js').read_text(encoding='utf-8')
 for needle in ('indexedDB.open','POST /api/transactions','POST /api/transfers','POST /api/recurring','X-Idempotency-Key','hp-offline-synced','HEARTBEAT_MS'):assert needle in off,needle
-assert 'id="connectionStatus"' in idx and '/assets/offline-sync.js?v=0.21.9-dev.4' in idx
+assert 'id="connectionStatus"' in idx and '/assets/offline-sync.js?v=0.21.9-dev.5' in idx
 assert 'HaushaltProOffline.request' in app and 'offlineSaveActive' in app
 print('offline queue + idempotency regression: PASS')
 c.close();Path(tmp).unlink(missing_ok=True)

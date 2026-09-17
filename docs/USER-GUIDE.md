@@ -6,7 +6,7 @@ HaushaltPro soll gleichzeitig Haushaltsdokumentation und Liquiditätsprognose se
 ## Konten
 Ein Konto benötigt ein Startdatum und einen Startsaldo. Der Monatsanfang eines Folgemonats entspricht dem Monatsendstand des Vormonats. Manuelle Monatskorrekturen überschreiben nur die Berechnungsbasis des gewählten Monats, nicht die historischen Buchungen.
 
-Konten starten auf dem Dashboard und in der Kontenverwaltung eingeklappt. Name und Kontostand mit Stichtag bleiben sichtbar. Antippen zeigt Monatsanfang, Bis heute beziehungsweise Bis Stichtag und Monatsende als getrennte Zeilen. Die Kontenverwaltung enthält darunter Kontodaten und Bearbeitungsaktionen. In anderen Monaten bezeichnet „Bis Stichtag“ den zum heutigen Kalendertag passenden Vergleichstag im ausgewählten Monat.
+Konten starten auf dem Dashboard und in der Kontenverwaltung eingeklappt. Name, Kontostand mit Stichtag und Monatsendstand bleiben sichtbar. Antippen zeigt Monatsanfang, Bis heute beziehungsweise Bis Stichtag und Monatsende als getrennte Zeilen. Die Kontenverwaltung enthält darunter Kontodaten und Bearbeitungsaktionen. In anderen Monaten bezeichnet „Bis Stichtag“ den zum heutigen Kalendertag passenden Vergleichstag im ausgewählten Monat.
 
 ## Buchungen
 Jede Buchung kann enthalten:
@@ -143,3 +143,16 @@ SQLCipher/SQLite wächst automatisch mit den Daten. Eine Datenbank muss nicht vo
 
 ## Benutzerrechte über mehrere Haushaltsbücher
 Unter Einstellungen → Benutzer & Rechte kann pro Benutzer zuerst das Haushaltsbuch und danach die Rolle gewählt werden. Die Freigabe ist damit unabhängig vom aktuell geöffneten Haushaltsbuch.
+
+
+## Geldfluss: Darstellung wählen
+
+Unter **Auswertung → Geldfluss → Darstellung** ist **Sankey · Sure-Stil** voreingestellt. Verbundene Bänder zeigen die Verteilung der Einnahmen auf Ausgaben, Sparen und den verbleibenden Überschuss. Ihre Breite entspricht dem Betrag. Bei einem Minus ergänzt ein ausdrücklich gekennzeichneter Fehlbetrag den Zufluss, damit Ein- und Ausgang ausgeglichen sind; er ist keine gebuchte Einnahme und kein Kontostand.
+
+**HaushaltPro · Klassisch** zeigt das bisherige Pfeildiagramm. Der Browser merkt sich die Auswahl. Beide Darstellungen beziehen sich auf denselben gewählten Monat beziehungsweise dasselbe Jahr und dieselbe Prognose-/Ist-Auswertung.
+
+Auf Smartphones zeigt die vertikale Grafik die Gruppen mit vollständigen Beträgen. Unter **Alle Kategorien und Beträge** lässt sich jede Kategorie ansehen und auswählen. Bei vielen Kategorien bündelt auch die große Grafik kleine Positionen; die Liste enthält weiterhin sämtliche Einzelbeträge. Antippen oder Tastaturauswahl hebt die Verbindung hervor und nennt den genauen Betrag sowie den Anteil an der jeweiligen Gruppe.
+
+### Cash-flow view (English)
+
+Choose **Reports → Cash flow → View** to switch between the default Sure-style Sankey and the classic HaushaltPro chart. Your browser remembers the choice. Phones use a vertical group overview; expand **All categories and amounts** for the complete breakdown. A deficit balances the diagram but is not income or an account balance. Tap a flow/category or use the keyboard for exact amounts and group percentages.
