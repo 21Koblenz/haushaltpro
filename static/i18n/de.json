@@ -115,7 +115,10 @@
     "Diese Änderung gilt nur für diesen Termin. Die Serienvorlage bleibt unverändert.": "Diese Änderung gilt nur für diesen Termin. Die Serienvorlage bleibt unverändert.",
     "Die Serienänderung ab einem Stichtag erfolgt unter „Wiederkehrende Buchungen“.": "Die Serienänderung ab einem Stichtag erfolgt unter „Wiederkehrende Buchungen“.",
     "Einzeltermin gespeichert": "Einzeltermin gespeichert",
-    "Termin anpassen": "Termin anpassen"
+    "Termin anpassen": "Termin anpassen",
+    "€ / % Werte verbergen": "€ / % Werte verbergen",
+    "€ / % Werte anzeigen": "€ / % Werte anzeigen",
+    "Betrag ausgeblendet. Werte zum Bearbeiten anzeigen.": "Betrag ausgeblendet. Werte zum Bearbeiten anzeigen."
   },
   "patterns": [],
   "recurring.planned": "Geplant",

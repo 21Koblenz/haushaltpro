@@ -16,7 +16,7 @@ function chartAxisMoney(value,compact){
   const scale=compact&&magnitude>=1e6?1e6:compact&&magnitude>=1000?1000:1;
   const suffix=scale===1e6?(en?'m':'Mio.'):scale===1000?(en?'k':'Tsd.'):'';
   const number=new Intl.NumberFormat(hpLocale(),{maximumFractionDigits:scale===1?0:1}).format(value/scale);
-  return number+(suffix?' '+suffix:'')+' €';
+  return hpDisplayText(number+(suffix?' '+suffix:'')+' €');
 }
 function balanceChartLayout(rows,options,width,height,measure){
   const values=rows.map(r=>Number(r[options.key]));
@@ -131,6 +131,12 @@ function redrawDashboardCharts(){
   if(analysis?._hpAnalysisRows)drawAnalysisChart(analysis._hpAnalysisRows);
 }
 window.addEventListener('resize',redrawDashboardCharts);
+document.addEventListener('haushaltpro:privacy-changed',()=>{
+  dashboardCharts.forEach(paintDashboardChart);
+  const analysis=document.getElementById('analysisChart');
+  if(analysis?._hpAnalysisRows)drawAnalysisChart(analysis._hpAnalysisRows);
+  document.querySelectorAll('canvas').forEach(canvas=>canvas._hpPrivacyPaint?.());
+});
 let dashboardChartAppearance=document.documentElement.dataset.theme+'|'+document.documentElement.lang;
 new MutationObserver(()=>{
   // i18n writes lang again when translating newly rendered nodes. Only react

@@ -3,6 +3,16 @@
 ## Zweck
 HaushaltPro soll gleichzeitig Haushaltsdokumentation und Liquiditätsprognose sein. Echte Buchungen dokumentieren die Vergangenheit; zukünftige Buchungen und wiederkehrende Serien bilden die Planung.
 
+## Werte aus- und einblenden
+
+Das **Auge in der Kopfzeile** blendet Eurobeträge und Prozentwerte aus. Statt der Zahlen steht immer `****`; € und % bleiben zur Orientierung sichtbar. Das gilt auch für geschlossene Konten- und Buchungskarten, Auswertungen, Diagrammachsen, Legenden, Tooltips und nachgeladene Werte. Datumsangaben, Anzahlen und Beschriftungen bleiben lesbar. Die Einstellung wird auf diesem Browser gespeichert und zwischen geöffneten Tabs übernommen.
+
+Geldfelder sowie Textfelder mit Euro- oder Prozentangaben zeigen im ausgeblendeten Zustand eine Schaltfläche mit Sternchen. Zum Bearbeiten darauf oder auf das **Auge im Dialog** tippen; dadurch werden die Werte wieder eingeblendet. Nach der Eingabe lassen sie sich erneut verbergen. Speichern verändert den gewählten Sichtbarkeitszustand nicht.
+
+Dies ist eine Anzeigeoption für den Bildschirm. Berechnungen und gespeicherte Beträge bleiben unverändert. CSV-Dateien und Backups enthalten weiterhin die Originaldaten; Diagrammformen und Größenverhältnisse bleiben sichtbar.
+
+**English:** Use the eye in the header or a dialog to hide/show EUR amounts and percentages as `****`. The browser remembers the choice. Monetary fields and text fields containing amounts can be revealed explicitly for editing. Dates, counts and labels remain readable. This is a display preference: chart shapes, calculations, saved data, CSV exports and backups retain their original information.
+
 ## Konten
 Ein Konto benötigt ein Startdatum und einen Startsaldo. Der Monatsanfang eines Folgemonats entspricht dem Monatsendstand des Vormonats. Manuelle Monatskorrekturen überschreiben nur die Berechnungsbasis des gewählten Monats, nicht die historischen Buchungen.
 

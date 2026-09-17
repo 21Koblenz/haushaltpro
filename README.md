@@ -1,8 +1,8 @@
 # HaushaltPro
 
-Stable: **v0.21.8** · Testversion / prerelease: **v0.21.9-dev.5**
+Stable: **v0.21.8** · Testversion / prerelease: **v0.21.9-dev.6**
 
-[Testversion und Grenzen / Dev setup and limitations](docs/OFFLINE-DEV.md) · [Release notes](docs/RELEASE-NOTES-v0.21.9-dev.5.md)
+[Testversion und Grenzen / Dev setup and limitations](docs/OFFLINE-DEV.md) · [Release notes](docs/RELEASE-NOTES-v0.21.9-dev.6.md)
 
 [![License: AGPL v3+](https://img.shields.io/badge/License-AGPL_v3%2B-blue.svg)](LICENSE)
 [![Vibe Coding](https://img.shields.io/badge/development-Vibe%20Coding-orange.svg)](VIBE_CODING.md)
@@ -36,6 +36,7 @@ HaushaltPro verwaltet Finanzdaten auf dem eigenen Server. Konten, Buchungen, int
 - responsive Smartphone-Ansicht mit eingeklappten Buchungs-, Serien- und Kontenkarten
 - Geldfluss wahlweise als verbundenes Sankey im Sure-Stil oder klassisches Pfeildiagramm, mit gespeicherter Auswahl und vertikaler Smartphone-Ansicht
 - Dashboard-Grafiken mit Touch-Auswahl und lesbaren Achsen auf schmalen Displays
+- Augenschalter zum Aus-/Einblenden aller Euro- und Prozentwerte mit gespeicherter Auswahl
 
 ### Weitere Hinweise
 
@@ -118,6 +119,8 @@ Siehe [LICENSE](LICENSE).
 HaushaltPro combines accounts, transactions, internal transfers, categories, recurring payments, budgets, forecasts, bank CSV import, reconciliation, audit history, backups, multi-user permissions, multiple isolated household books and optional investment tracking in a self-hosted web application.
 
 The report flow chart defaults to a Sure-inspired connected Sankey with a vertical group overview on phones. The original diagram remains selectable; the browser remembers the choice. Collapsed account cards show both cutoff and month-end balances. See [design reference credits](docs/THIRD-PARTY-NOTICES.md).
+
+Eye controls hide/show EUR amounts and percentages throughout the interface, including charts and dialogs, with a saved browser preference. Calculations, CSV exports and backups retain original data.
 
 Financial data is stored in SQLCipher databases. The container is hardened and binds to `127.0.0.1:8080` by default. LAN/VPN access is preferred; public access should only be provided through an HTTPS reverse proxy.
 

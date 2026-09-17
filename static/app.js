@@ -3,10 +3,12 @@ const hpLang=()=>window.HaushaltProI18n?.language?.()||localStorage.getItem('hp_
 const hpLocale=()=>window.HaushaltProI18n?.locale?.()||(hpLang()==='en'?'en-GB':'de-DE');
 const hpT=(key,fallback='',vars={})=>window.HaushaltProI18n?.t?.(key,fallback,vars)??fallback??key;
 const hpText=(text)=>window.HaushaltProI18n?.translateText?.(String(text??''))??String(text??'');
+const hpDisplayText=text=>window.HaushaltProPrivacy?.displayText(text)??String(text??'');
+const hpDisplayNumber=text=>window.HaushaltProPrivacy?.displayNumber(text)??String(text??'');
 const canonicalDeleteConfirmation=value=>String(value??'').trim().toUpperCase()==='DELETE'?'LÖSCHEN':String(value??'').trim();
-const hpConfirm=message=>window.confirm(hpText(message));
-const hpPrompt=(message,defaultValue)=>window.prompt(hpText(message),defaultValue);
-const hpAlert=message=>window.alert(hpText(message));
+const hpConfirm=message=>window.confirm(hpDisplayText(hpText(message)));
+const hpPrompt=(message,defaultValue)=>window.prompt(hpDisplayText(hpText(message)),defaultValue);
+const hpAlert=message=>window.alert(hpDisplayText(hpText(message)));
 const formatDateValue=(value,opts={})=>{if(!value)return '–';const raw=String(value);const d=new Date((/^\d{4}-\d{2}-\d{2}$/.test(raw)?raw+'T12:00:00':raw));return Number.isNaN(d.getTime())?raw:d.toLocaleDateString(hpLocale(),opts)};
 const formatDateTimeValue=(value)=>{if(!value)return '–';const d=new Date(value);return Number.isNaN(d.getTime())?String(value):new Intl.DateTimeFormat(hpLocale(),{dateStyle:'medium',timeStyle:'medium'}).format(d)};
 const formatMonthValue=value=>{const raw=String(value??'');const m=raw.match(/^(\d{4})-(\d{2})$/);if(!m)return raw;const d=new Date(Number(m[1]),Number(m[2])-1,1,12);return new Intl.DateTimeFormat(hpLocale(),{month:'long',year:'numeric'}).format(d)};
@@ -301,7 +303,7 @@ function drawAnalysisChart(rows){
   }
   const ctx=canvas.getContext('2d'),ratio=devicePixelRatio||1,w=canvas.clientWidth*ratio,h=Math.max(190,canvas.clientHeight||220)*ratio;if(!ctx||!w)return;if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}ctx.clearRect(0,0,w,h);if(!rows.length)return;
   const vals=rows.flatMap(r=>[Number(r.income||0),Number(r.expense||0),Number(r.savings||0)]),max=Math.max(1,...vals),left=48*ratio,right=12*ratio,top=14*ratio,bottom=38*ratio,pw=w-left-right,ph=h-top-bottom,group=pw/rows.length,bar=Math.max(3,group*.28),css=getComputedStyle(document.documentElement),grid=css.getPropertyValue('--line').trim(),text=css.getPropertyValue('--muted').trim(),accent=css.getPropertyValue('--accent').trim();
-  ctx.font=`${11*ratio}px system-ui`;ctx.textAlign='right';ctx.textBaseline='middle';for(let i=0;i<4;i++){const v=max*(3-i)/3,y=top+ph*i/3;ctx.strokeStyle=grid;ctx.lineWidth=ratio;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();ctx.fillStyle=text;ctx.fillText(new Intl.NumberFormat(hpLocale(),{notation:'compact',maximumFractionDigits:1}).format(v),left-6*ratio,y,left-10*ratio)}
+  ctx.font=`${11*ratio}px system-ui`;ctx.textAlign='right';ctx.textBaseline='middle';for(let i=0;i<4;i++){const v=max*(3-i)/3,y=top+ph*i/3;ctx.strokeStyle=grid;ctx.lineWidth=ratio;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();ctx.fillStyle=text;ctx.fillText(hpDisplayNumber(new Intl.NumberFormat(hpLocale(),{notation:'compact',maximumFractionDigits:1}).format(v)),left-6*ratio,y,left-10*ratio)}
   rows.forEach((r,i)=>{const cx=left+group*(i+.5),hi=Number(r.income||0)/max*ph,he=Number(r.expense||0)/max*ph,hs=Number(r.savings||0)/max*ph,bw=Math.max(2,bar*.72);ctx.fillStyle=accent;ctx.fillRect(cx-bw*1.65,top+ph-hi,bw,hi);ctx.fillStyle='#ff9c9c';ctx.fillRect(cx-bw*.5,top+ph-he,bw,he);ctx.fillStyle='#7db7ff';ctx.fillRect(cx+bw*.65,top+ph-hs,bw,hs);if(chartTickIndices(rows.length,pw/ratio,42).includes(i)){const [y,m]=r.month.split('-');ctx.fillStyle=text;ctx.font=`${11*ratio}px system-ui`;ctx.textAlign=i===0?'left':i===rows.length-1?'right':'center';ctx.textBaseline='top';ctx.fillText(`${m}/${String(y).slice(2)}`,cx,h-bottom+8*ratio)}});
 }
 function drawChart(points,cutoff){drawResponsiveBalanceChart('chart',points,{opening:true,selectedDate:cutoff})}
@@ -311,7 +313,7 @@ $('dashMonthName').onchange=selectDashboardMonth;$('dashYear').onchange=selectDa
 $('dashPrevMonth').onclick=()=>shiftSelectedMonth(-1);$('dashNextMonth').onclick=()=>shiftSelectedMonth(1);$('dashPeriod').onchange=reloadDashboardByMode;$('dashYear').onchange=async()=>{if($('dashPeriod').value==='year')await loadDashboardYear();else await selectDashboardMonth()};$('dashToday').onclick=async()=>{selectedMonth=`${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}`;setMonthControls('dashMonthName','dashYear',selectedMonth);$('dashYear').value=nowLocal.getFullYear();await reloadDashboardByMode()};
 function openModal(html,onSave,{refresh=true,success='Gespeichert',saveLabel='Speichern'}={}){
   $('modalSave').textContent=hpText(saveLabel);$('modalSave').hidden=false;
-  $('modalContent').innerHTML=html;$('modalForm').reset();modal.showModal();$('modalCancel').onclick=()=>modal.close();
+  $('modalContent').innerHTML=html;$('modalForm').reset();window.HaushaltProPrivacy?.scan($('modalContent'));modal.showModal();$('modalCancel').onclick=()=>modal.close();
   let saving=false;
   $('modalForm').onsubmit=async e=>{
     e.preventDefault();if(saving)return;saving=true;$('modalSave').disabled=true;offlineSaveActive=false;
@@ -642,14 +644,14 @@ function drawDonut(canvasId,legendId,items){
   const paint=()=>{const {size,dpr}=setup(),ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,size,size);const cx=size/2,cy=size/2,r=size*.39,inner=size*.23,css=getComputedStyle(document.documentElement),text=css.getPropertyValue('--text').trim(),muted=css.getPropertyValue('--muted').trim(),line=css.getPropertyValue('--line').trim();
     if(!total){ctx.strokeStyle=line;ctx.lineWidth=r-inner;ctx.beginPath();ctx.arc(cx,cy,(r+inner)/2,0,Math.PI*2);ctx.stroke();ctx.fillStyle=muted;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='13px system-ui';ctx.fillText('Keine Daten',cx,cy);legend.innerHTML='<p class="muted">Keine Werte im Zeitraum.</p>';return}
     let start=-Math.PI/2;const segments=[];rows.forEach((x,i)=>{const fraction=Number(x.amount)/total,end=start+fraction*Math.PI*2,mid=(start+end)/2,active=state.active===i,off=active?9:0,ox=Math.cos(mid)*off,oy=Math.sin(mid)*off,outer=active?r+6:r;ctx.save();ctx.translate(ox,oy);ctx.beginPath();ctx.arc(cx,cy,outer,start,end);ctx.arc(cx,cy,inner,end,start,true);ctx.closePath();ctx.fillStyle=DONUT_COLORS[i%DONUT_COLORS.length];ctx.shadowColor=active?'rgba(15,23,42,.28)':'transparent';ctx.shadowBlur=active?12:0;ctx.fill();ctx.restore();segments.push({start,end,mid});start=end});canvas._donutSegments={segments,cx,cy,r,inner,size};
-    const active=state.active!==null?rows[state.active]:null,pct=active?Number(active.amount)/total*100:null;ctx.fillStyle=text;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 18px system-ui';ctx.fillText(active?fmt(active.amount):fmt(total),cx,cy-9);ctx.fillStyle=muted;ctx.font='12px system-ui';ctx.fillText(active?`${categoryDisplayName(active.category_name)} · ${pct.toLocaleString(hpLocale(),{minimumFractionDigits:1,maximumFractionDigits:1})} %`:hpText('Gesamt'),cx,cy+16);
+    const active=state.active!==null?rows[state.active]:null,pct=active?Number(active.amount)/total*100:null;ctx.fillStyle=text;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 18px system-ui';ctx.fillText(hpDisplayText(active?fmt(active.amount):fmt(total)),cx,cy-9);ctx.fillStyle=muted;ctx.font='12px system-ui';ctx.fillText(hpDisplayText(active?`${categoryDisplayName(active.category_name)} · ${pct.toLocaleString(hpLocale(),{minimumFractionDigits:1,maximumFractionDigits:1})} %`:hpText('Gesamt')),cx,cy+16);
     legend.querySelectorAll('.donut-legend-row').forEach((el,i)=>el.classList.toggle('active',state.active===i));
   };
   legend.innerHTML=rows.map((x,i)=>{const pct=Number(x.amount)/total*100;return `<button type="button" class="donut-legend-row" data-donut-index="${i}"><span class="donut-key"><i style="--donut-color:${DONUT_COLORS[i%DONUT_COLORS.length]}"></i><b>${esc(categoryDisplayName(x.category_name))}</b></span><span><strong>${fmt(x.amount)}</strong><small>${pct.toLocaleString(hpLocale(),{minimumFractionDigits:1,maximumFractionDigits:1})} %</small></span></button>`}).join('');
   const setActive=i=>{state.active=i;paint()};
   legend.querySelectorAll('[data-donut-index]').forEach(el=>{const i=Number(el.dataset.donutIndex);el.onmouseenter=()=>setActive(i);el.onmouseleave=()=>setActive(null);el.onclick=()=>setActive(state.active===i?null:i)});
   const hit=e=>{const g=canvas._donutSegments;if(!g)return null;const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left-g.cx,y=e.clientY-rect.top-g.cy,dist=Math.hypot(x,y);if(dist<g.inner-12||dist>g.r+24)return null;let a=Math.atan2(y,x);while(a< -Math.PI/2)a+=Math.PI*2;for(let i=0;i<g.segments.length;i++){let {start,end}=g.segments[i];while(end<start)end+=Math.PI*2;let aa=a;while(aa<start)aa+=Math.PI*2;if(aa>=start&&aa<=end)return i}return null};
-  canvas.onpointermove=e=>{if(e.pointerType==='touch')return;setActive(hit(e))};canvas.onpointerleave=e=>{if(e.pointerType!=='touch')setActive(null)};canvas.onpointerdown=e=>{const i=hit(e);setActive(state.active===i?null:i)};paint();
+  canvas.onpointermove=e=>{if(e.pointerType==='touch')return;setActive(hit(e))};canvas.onpointerleave=e=>{if(e.pointerType!=='touch')setActive(null)};canvas.onpointerdown=e=>{const i=hit(e);setActive(state.active===i?null:i)};canvas._hpPrivacyPaint=paint;paint();
 }
 async function loadReports(){
   const period=$('reportPeriod').value,anchor=period==='month'?monthValue('reportMonthName','reportYear')+'-01':$('reportYear').value+'-01-01';$('reportMonthName').hidden=period!=='month';
@@ -711,7 +713,7 @@ function interactiveMonthlyChart(canvasId,rows,key='end_balance',labelKey='month
     const css=getComputedStyle(document.documentElement),fg=css.getPropertyValue('--text').trim(),muted=css.getPropertyValue('--muted').trim(),grid=css.getPropertyValue('--line').trim(),accent=css.getPropertyValue('--accent').trim();
     const xFor=i=>left+(rows.length===1?plotW/2:plotW*i/(rows.length-1)),yFor=v=>top+(max-v)/span*plotH;
     ctx.clearRect(0,0,W,H);ctx.font='12px system-ui';ctx.textBaseline='middle';
-    for(let i=0;i<=4;i++){const y=top+plotH*i/4,v=max-span*i/4;ctx.strokeStyle=grid;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(W-right,y);ctx.stroke();ctx.fillStyle=muted;ctx.textAlign='right';ctx.fillText(fmt(v),left-9,y)}
+    for(let i=0;i<=4;i++){const y=top+plotH*i/4,v=max-span*i/4;ctx.strokeStyle=grid;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(W-right,y);ctx.stroke();ctx.fillStyle=muted;ctx.textAlign='right';ctx.fillText(hpDisplayText(fmt(v)),left-9,y)}
     rows.forEach((r,i)=>{const x=xFor(i),label=String(r[labelKey]||'').replace(/^\d{4}-/,'');ctx.fillStyle=muted;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(label,x,H-bottom+15)});
     ctx.strokeStyle=accent;ctx.lineWidth=2.5;ctx.beginPath();rows.forEach((r,i)=>{const x=xFor(i),y=yFor(Number(r[key]||0));i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
     rows.forEach((r,i)=>{ctx.fillStyle=accent;ctx.beginPath();ctx.arc(xFor(i),yFor(Number(r[key]||0)),3,0,Math.PI*2);ctx.fill()});
@@ -719,15 +721,15 @@ function interactiveMonthlyChart(canvasId,rows,key='end_balance',labelKey='month
       const i=state.hover,r=rows[i],x=xFor(i),v=Number(r[key]||0),y=yFor(v);
       ctx.save();ctx.setLineDash([5,4]);ctx.strokeStyle=muted;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,H-bottom);ctx.moveTo(left,y);ctx.lineTo(W-right,y);ctx.stroke();ctx.restore();
       ctx.fillStyle=accent;ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=fg;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(fmt(v),left-9,y);
+      ctx.fillStyle=fg;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(hpDisplayText(fmt(v)),left-9,y);
       ctx.textAlign='center';ctx.textBaseline='top';const raw=String(r[labelKey]||'');ctx.fillText(raw,x,H-bottom+31);
-      const label=`${raw} · ${fmt(v)}`;ctx.font='12px system-ui';const tw=ctx.measureText(label).width+20,th=30,tx=Math.min(Math.max(left,x-tw/2),W-right-tw),ty=Math.max(top,y-42);
+      const label=hpDisplayText(`${raw} · ${fmt(v)}`);ctx.font='12px system-ui';const tw=ctx.measureText(label).width+20,th=30,tx=Math.min(Math.max(left,x-tw/2),W-right-tw),ty=Math.max(top,y-42);
       ctx.fillStyle='rgba(17,24,34,.94)';if(document.documentElement.dataset.theme==='light')ctx.fillStyle='rgba(255,255,255,.97)';
       ctx.strokeStyle=grid;ctx.lineWidth=1;ctx.fillRect(tx,ty,tw,th);ctx.strokeRect(tx,ty,tw,th);ctx.fillStyle=fg;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,tx+tw/2,ty+th/2);
     }
   };
   const hoverAt=clientX=>{const rect=c.getBoundingClientRect(),left=88,right=24,plotW=Math.max(1,rect.width-left-right),x=clientX-rect.left;state.hover=Math.max(0,Math.min(rows.length-1,Math.round((x-left)/plotW*(rows.length-1))));paint()};
-  c.onmousemove=e=>hoverAt(e.clientX);c.onmouseleave=()=>{state.hover=null;paint()};c.ontouchmove=e=>{if(e.touches[0])hoverAt(e.touches[0].clientX)};paint();
+  c.onmousemove=e=>hoverAt(e.clientX);c.onmouseleave=()=>{state.hover=null;paint()};c.ontouchmove=e=>{if(e.touches[0])hoverAt(e.touches[0].clientX)};c._hpPrivacyPaint=paint;paint();
 }
 function simpleLineChart(canvasId,rows,key='end_balance'){interactiveMonthlyChart(canvasId,rows,key,'month')}
 

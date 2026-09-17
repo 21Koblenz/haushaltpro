@@ -839,7 +839,10 @@
     "Tag auswählen": "Select day",
     "Monat auswählen": "Select month",
     "Grafik antippen oder den Regler bewegen, um Datum und Betrag abzulesen.": "Tap the chart or move the slider to read the date and amount.",
-    "Keine Daten für diesen Zeitraum.": "No data for this period."
+    "Keine Daten für diesen Zeitraum.": "No data for this period.",
+    "€ / % Werte verbergen": "Hide € / % values",
+    "€ / % Werte anzeigen": "Show € / % values",
+    "Betrag ausgeblendet. Werte zum Bearbeiten anzeigen.": "Hidden amount. Show values to edit."
   },
   "patterns": [
     {

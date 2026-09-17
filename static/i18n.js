@@ -72,21 +72,22 @@
     if (!node || node.nodeType !== Node.TEXT_NODE) return;
     const parent = node.parentElement;
     if (!parent || /^(SCRIPT|STYLE|CODE|PRE|TEXTAREA)$/i.test(parent.tagName)) return;
-    const now = String(node.nodeValue ?? '');
+    const now = String(window.HaushaltProPrivacy?.readText(node) ?? node.nodeValue ?? '');
     const prevApplied = lastApplied.get(node);
     if (!originalText.has(node) || (prevApplied !== undefined && now !== prevApplied)) originalText.set(node, now);
     const original = originalText.get(node) ?? now;
     const {lead, core, tail} = splitWhitespace(original);
     if (!core.trim()) return;
     const translated = lead + translateLegacy(core) + tail;
-    if (node.nodeValue !== translated) node.nodeValue = translated;
+    if(window.HaushaltProPrivacy)window.HaushaltProPrivacy.writeText(node,translated);
+    else if (node.nodeValue !== translated) node.nodeValue = translated;
     lastApplied.set(node, translated);
   }
 
   function getOriginalAttr(el, attr) {
     let map = originalAttrs.get(el);
     if (!map) { map = {}; originalAttrs.set(el, map); }
-    const now = el.getAttribute(attr);
+    const now = window.HaushaltProPrivacy?.readAttribute(el,attr) ?? el.getAttribute(attr);
     if (!(attr in map)) map[attr] = now;
     return map[attr];
   }
@@ -98,7 +99,11 @@
       ['i18nPlaceholder','placeholder'],['i18nTitle','title'],['i18nAriaLabel','aria-label'],['i18nAlt','alt']
     ]) {
       const k = el.dataset[dataAttr];
-      if (k) el.setAttribute(realAttr, t(k, el.getAttribute(realAttr) || ''));
+      if (k) {
+        const translated=t(k, el.getAttribute(realAttr) || '');
+        if(window.HaushaltProPrivacy)window.HaushaltProPrivacy.writeAttribute(el,realAttr,translated);
+        else el.setAttribute(realAttr,translated);
+      }
     }
   }
 
@@ -108,7 +113,8 @@
       const original = getOriginalAttr(el, attr);
       if (!original) continue;
       const translated = translateLegacy(original);
-      if (translated !== el.getAttribute(attr)) el.setAttribute(attr, translated);
+      if(window.HaushaltProPrivacy)window.HaushaltProPrivacy.writeAttribute(el,attr,translated);
+      else if (translated !== el.getAttribute(attr)) el.setAttribute(attr, translated);
     }
   }
 

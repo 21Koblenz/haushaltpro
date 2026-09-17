@@ -25,7 +25,7 @@ async function fixture(t,{storage={}}={}) {
     if (body?.csv) return {ok:true,status:200,headers:{get:()=> 'text/csv'},blob:async()=>new w.Blob([body.csv])};
     return {ok:true,status:200,headers:{get:()=> 'application/json'},json:async()=>body};
   };
-  for (const script of ['transaction-cards.js','overview-cards.js','dashboard-charts.js','report-flow.js','app.js','open-items.js']) {
+  for (const script of ['privacy-values.js','transaction-cards.js','overview-cards.js','dashboard-charts.js','report-flow.js','app.js','open-items.js']) {
     vm.runInContext(source(script), dom.getInternalVMContext(), {filename:script});
   }
   await settle();

@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.21.9-dev.6 - 2026-09-17 (prerelease)
+
+### Deutsch
+
+- Online-Anzeige mit passendem hellen Hintergrund und kontrastreichen Statuspunkten im Hellmodus.
+- Augenschalter in der Kopfzeile und in Dialogen: Eurobeträge und Prozentwerte als `****` aus-/einblenden. Die Auswahl bleibt im Browser gespeichert und wird zwischen geöffneten Tabs synchronisiert.
+- Maskierung auch für eingeklappte Karten, nachgeladene Daten, Diagrammachsen, Legenden, Tooltips, Screenreader-Texte und Geldfelder. Bearbeitung ist nach bewusstem Einblenden möglich.
+- Berechnungen, Formulardaten, CSV und Backups behalten die Originalwerte; keine Datenbankmigration. [Update und Testanleitung](docs/RELEASE-NOTES-v0.21.9-dev.6.md).
+
+### English
+
+- Light-mode connection indicator uses the theme's panel background and readable status colors.
+- Eye controls hide/show EUR amounts and percentages as `****`, including cards, charts, tooltips and monetary form fields. The browser remembers the choice and synchronizes it across tabs.
+- Display preference only: calculations, saved values, CSV exports and backups retain original data. Schema remains 28.
+
 ## v0.21.9-dev.5 - 2026-09-17 (prerelease)
 
 ### Deutsch

@@ -1,0 +1,24 @@
+/* Explicit IDs beat the generic light-mode button rule. */
+#connectionStatus{background:var(--panel2);color:var(--text);border-color:var(--line);min-height:44px;flex-shrink:0}
+#connectionStatus:hover{background:var(--panel);color:var(--text);border-color:var(--accent)}
+html[data-theme="light"] #connectionStatus{background:var(--panel2);color:var(--text)}
+html[data-theme="light"] #connectionStatus:hover{background:var(--panel);color:var(--text)}
+html[data-theme="light"] #connectionStatus.online .connection-dot{background:#15803d;box-shadow:0 0 0 3px #15803d20}
+html[data-theme="light"] #connectionStatus.offline .connection-dot,html[data-theme="light"] #connectionStatus.error .connection-dot{background:#c62828;box-shadow:0 0 0 3px #c6282820}
+html[data-theme="light"] #connectionStatus.syncing .connection-dot{background:#2563eb;box-shadow:0 0 0 3px #2563eb20}
+#connectionStatus .connection-queue{color:var(--bg)}
+.topbar .topbar-actions{min-width:0!important;width:auto!important;max-width:100%;flex-wrap:wrap!important}
+.privacy-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:44px;min-height:44px;padding:10px}
+.privacy-toggle svg{display:block;width:20px;height:20px;flex:0 0 20px}
+.privacy-eye-slash{display:none}
+html[data-privacy="hidden"] .privacy-eye-slash{display:block}
+.privacy-toggle[aria-pressed="true"]{border-color:var(--accent)}
+.privacy-toggle:focus-visible,.privacy-input-mask:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.privacy-input-mask{display:none!important}
+html[data-privacy="hidden"] .privacy-sensitive-input{display:none!important}
+html[data-privacy="hidden"] .privacy-input-mask{display:block!important;width:100%;min-height:44px;padding:12px 13px;margin-top:6px;letter-spacing:.12em;text-align:left}
+html[data-privacy="hidden"] .signed-money-toggle{display:none!important}
+.dialog-actions{flex-wrap:wrap}
+.dialog-actions .privacy-toggle{min-width:44px;flex:0 0 44px;margin-right:auto}
+@media(max-width:1100px){.privacy-toggle-label{display:none}}
+@media(max-width:800px){.topbar .topbar-actions{width:100%!important}.privacy-toggle{flex:0 0 44px}}
