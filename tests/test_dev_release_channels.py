@@ -11,11 +11,11 @@ script=next(s['run'] for s in steps if s.get('id')=='target')
 cases=[
     ('push','refs/heads/main','main','','dev'),
     ('push','refs/heads/dev','dev','','dev'),
-    ('push','refs/tags/v0.21.9-dev.3','v0.21.9-dev.3','','dev'),
+    ('push','refs/tags/v0.21.9-dev.4','v0.21.9-dev.4','','dev'),
     ('push','refs/tags/v0.21.8','v0.21.8','','latest'),
     ('workflow_dispatch','refs/heads/main','main','0.21.8','latest'),
     ('workflow_dispatch','refs/heads/dev','dev','0.21.8','latest'),
-    ('workflow_dispatch','refs/heads/main','main','0.21.9-dev.3','dev'),
+    ('workflow_dispatch','refs/heads/main','main','0.21.9-dev.4','dev'),
 ]
 for event,ref,name,version,expected in cases:
     with tempfile.NamedTemporaryFile() as out:

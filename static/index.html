@@ -6,9 +6,9 @@
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <meta content="dark light" name="color-scheme"/>
 <title>HaushaltPro</title>
-<link href="/assets/style.css?v=0.21.9-dev.3" rel="stylesheet"/>
-<link href="/assets/ui-enhancements.css?v=0.21.9-dev.3" rel="stylesheet"/>
-<link href="/assets/payments.css?v=0.21.9-dev.3" rel="stylesheet"/>
+<link href="/assets/style.css?v=0.21.9-dev.4" rel="stylesheet"/>
+<link href="/assets/ui-enhancements.css?v=0.21.9-dev.4" rel="stylesheet"/>
+<link href="/assets/payments.css?v=0.21.9-dev.4" rel="stylesheet"/>
 </head>
 <body>
 <main class="shell">
@@ -81,11 +81,19 @@
 </div>
 <article class="panel dashboard-year-panel">
 <div class="section-head"><div><h2 data-i18n="dashboard.yearOverview">Jahresübersicht</h2><p class="muted">Monatliche Einnahmen, Ausgaben, Sparen und prognostizierte Monatsendstände.</p></div></div>
-<div class="planning-year-chart-wrap"><canvas id="dashboardYearChart"></canvas></div>
+<div class="planning-year-chart-wrap"><canvas id="dashboardYearChart" role="img" aria-label="Kontoverlauf"></canvas></div>
+<div class="chart-readout" id="dashboardYearChartReadout" aria-live="polite" aria-atomic="true"></div>
+<label class="chart-selector"><span class="muted">Monat auswählen</span><input id="dashboardYearChartSelect" type="range" min="0" max="11" step="1" value="0" aria-label="Monat auswählen"/></label>
 <div class="planning-year-list" id="dashboardYearSummary"></div>
 </article>
 </section>
-<article class="panel chart-panel" id="dashboardMonthChart"><canvas height="240" id="chart"></canvas></article>
+<article class="panel chart-panel" id="dashboardMonthChart">
+<h2>Kontostand im Monatsverlauf</h2>
+<div class="balance-chart-wrap"><canvas id="chart" role="img" aria-label="Kontoverlauf"></canvas></div>
+<div class="chart-readout" id="chartReadout" aria-live="polite" aria-atomic="true"></div>
+<label class="chart-selector"><span class="muted">Tag auswählen</span><input id="chartSelect" type="range" min="0" max="30" step="1" value="0" aria-label="Tag auswählen"/></label>
+<p class="muted chart-help">Grafik antippen oder den Regler bewegen, um Datum und Betrag abzulesen.</p>
+</article>
 <div class="two-col" id="dashboardMonthPanels">
 <article class="panel"><h2 data-i18n="nav.accounts">Konten</h2><div id="accounts"></div></article>
 <article class="panel"><h2 data-i18n="dashboard.nextPayments">Nächste Zahlungen im ausgewählten Monat</h2><p class="muted compact-note" id="upcomingHint"></p><div id="recurringDash"></div></article>
@@ -137,7 +145,7 @@
 </div>
 <div hidden="" id="txRecurringView">
 <div class="section-head recurring-section-head"><div><h2>Wiederkehrende Buchungen</h2><p class="muted">Aktive Serien. Neue Serien werden hier direkt angelegt; einzelne ausgeführte Termine erscheinen zusätzlich unter „Alle Buchungen“. Änderungen können ab einem frei wählbaren Datum gelten.</p></div><button class="ghost" id="newRecurringTx">+ Wiederkehrende Buchung</button></div>
-<article class="panel table-wrap"><table><thead><tr><th>Nächster Termin</th><th>Name</th><th>Konto</th><th>Intervall</th><th>Ende</th><th class="right">Betrag</th><th></th></tr></thead><tbody id="recBody"></tbody></table></article>
+<div class="transaction-list" id="recBody" aria-label="Wiederkehrende Buchungen"></div>
 </div>
 </section>
 <section class="view" hidden id="view-open-items">
@@ -350,11 +358,13 @@ docker compose up -d --build</pre><p class="muted">Für eine öffentliche Domain
 </main>
 <dialog id="modal"><form id="modalForm" method="dialog"><div id="modalContent"></div><div class="dialog-actions"><button class="ghost" id="modalCancel" type="button">Abbrechen</button><button id="modalSave" type="submit">Speichern</button></div></form></dialog>
 <div id="toast"></div>
-<script src="/assets/i18n.js?v=0.21.9-dev.3"></script>
-<script src="/assets/offline-sync.js?v=0.21.9-dev.3"></script>
-<script src="/assets/transaction-cards.js?v=0.21.9-dev.3"></script>
-<script src="/assets/app.js?v=0.21.9-dev.3"></script>
-<script src="/assets/open-items.js?v=0.21.9-dev.3"></script>
-<script src="/assets/ui-enhancements.js?v=0.21.9-dev.3"></script>
+<script src="/assets/i18n.js?v=0.21.9-dev.4"></script>
+<script src="/assets/offline-sync.js?v=0.21.9-dev.4"></script>
+<script src="/assets/transaction-cards.js?v=0.21.9-dev.4"></script>
+<script src="/assets/overview-cards.js?v=0.21.9-dev.4"></script>
+<script src="/assets/dashboard-charts.js?v=0.21.9-dev.4"></script>
+<script src="/assets/app.js?v=0.21.9-dev.4"></script>
+<script src="/assets/open-items.js?v=0.21.9-dev.4"></script>
+<script src="/assets/ui-enhancements.js?v=0.21.9-dev.4"></script>
 </body>
 </html>

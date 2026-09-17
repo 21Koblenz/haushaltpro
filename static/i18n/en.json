@@ -445,7 +445,7 @@
     "Monatsanfang": "Month opening",
     "Monatsende": "Month end",
     "Bis heute": "Through today",
-    "Bis Stichtag": "Through cutoff",
+    "Bis Stichtag": "At cutoff date",
     "Plan Einnahmen": "Planned income",
     "Plan Ausgaben": "Planned expenses",
     "Plan Sparen": "Planned savings",
@@ -827,7 +827,13 @@
     "Beginn darf nicht nach dem Ende liegen": "The start date must not be after the end date",
     "Export zu groß; bitte Zeitraum oder Konto eingrenzen": "Export too large; narrow the date range or account",
     "Zahlungszuordnung nicht gefunden": "Payment link not found",
-    "Art": "Type"
+    "Art": "Type",
+    "Kontoverlauf": "Account balance trend",
+    "Kontostand im Monatsverlauf": "Account balance throughout the month",
+    "Tag auswählen": "Select day",
+    "Monat auswählen": "Select month",
+    "Grafik antippen oder den Regler bewegen, um Datum und Betrag abzulesen.": "Tap the chart or move the slider to read the date and amount.",
+    "Keine Daten für diesen Zeitraum.": "No data for this period."
   },
   "patterns": [
     {

@@ -6,6 +6,8 @@ HaushaltPro soll gleichzeitig Haushaltsdokumentation und Liquiditätsprognose se
 ## Konten
 Ein Konto benötigt ein Startdatum und einen Startsaldo. Der Monatsanfang eines Folgemonats entspricht dem Monatsendstand des Vormonats. Manuelle Monatskorrekturen überschreiben nur die Berechnungsbasis des gewählten Monats, nicht die historischen Buchungen.
 
+Konten starten auf dem Dashboard und in der Kontenverwaltung eingeklappt. Name und Kontostand mit Stichtag bleiben sichtbar. Antippen zeigt Monatsanfang, Bis heute beziehungsweise Bis Stichtag und Monatsende als getrennte Zeilen. Die Kontenverwaltung enthält darunter Kontodaten und Bearbeitungsaktionen. In anderen Monaten bezeichnet „Bis Stichtag“ den zum heutigen Kalendertag passenden Vergleichstag im ausgewählten Monat.
+
 ## Buchungen
 Jede Buchung kann enthalten:
 - Name
@@ -51,6 +53,14 @@ Eine Sparbuchung reduziert das Konto, wird aber getrennt von Konsumausgaben ausg
 
 ## Wiederkehrende Buchungen
 Wiederholungen können täglich, wöchentlich, monatlich oder jährlich laufen und optional ein Enddatum haben. Änderungen können ab einem Stichtag als neue Serienversion gelten.
+
+Auch wiederkehrende Buchungen und Transfer-Serien starten als eingeklappte Karten. Name, Wiederholungssymbol, nächster Termin, Konto und Betrag bleiben sichtbar. Nach dem Öffnen erscheinen Intervall, Ende, weitere Angaben und die bisherigen Aktionen zum Bearbeiten, Anpassen, Stoppen und Löschen.
+
+## Dashboard-Grafiken
+
+Die Monats- und Jahresgrafik passen sich der tatsächlichen Bildschirmbreite an. Auf schmalen Displays werden weniger Achsenbeschriftungen angezeigt; alle Tages- und Monatswerte bleiben erhalten. Grafik antippen oder den Regler darunter bewegen, um Datum und vollständigen Betrag abzulesen. Der Regler ist auch per Tastatur bedienbar. Die Monatsgrafik startet beim Vergleichsstichtag.
+
+Beim Drehen des Smartphones oder beim Wechsel zwischen heller und dunkler Darstellung werden die Grafiken neu gezeichnet. Dafür werden keine zusätzlichen Finanzdaten vom Server geladen. Auch die kleine Analyse-Grafik verwendet die verfügbare Breite.
 
 ## Planung & Prognose
 Die Monatsansicht zeigt Monatsanfang, Stichtagsstand und Monatsendprognose. Die langfristige Prognose zeigt Monatsendstände für 3/6/12 Monate. Die Jahresübersicht zeigt Plan/Ist und Monatsendstand für alle zwölf Monate.

@@ -109,3 +109,12 @@ Use Python 3.12 and Node.js 22.22.2+ (or 24.15.0+) for the current tests. Instal
 Local result: all 87 Python regression scripts, 16 JavaScript tests and 52 static security checks pass. Python compilation and JavaScript syntax checks pass. npm audit reports zero known vulnerabilities for the test dependencies.
 
 The browser rejected the local test URL with `ERR_BLOCKED_BY_CLIENT`. DOM checks passed, but visual mobile layout and browser-native date/download controls still need the manual checks in the dev.3 release notes.
+
+
+## v0.21.9-dev.4
+
+`tests/overview-ui.test.cjs` exercises the shipped recurring/account renderers and action bindings in jsdom. It checks collapsed defaults, independently specified account balances, cutoff labels, viewer permissions and escaping.
+
+Chart tests use a mocked canvas context to inspect drawing coordinates at widths of 280, 320, 360, 390, 768 and 1100 CSS pixels, with months of 28–31 days. Every date stays selectable, including first/last days; opening and negative balances remain represented. Tests cover pointer/range input, resize observers, empty/single-point data, yearly selection, analysis bars and the actual i18n script. These are DOM and drawing-command checks, not browser pixel comparisons.
+
+Local result: all 87 Python scripts, 23 JavaScript tests and 52 static security checks passed, with compile/syntax checks. The browser rejected the local URL with `ERR_BLOCKED_BY_CLIENT`; use the release notes' smartphone checklist for visual verification.

@@ -5,7 +5,8 @@ assert 'id="auditSearch"' in h and 'id="auditPageSize"' in h and 'id="auditPageI
 assert 'data-audit-delete' in j and '/api/audit/' in j
 assert 'data-rename-book' in j and 'data-delete-book' in j
 assert 'data-delete-user' in j
-assert 'recurring-name-cell' in j and 'recurring-future-change' in j
+cards=(root/'static/overview-cards.js').read_text()
+assert 'recurringCards(rows,transferRows)' in j and 'recurring-future-change' in cards
 assert '.recurring-name-cell b{display:block' in c
 assert '@app.put("/api/books/{book_id}")' in m and '@app.delete("/api/books/{book_id}")' in m
 assert '@app.delete("/api/users/{username}")' in m

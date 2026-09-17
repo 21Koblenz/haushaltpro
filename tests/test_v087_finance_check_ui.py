@@ -4,7 +4,7 @@ html=(root/'static/index.html').read_text()
 css=(root/'static/style.css').read_text()
 js=(root/'static/app.js').read_text()
 main=(root/'app/main.py').read_text()
-assert ('APP_VERSION = "0.8.7"' in main) or (('APP_VERSION = "0.9.0"' in main) or (('APP_VERSION = "0.10.0"' in main) or (('APP_VERSION = "0.10.1"' in main) or (('APP_VERSION = "0.10.2"' in main) or ('APP_VERSION = "0.10.3"' in main))))) or ('APP_VERSION = "0.10.4"' in main) or (('APP_VERSION = "0.10.5"' in main) or (('APP_VERSION = "0.11.1"' in main) or (('APP_VERSION = "0.21.0"' in main or 'APP_VERSION = "0.21.2"' in main or ('APP_VERSION = "0.21.3"' in main or ('APP_VERSION = "0.21.4"' in main or ('APP_VERSION = "0.21.5"' in main or ('APP_VERSION = "0.21.6"' in main or ('APP_VERSION = "0.21.8"' in main or 'APP_VERSION = "0.21.9-dev.3"' in main)))))))))
+assert ('APP_VERSION = "0.8.7"' in main) or (('APP_VERSION = "0.9.0"' in main) or (('APP_VERSION = "0.10.0"' in main) or (('APP_VERSION = "0.10.1"' in main) or (('APP_VERSION = "0.10.2"' in main) or ('APP_VERSION = "0.10.3"' in main))))) or ('APP_VERSION = "0.10.4"' in main) or (('APP_VERSION = "0.10.5"' in main) or (('APP_VERSION = "0.11.1"' in main) or (('APP_VERSION = "0.21.0"' in main or 'APP_VERSION = "0.21.2"' in main or ('APP_VERSION = "0.21.3"' in main or ('APP_VERSION = "0.21.4"' in main or ('APP_VERSION = "0.21.5"' in main or ('APP_VERSION = "0.21.6"' in main or ('APP_VERSION = "0.21.8"' in main or 'APP_VERSION = "0.21.9-dev.4"' in main)))))))))
 assert 'finance-check-summary' in html
 assert 'finance-check-results' in html
 assert '<h2>Prüfergebnisse</h2>' in html

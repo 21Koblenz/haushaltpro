@@ -21,7 +21,8 @@ assert 'id="registerPassword"' in html and 'id="registerPasswordConfirm"' in htm
 assert "$('registerBtn').onclick=showRegister" in js and "$('registerForm').addEventListener('submit'" in js and '/api/register' in js
 assert "runtimeStatus.registration_enabled" in js and "$('registerBtn').hidden=setup||!runtimeStatus.registration_enabled" in js
 assert 'cursor:crosshair' in (root/'static'/'style.css').read_text()
-assert 'canvas.onmousemove' in js and ("toLocaleDateString('de-DE')" in js or 'toLocaleDateString(hpLocale()' in js)
+chart=(root/'static/dashboard-charts.js').read_text()
+assert 'canvas.onpointerdown' in chart and 'ctx.setLineDash' in chart and 'formatDateValue' in chart
 print('auth UX + chart crosshair source: PASS')
 
 html=(root/'static/index.html').read_text(); js=(root/'static/app.js').read_text(); assert '30 Tage' not in html and '60 Tage' not in html and '90 Tage' not in html; assert 'Januar' in js and 'Dezember' in js and 'dashMonthName' in html and 'txMonthName' in html; print('calendar month UI: PASS')

@@ -201,7 +201,7 @@ const accountTypeLabels={checking:'Girokonto',savings:'Sparkonto',cash:'Bargeld'
 const accountTypeLabel=t=>hpText(accountTypeLabels[t]||t);
 const DEFAULT_CATEGORY_I18N={Wohnen:'category.default.housing',Lebensmittel:'category.default.groceries',Transport:'category.default.transport',Freizeit:'category.default.leisure',Einkommen:'category.default.income','Sparen & Rücklagen':'category.default.savings'};
 const categoryDisplayName=name=>{const value=String(name||'');const key=DEFAULT_CATEGORY_I18N[value];return key?hpT(key,value):hpText(value)};
-function renderAccounts(){$('accounts').innerHTML=accountsCache.length?accountsCache.map(a=>`<div class="account-card"><div class="account-head"><span><b>${esc(a.name)}</b><small>${esc(accountTypeLabel(a.type))}</small></span><strong>${fmt(a.balance)}</strong></div><div class="account-month"><span>${hpText('Monatsanfang')} <b>${fmt(a.month_start_balance)}</b></span><span>${hpText('Bis heute')} <b>${fmt(a.balance)}</b></span><span>${hpText('Monatsende')} <b>${fmt(a.month_end_balance)}</b></span></div></div>`).join(''):`<p class="muted">${esc(hpText('Noch keine Konten.'))}</p>`}
+function renderAccounts(){$('accounts').innerHTML=accountCards(accountsCache)}
 function renderDashboardData(d){
   earliestMonth=d.earliest_month||earliestMonth;$('balance').textContent=fmt(d.total_balance);
   const cutoffDate=new Date(d.cutoff+'T12:00:00'),today=nowLocal;
@@ -213,7 +213,7 @@ function renderDashboardData(d){
   $('balance').closest('.metric').title=`Kontostand zum Vergleichsstichtag ${cutoffText}. Für andere Monate verwendet HaushaltPro denselben Kalendertag wie heute.`;
   $('pending').textContent=fmt(d.pending_outflows);
   $('pending').closest('.metric').title=`Offene Ausgaben vom ${new Date(d.remaining_start+'T12:00:00').toLocaleDateString(hpLocale())} bis ${new Date(d.month_end+'T12:00:00').toLocaleDateString(hpLocale())}`;
-  $('monthEnd').textContent=fmt(d.month_end_balance);accountsCache=d.accounts;fillAccountSelects();renderAccounts();renderUpcoming(d.next_payments||[],d);renderAnalysis(d.analysis||{},d);drawChart(d.total_forecast);$('dashPrevMonth').disabled=!!earliestMonth&&selectedMonth<=earliestMonth
+  $('monthEnd').textContent=fmt(d.month_end_balance);accountsCache=d.accounts;fillAccountSelects();renderAccounts();renderUpcoming(d.next_payments||[],d);renderAnalysis(d.analysis||{},d);drawChart(d.total_forecast,d.cutoff);$('dashPrevMonth').disabled=!!earliestMonth&&selectedMonth<=earliestMonth
 }
 async function loadDashboard(){
   const monthAtStart=selectedMonth;
@@ -294,30 +294,18 @@ function renderAnalysis(a,dashboard){
   const months=a.monthly_overview||[];$('analysisMonths').innerHTML=months.slice().reverse().map(m=>{const [y,mo]=m.month.split('-').map(Number);return `<div class="analysis-month-row"><b>${monthNames()[mo-1]} ${y}</b><span class="amount pos">+${fmt(m.income)}</span><span class="amount neg">−${fmt(m.expense)}</span><span class="saving-cell">↗ ${fmt(m.savings||0)}</span><span class="rate-cell">${Number(m.savings_rate_pct||0).toLocaleString(hpLocale(),{maximumFractionDigits:1})} %</span><strong>${fmt(m.net)}</strong></div>`}).join('');drawAnalysisChart(months);
 }
 function drawAnalysisChart(rows){
-  const canvas=$('analysisChart');if(!canvas)return;const ctx=canvas.getContext('2d'),ratio=devicePixelRatio||1,w=Math.max(320,canvas.clientWidth)*ratio,h=Math.max(190,canvas.clientHeight||220)*ratio;if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}ctx.clearRect(0,0,w,h);if(!rows.length)return;
-  const vals=rows.flatMap(r=>[Number(r.income||0),Number(r.expense||0),Number(r.savings||0)]),max=Math.max(1,...vals),left=48*ratio,right=12*ratio,top=14*ratio,bottom=38*ratio,pw=w-left-right,ph=h-top-bottom,group=pw/rows.length,bar=Math.max(3,group*.28),css=getComputedStyle(document.documentElement),grid=css.getPropertyValue('--line').trim(),text=css.getPropertyValue('--muted').trim(),accent=css.getPropertyValue('--accent').trim();
-  ctx.font=`${9*ratio}px system-ui`;ctx.textAlign='right';ctx.textBaseline='middle';for(let i=0;i<4;i++){const v=max*(3-i)/3,y=top+ph*i/3;ctx.strokeStyle=grid;ctx.lineWidth=ratio;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();ctx.fillStyle=text;ctx.fillText(new Intl.NumberFormat(hpLocale(),{notation:'compact',maximumFractionDigits:1}).format(v),left-6*ratio,y)}
-  rows.forEach((r,i)=>{const cx=left+group*(i+.5),hi=Number(r.income||0)/max*ph,he=Number(r.expense||0)/max*ph,hs=Number(r.savings||0)/max*ph,bw=Math.max(2,bar*.72);ctx.fillStyle=accent;ctx.fillRect(cx-bw*1.65,top+ph-hi,bw,hi);ctx.fillStyle='#ff9c9c';ctx.fillRect(cx-bw*.5,top+ph-he,bw,he);ctx.fillStyle='#7db7ff';ctx.fillRect(cx+bw*.65,top+ph-hs,bw,hs);if(i%2===0||rows.length<=8){const [y,m]=r.month.split('-');ctx.fillStyle=text;ctx.font=`${8*ratio}px system-ui`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(`${m}/${String(y).slice(2)}`,cx,h-bottom+8*ratio)}});
-}
-function drawChart(points){
-  const canvas=$('chart'),ctx=canvas.getContext('2d'),ratio=devicePixelRatio||1,state={hover:null};
-  function paint(){
-    const w=Math.max(320,canvas.clientWidth)*ratio,h=Math.max(220,canvas.clientHeight)*ratio;if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
-    ctx.clearRect(0,0,w,h);if(!points.length)return;
-    const vals=points.flatMap((p,i)=>i===0&&p.opening_balance!=null?[Number(p.opening_balance),Number(p.balance)]:[Number(p.balance)]),min0=Math.min(...vals),max0=Math.max(...vals),extra=Math.max(1,(max0-min0)*.08),min=min0-extra,max=max0+extra,span=max-min||1;
-    const left=74*ratio,right=20*ratio,top=18*ratio,bottom=46*ratio,plotW=w-left-right,plotH=h-top-bottom,xFor=i=>left+(points.length===1?0:plotW*i/(points.length-1)),yFor=v=>top+(max-v)/span*plotH;
-    const css=getComputedStyle(document.documentElement),grid=css.getPropertyValue('--line').trim(),text=css.getPropertyValue('--muted').trim(),accent=css.getPropertyValue('--accent').trim();
-    ctx.font=`${10*ratio}px system-ui`;ctx.textAlign='right';ctx.textBaseline='middle';
-    for(let i=0;i<5;i++){const value=max-span*i/4,y=top+plotH*i/4;ctx.strokeStyle=grid;ctx.lineWidth=ratio;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();ctx.fillStyle=text;ctx.fillText(new Intl.NumberFormat(hpLocale(),{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(value),left-8*ratio,y)}
-    // Every day of the selected month is shown on the X axis: 1..28/29/30/31.
-    ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle=text;ctx.font=`${Math.max(7,Math.min(10,plotW/points.length/ratio*.7))*ratio}px system-ui`;
-    points.forEach((p,i)=>ctx.fillText(String(new Date(p.date+'T12:00:00').getDate()),xFor(i),h-bottom+10*ratio));
-    ctx.strokeStyle=accent;ctx.lineWidth=2.5*ratio;ctx.beginPath();points.forEach((p,i)=>{const x=xFor(i),y=yFor(Number(p.balance));if(i===0){const opening=p.opening_balance!=null?Number(p.opening_balance):Number(p.balance);ctx.moveTo(x,yFor(opening));ctx.lineTo(x,y)}else{ctx.lineTo(x,y)}});ctx.stroke();
-    if(state.hover!==null){const i=state.hover,p=points[i],x=xFor(i),v=Number(p.balance),y=yFor(v);ctx.save();ctx.setLineDash([5*ratio,4*ratio]);ctx.strokeStyle=text;ctx.lineWidth=ratio;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,h-bottom);ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();ctx.restore();ctx.fillStyle=accent;ctx.beginPath();ctx.arc(x,y,4*ratio,0,Math.PI*2);ctx.fill();ctx.fillStyle=text;ctx.textAlign='right';ctx.textBaseline='middle';ctx.font=`${11*ratio}px system-ui`;ctx.fillText(fmt(v),left-8*ratio,y);const label=`${new Date(p.date+'T12:00:00').toLocaleDateString(hpLocale())} · ${fmt(v)}`;ctx.font=`${12*ratio}px system-ui`;const tw=ctx.measureText(label).width+18*ratio,th=28*ratio,tx=Math.min(Math.max(left,x-tw/2),w-right-tw),ty=Math.max(top,y-38*ratio);ctx.fillStyle='rgba(20,24,30,.92)';ctx.fillRect(tx,ty,tw,th);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,tx+tw/2,ty+th/2)}
+  const canvas=$('analysisChart');if(!canvas)return;
+  canvas._hpAnalysisRows=rows;
+  if(!canvas._hpAnalysisObserver&&typeof ResizeObserver!=='undefined'){
+    canvas._hpAnalysisObserver=new ResizeObserver(()=>drawAnalysisChart(canvas._hpAnalysisRows));canvas._hpAnalysisObserver.observe(canvas.parentElement);
   }
-  const hoverAt=clientX=>{const rect=canvas.getBoundingClientRect(),x=(clientX-rect.left)*(canvas.width/rect.width),left=74*ratio,right=20*ratio,plotW=canvas.width-left-right;state.hover=Math.max(0,Math.min(points.length-1,Math.round((x-left)/plotW*(points.length-1))));paint()};
-  canvas.onmousemove=e=>hoverAt(e.clientX);canvas.onmouseleave=()=>{state.hover=null;paint()};canvas.ontouchmove=e=>{if(e.touches[0])hoverAt(e.touches[0].clientX)};paint();
+  const ctx=canvas.getContext('2d'),ratio=devicePixelRatio||1,w=canvas.clientWidth*ratio,h=Math.max(190,canvas.clientHeight||220)*ratio;if(!ctx||!w)return;if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}ctx.clearRect(0,0,w,h);if(!rows.length)return;
+  const vals=rows.flatMap(r=>[Number(r.income||0),Number(r.expense||0),Number(r.savings||0)]),max=Math.max(1,...vals),left=48*ratio,right=12*ratio,top=14*ratio,bottom=38*ratio,pw=w-left-right,ph=h-top-bottom,group=pw/rows.length,bar=Math.max(3,group*.28),css=getComputedStyle(document.documentElement),grid=css.getPropertyValue('--line').trim(),text=css.getPropertyValue('--muted').trim(),accent=css.getPropertyValue('--accent').trim();
+  ctx.font=`${11*ratio}px system-ui`;ctx.textAlign='right';ctx.textBaseline='middle';for(let i=0;i<4;i++){const v=max*(3-i)/3,y=top+ph*i/3;ctx.strokeStyle=grid;ctx.lineWidth=ratio;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();ctx.fillStyle=text;ctx.fillText(new Intl.NumberFormat(hpLocale(),{notation:'compact',maximumFractionDigits:1}).format(v),left-6*ratio,y,left-10*ratio)}
+  rows.forEach((r,i)=>{const cx=left+group*(i+.5),hi=Number(r.income||0)/max*ph,he=Number(r.expense||0)/max*ph,hs=Number(r.savings||0)/max*ph,bw=Math.max(2,bar*.72);ctx.fillStyle=accent;ctx.fillRect(cx-bw*1.65,top+ph-hi,bw,hi);ctx.fillStyle='#ff9c9c';ctx.fillRect(cx-bw*.5,top+ph-he,bw,he);ctx.fillStyle='#7db7ff';ctx.fillRect(cx+bw*.65,top+ph-hs,bw,hs);if(chartTickIndices(rows.length,pw/ratio,42).includes(i)){const [y,m]=r.month.split('-');ctx.fillStyle=text;ctx.font=`${11*ratio}px system-ui`;ctx.textAlign=i===0?'left':i===rows.length-1?'right':'center';ctx.textBaseline='top';ctx.fillText(`${m}/${String(y).slice(2)}`,cx,h-bottom+8*ratio)}});
 }
+function drawChart(points,cutoff){drawResponsiveBalanceChart('chart',points,{opening:true,selectedDate:cutoff})}
+
 async function selectDashboardMonth(){selectedMonth=monthValue('dashMonthName','dashYear');if(earliestMonth&&selectedMonth<earliestMonth){selectedMonth=earliestMonth;setMonthControls('dashMonthName','dashYear',selectedMonth);toast('Ansicht beginnt mit dem ersten Konto.')}await loadDashboard()}
 $('dashMonthName').onchange=selectDashboardMonth;$('dashYear').onchange=selectDashboardMonth;
 $('dashPrevMonth').onclick=()=>shiftSelectedMonth(-1);$('dashNextMonth').onclick=()=>shiftSelectedMonth(1);$('dashPeriod').onchange=reloadDashboardByMode;$('dashYear').onchange=async()=>{if($('dashPeriod').value==='year')await loadDashboardYear();else await selectDashboardMonth()};$('dashToday').onclick=async()=>{selectedMonth=`${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}`;setMonthControls('dashMonthName','dashYear',selectedMonth);$('dashYear').value=nowLocal.getFullYear();await reloadDashboardByMode()};
@@ -386,7 +374,7 @@ async function transferDialog(transferId=null){
   }
 }
 $('quickTx').onclick=()=>txDialog();$('newTx').onclick=()=>txDialog();$('newTransfer').onclick=()=>transferDialog();$('newRecurringTx').onclick=()=>recDialog(null);
-async function loadAccountManager(){const month=ensureMonthControls('accountMonthName','accountYear',selectedMonth);const rows=await api('/api/accounts?month='+encodeURIComponent(month));accountsCache=rows;fillAccountSelects();$('accountManager').innerHTML=rows.length?rows.map(a=>`<article class="panel account-manage-card"><div class="account-head"><span><b>${esc(a.name)}</b><small>${esc(accountTypeLabel(a.type))} · ${esc(hpText('Start'))} ${formatDateValue(a.start_date)}</small></span><strong>${fmt(a.balance)}</strong></div><div class="account-month"><span>Monatsanfang <b>${fmt(a.month_start_balance)}</b></span><span>Bis Stichtag <b>${fmt(a.balance)}</b></span><span>Monatsende <b>${fmt(a.month_end_balance)}</b></span></div><div class="account-actions"><button data-aedit="${a.id}">Kontodaten bearbeiten</button><button class="ghost" data-acorrect="${a.id}">Monatsanfang korrigieren</button><button class="ghost" data-areconcile="${a.id}">Kontostand abgleichen</button></div></article>`).join(''):'<article class="panel"><p class="muted">Für diesen Monat gibt es noch kein aktives Konto.</p></article>';document.querySelectorAll('[data-aedit]').forEach(b=>b.onclick=()=>accountDialog(rows.find(a=>a.id===Number(b.dataset.aedit))));document.querySelectorAll('[data-acorrect]').forEach(b=>b.onclick=()=>accountCorrectionDialog(rows.find(a=>a.id===Number(b.dataset.acorrect)),month));document.querySelectorAll('[data-areconcile]').forEach(b=>b.onclick=()=>accountReconcileDialog(rows.find(a=>a.id===Number(b.dataset.areconcile))))}
+async function loadAccountManager(){const month=ensureMonthControls('accountMonthName','accountYear',selectedMonth);const rows=await api('/api/accounts?month='+encodeURIComponent(month));accountsCache=rows;fillAccountSelects();$('accountManager').innerHTML=accountCards(rows,{manage:true});document.querySelectorAll('[data-aedit]').forEach(b=>b.onclick=()=>accountDialog(rows.find(a=>a.id===Number(b.dataset.aedit))));document.querySelectorAll('[data-acorrect]').forEach(b=>b.onclick=()=>accountCorrectionDialog(rows.find(a=>a.id===Number(b.dataset.acorrect)),month));document.querySelectorAll('[data-areconcile]').forEach(b=>b.onclick=()=>accountReconcileDialog(rows.find(a=>a.id===Number(b.dataset.areconcile))))}
 async function accountCorrectionDialog(account,month){
   const corrections=await api('/api/accounts/'+account.id+'/corrections');
   const rows=corrections.map(c=>`<div class="correction-row"><span><b>${monthNames()[Number(c.month.slice(5,7))-1]} ${c.month.slice(0,4)}</b><small>${c.note?esc(c.note):'Manuelle Monatskorrektur'}</small></span><span><strong>${fmt(c.opening_balance)}</strong> <button type="button" class="ghost danger-outline" data-cdel="${esc(c.month)}">Löschen</button></span></div>`).join('')||'<p class="muted">Noch keine Monatskorrekturen.</p>';
@@ -483,13 +471,8 @@ async function loadRecurring(){
   try{
     await materializeRecurringDue();
     const [rows,transferRows]=await Promise.all([api('/api/recurring'),api('/api/recurring-transfers')]);
-    const amap=Object.fromEntries(accountsCache.map(a=>[a.id,a.name]));
-    const freqLabel={monthly:'Monatlich',weekly:'Wöchentlich',yearly:'Jährlich',daily:'Täglich'};
     if($('txRecurringCount'))$('txRecurringCount').textContent=String(rows.length+transferRows.length);
-    $('recBody').innerHTML=rows.map(r=>`<tr><td>${esc(formatDateValue(r.next_date))}</td><td class="recurring-name-cell"><b>${esc(r.name)}</b><small class="recurring-series-meta">${esc(hpT('recurring.series','Serie'))} #${r.series_id} · ${esc(hpT('recurring.since','seit'))} ${esc(formatDateValue(r.first_date))}${(r.journal_count??r.executed_count)?` · ${r.journal_count??r.executed_count}× ${esc(hpT('recurring.inJournal','in Buchungen'))}`:''}</small>${r.future_change_from?`<small class="recurring-future-change">${esc(hpText('Änderung vorgemerkt ab'))} ${esc(formatDateValue(r.future_change_from))}</small>`:''}</td><td>${esc(amap[r.account_id]||'?')}</td><td>${esc(recurrenceLabel(r.frequency,r.interval_count))}</td><td>${r.valid_until?esc(formatDateValue(r.valid_until)):hpText('Unbegrenzt')}</td><td class="right amount ${r.amount<0?'neg':'pos'}">${fmt(r.amount)}</td><td class="actions"><button data-redit="${r.id}">${esc(hpText('Serie bearbeiten'))}</button><button class="ghost" data-roverride="${r.id}">${esc(hpText('Monat anpassen'))}</button><button class="ghost" data-stop="${r.id}">${esc(hpText('Stoppen'))}</button><button class="ghost danger-outline" data-rdel="${r.id}">${esc(hpText('Serie löschen'))}</button></td></tr>`).join('')||'<tr><td colspan="7">Keine wiederkehrenden Buchungen.</td></tr>';
-    const transferHtml=transferRows.map(r=>`<tr><td>${esc(formatDateValue(r.next_date))}</td><td class="recurring-name-cell"><b>↔ ${esc(r.name)}</b><small class="recurring-series-meta">${esc(hpText('Transfer-Serie'))} #${r.id} · ${esc(formatDateValue(r.first_date))}</small></td><td>${esc(r.from_account_name)} → ${esc(r.to_account_name)}</td><td>${esc(recurrenceLabel(r.frequency,r.interval_count))}</td><td>${r.valid_until?esc(formatDateValue(r.valid_until)):hpText('Unbegrenzt')}</td><td class="right amount">${fmt(r.amount)}</td><td class="actions"><button data-rtedit="${r.id}">${esc(hpText('Serie bearbeiten'))}</button><button class="ghost" data-rtstop="${r.id}">${esc(hpText('Stoppen'))}</button><button class="ghost danger-outline" data-rtdel="${r.id}">${esc(hpText('Serie löschen'))}</button></td></tr>`).join('');
-    if(transferRows.length&&!rows.length)$('recBody').innerHTML='';
-    if(transferHtml)$('recBody').insertAdjacentHTML('beforeend',transferHtml);
+    $('recBody').innerHTML=recurringCards(rows,transferRows);
     document.querySelectorAll('[data-rtedit]').forEach(b=>b.onclick=()=>recurringTransferDialog(Number(b.dataset.rtedit)));
     document.querySelectorAll('[data-rtstop]').forEach(b=>b.onclick=async()=>{if(hpConfirm(hpText('Transfer-Serie stoppen? Noch nicht ausgeführte zukünftige Transfers werden entfernt.'))){await api('/api/recurring-transfers/'+b.dataset.rtstop,{method:'DELETE'});await loadRecurring();await loadTransactions();await loadDashboard()}});
     document.querySelectorAll('[data-rtdel]').forEach(b=>b.onclick=async()=>{if(hpConfirm(hpText('Transfer-Serie endgültig löschen? Bereits ausgeführte Transfers bleiben als Historie bestehen.'))){await api('/api/recurring-transfers/'+b.dataset.rtdel+'?hard=true',{method:'DELETE'});await loadRecurring();await loadTransactions();await loadDashboard()}});
@@ -499,7 +482,7 @@ async function loadRecurring(){
     document.querySelectorAll('[data-rdel]').forEach(b=>b.onclick=async()=>{if(hpConfirm('Wiederholungsserie vollständig löschen? Zukünftige geplante Serienbuchungen werden entfernt; bereits ausgeführte Buchungen bleiben erhalten.')){await api('/api/recurring/'+b.dataset.rdel+'?hard=true',{method:'DELETE'});await loadRecurring();await loadTransactions();await loadDashboard();toast('Serie gelöscht – ausgeführte Buchungen bleiben erhalten.')}})
   }catch(err){
     if($('txRecurringCount'))$('txRecurringCount').textContent='!';
-    $('recBody').innerHTML=`<tr><td colspan="7"><span class="neg">Serien konnten nicht geladen werden:</span> ${esc(err.message)}</td></tr>`
+    $('recBody').innerHTML=`<p class="panel"><span class="neg">${esc(hpText('Serien konnten nicht geladen werden:'))}</span> ${esc(err.message)}</p>`
   }
 }
 
@@ -711,6 +694,7 @@ function showReconcileResult(account,r,body){
   })
 }
 function interactiveMonthlyChart(canvasId,rows,key='end_balance',labelKey='month'){
+  if(canvasId==='dashboardYearChart')return drawResponsiveBalanceChart(canvasId,rows,{key,labelKey,monthly:true,selectedDate:selectedMonth});
   const c=$(canvasId);if(!c||!rows?.length)return;
   c._hpRows=rows;c._hpKey=key;c._hpLabelKey=labelKey;
   const state=c._hpState||(c._hpState={hover:null});

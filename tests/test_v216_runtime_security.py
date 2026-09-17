@@ -5,7 +5,7 @@ main = (root / "app/main.py").read_text()
 dockerfile = (root / "Dockerfile").read_text()
 changelog = (root / "CHANGELOG.md").read_text()
 
-assert ('APP_VERSION = "0.21.6"' in main or ('APP_VERSION = "0.21.8"' in main or 'APP_VERSION = "0.21.9-dev.3"' in main))
+assert ('APP_VERSION = "0.21.6"' in main or ('APP_VERSION = "0.21.8"' in main or 'APP_VERSION = "0.21.9-dev.4"' in main))
 assert 'python -m pip check' in dockerfile
 assert '/usr/local/lib/python3.12/site-packages/pip' in dockerfile
 assert '/usr/local/lib/python3.12/site-packages/setuptools' in dockerfile

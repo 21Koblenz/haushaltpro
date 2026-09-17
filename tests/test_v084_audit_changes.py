@@ -33,6 +33,6 @@ created=json.loads(c.execute("SELECT details_json FROM audit_log WHERE action='t
 assert created['added']['name']=='KFZ-Versicherung'
 assert created['added']['amount']==-8000
 assert created['added']['category_name']=='Versicherung'
-assert main.APP_VERSION in {'0.8.4','0.8.5','0.8.6','0.8.7','0.9.0','0.10.0','0.10.1','0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4','0.21.5','0.21.6','0.21.7','0.21.8','0.21.9-dev.3'}
+assert main.APP_VERSION in {'0.8.4','0.8.5','0.8.6','0.8.7','0.9.0','0.10.0','0.10.1','0.10.2','0.10.3','0.10.4','0.10.5','0.11.0','0.11.1','0.11.2','0.21.0','0.21.2','0.21.3','0.21.4','0.21.5','0.21.6','0.21.7','0.21.8','0.21.9-dev.4'}
 print('v0.8.4 detailed audit diff: PASS')
 c.close(); Path(tmp).unlink(missing_ok=True)

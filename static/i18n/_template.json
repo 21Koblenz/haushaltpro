@@ -446,7 +446,7 @@
     "Monatsanfang": "",
     "Monatsende": "",
     "Bis heute": "",
-    "Bis Stichtag": "",
+    "Bis Stichtag": "Bis Stichtag",
     "Plan Einnahmen": "",
     "Plan Ausgaben": "",
     "Plan Sparen": "",
@@ -505,7 +505,7 @@
     "Stoppen": "",
     "Serie löschen": "",
     "Keine wiederkehrenden Buchungen.": "",
-    "Serien konnten nicht geladen werden:": "",
+    "Serien konnten nicht geladen werden:": "Serien konnten nicht geladen werden:",
     "„Keine Kategorie“ bedeutet Gesamtbudget des Monats.": "",
     "Für 50/30/20 und Pay Yourself First wird dieser Bereich ausgewertet.": "",
     "Verplant": "",
@@ -689,7 +689,7 @@
     "Größe": "",
     "Mitglieder": "",
     "Buchung": "",
-    "Serie": "",
+    "Serie": "Serie",
     "Datei wählen": "",
     "Backup-Datei wählen": "",
     "CSV-Datei wählen": "",
@@ -813,7 +813,14 @@
     "Beginn darf nicht nach dem Ende liegen": "Beginn darf nicht nach dem Ende liegen",
     "Export zu groß; bitte Zeitraum oder Konto eingrenzen": "Export zu groß; bitte Zeitraum oder Konto eingrenzen",
     "Zahlungszuordnung nicht gefunden": "Zahlungszuordnung nicht gefunden",
-    "Art": "Art"
+    "Art": "Art",
+    "Kontoverlauf": "Kontoverlauf",
+    "Kontostand im Monatsverlauf": "Kontostand im Monatsverlauf",
+    "Tag auswählen": "Tag auswählen",
+    "Monat auswählen": "Monat auswählen",
+    "Grafik antippen oder den Regler bewegen, um Datum und Betrag abzulesen.": "Grafik antippen oder den Regler bewegen, um Datum und Betrag abzulesen.",
+    "Keine Daten für diesen Zeitraum.": "Keine Daten für diesen Zeitraum.",
+    "Transfer-Serie": "Transfer-Serie"
   },
   "patterns": [
     {

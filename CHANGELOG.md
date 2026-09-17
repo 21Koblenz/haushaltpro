@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.21.9-dev.4 - 2026-09-17 (prerelease)
+
+### Deutsch
+
+- Wiederkehrende Buchungen und Transfer-Serien als standardmäßig eingeklappte Karten mit den bisherigen Bearbeitungsaktionen.
+- Einklappbare Konten auf dem Dashboard und in der Kontenverwaltung. Name, Betrag und Stichtag bleiben sichtbar; Monatsanfang, Stichtag und Monatsende stehen geöffnet in getrennten Zeilen.
+- Responsive Dashboard-Grafiken mit lesbaren Achsen, vollständiger Wertanzeige unter der Grafik sowie Touch- und Reglerauswahl. Alle Tages-/Monatswerte bleiben erhalten.
+- Neuzeichnen bei Größen- und Theme-Wechsel ohne zusätzliche Datenabfrage; Schutz vor Rückkopplung mit der Sprachumschaltung.
+- Schema bleibt 28. [Update und Testanleitung](docs/RELEASE-NOTES-v0.21.9-dev.4.md).
+
+### English
+
+- Collapsed recurring and account cards, including transfer series and the dashboard account overview.
+- Responsive daily/yearly charts with readable axes, exact value readouts and touch/range-slider selection. Resize/theme redraws need no additional financial-data requests.
+- 87 Python regression scripts, 23 JavaScript tests, 52 static security checks and compile/syntax checks passed locally. Browser access to the local test URL was blocked; visual mobile verification remains a manual check.
+
 ## v0.21.9-dev.3 - 2026-09-16 (prerelease)
 
 ### Deutsch

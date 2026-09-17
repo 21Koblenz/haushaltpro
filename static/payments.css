@@ -58,3 +58,53 @@ details[open]>.tx-summary .tx-chevron,details[open]>summary>.tx-chevron{transfor
   .open-item-card summary>.tx-chevron{grid-column:2;grid-row:1/4}
 }
 @media(prefers-reduced-motion:reduce){.tx-chevron{transition:none}}
+
+/* Accounts use the same closed-by-default disclosure pattern as bookings. */
+#accounts{display:grid;gap:10px;min-width:0}
+.account-manager-grid{align-items:start}
+.account-disclosure{border:1px solid var(--line);border-radius:14px;background:var(--panel);min-width:0;max-width:100%}
+.account-summary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 20px;gap:10px;align-items:center;padding:16px;list-style:none;cursor:pointer}
+.account-summary::-webkit-details-marker{display:none}.account-summary::marker{content:""}
+.account-summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:12px}
+.account-summary-name,.account-summary-balance{display:flex;flex-direction:column;gap:5px;min-width:0;overflow-wrap:anywhere}
+.account-summary-name b{line-height:1.4}.account-summary-balance{text-align:right}
+.account-summary-balance strong{font-size:1.15rem;font-variant-numeric:tabular-nums}
+.account-summary small{color:var(--muted);font-size:.8rem;line-height:1.4}
+.account-expanded{border-top:1px solid var(--line);padding:16px}
+.account-balance-grid{display:grid;gap:8px;margin:0}
+.account-balance-grid>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center;padding:12px;background:var(--panel2);border-radius:10px}
+.account-balance-grid dt{font-size:.88rem;color:var(--muted);overflow-wrap:anywhere}
+.account-balance-grid dt small{display:block;margin-top:3px}
+.account-balance-grid dd{margin:0;text-align:right;font-weight:750;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.account-info{margin:16px 0}
+.account-expanded .account-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:16px}
+.account-actions button{min-height:44px;white-space:normal}
+
+/* No minimum canvas width: the canvas follows its real container on phones. */
+#dashboardMonthChart{height:auto;padding:18px;min-width:0}
+.balance-chart-wrap,#dashboardYearView .planning-year-chart-wrap{height:280px;min-width:0;max-width:100%;padding:0;margin:0;border:0}
+.balance-chart-wrap canvas,#dashboardYearChart{display:block;width:100%!important;height:100%!important;max-width:100%;touch-action:pan-y;cursor:crosshair}
+#chart{touch-action:pan-y}
+.chart-readout{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap;padding:12px 0 0;min-height:44px}
+.chart-readout span{color:var(--muted);font-size:.9rem}
+.chart-readout strong{font-size:1.2rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;min-width:0}
+.chart-selector{display:block;margin:6px 0 0}
+.chart-selector input[type=range]{display:block;width:100%;height:44px;min-width:0;margin:0;padding:0;border:0;accent-color:var(--accent);background:transparent;cursor:pointer}
+.chart-selector input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.chart-help{margin:4px 0 0;font-size:.82rem;line-height:1.4}
+#dashboardMonthPanels{grid-template-columns:repeat(2,minmax(0,1fr))}
+#dashboardMonthPanels>.panel,.analysis-panels>.panel{min-width:0}
+@media(max-width:800px){#dashboardMonthPanels{grid-template-columns:1fr}}
+@media(max-width:600px){
+  .account-summary{grid-template-columns:minmax(0,1fr) 20px;grid-template-areas:"name arrow" "amount arrow";gap:8px 10px;padding:14px}
+  .account-summary-name{grid-area:name}.account-summary-balance{grid-area:amount;text-align:left}
+  .account-summary>.tx-chevron{grid-area:arrow}
+  .account-summary-balance strong{font-size:1.2rem}
+  .account-expanded{padding:12px}
+  .account-expanded .account-actions{grid-template-columns:1fr}
+  #dashboardMonthChart{padding:14px}
+  .balance-chart-wrap,#dashboardYearView .planning-year-chart-wrap{height:250px}
+  .chart-readout{display:grid;gap:4px;justify-content:start}
+  .chart-readout strong{font-size:1.3rem}
+}
+@media(max-width:360px){.account-balance-grid>div{grid-template-columns:1fr;gap:4px}.account-balance-grid dd{text-align:left}}
