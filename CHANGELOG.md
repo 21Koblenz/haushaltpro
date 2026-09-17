@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.21.9 - 2026-09-17
+
+Stabiles Release aller Änderungen seit v0.21.8 und der getesteten Dev-Versionen bis dev.6. [Vollständige Release-Notizen mit Updateweg und Grenzen](docs/RELEASE-NOTES-v0.21.9.md).
+
+### Deutsch
+
+- **Offline und Serverstatus:** Neue Buchungen, Transfers, Serien, offene Posten und Zahlungen vor dem Senden lokal speichern und nach Wiederverbindung genau einmal synchronisieren. Warteschlange nach Benutzer/Haushaltsbuch getrennt; verlorene Antworten, parallele Tabs, Sitzungsablauf und Fehlerantworten berücksichtigt. Verbindungs-/Sync-Anzeige mit Warteschlangenanzahl und passendem Hellmodus-Hintergrund.
+- **Serientermine:** Einzelne Buchungen beliebig über Monats-/Jahresgrenzen verschieben. Journal, Planung, Fixkosten und Prognose folgen dem tatsächlichen Datum; Serienidentität, Zurücksetzen, Betragsausnahmen und Stichtagsänderungen bleiben korrekt.
+- **Wiederholung:** Viertel-/halbjährliche und freie Kalenderintervalle, wiederkehrende interne Transfers sowie gespeicherte/freie Empfänger auf Serien. Bestehende Serien behalten ihren bisherigen Rhythmus; Transfers bleiben ausgabenneutral.
+- **Offene Zahlungen:** Schulden und Forderungen mit Fälligkeit, Überfälligkeit, Status und Teilzahlungen. Vorhandene Buchungen zuordnen oder neue Zahlungen atomar anlegen. Überzahlungs-/Änderungsschutz, Storno und Löschen mit korrektem Restbetrag, Berechtigungen und Offline-Wiederholung.
+- **CSV:** Gefilterter Buchungsexport über alle Ergebnisse mit centgenauen Split-Zeilen; Fixkosten-Jahresplan mit Monats-/Jahressummen und verschobenen Fälligkeiten. UTF-8/BOM, Semikolon, Dezimalkomma und gegen Tabellenformeln geschützte Textfelder.
+- **Mobile Oberfläche:** Buchungs-, Serien- und Kontenkarten standardmäßig eingeklappt. Auf geschlossenen Kontenkarten stehen Stichtags- und Monatsendstand. Details mit Monatsanfang/Bis heute/Monatsende, Touch-/Tastaturbedienung, responsive Tages-/Jahresgrafiken, genaue Wertanzeige und auswählbare Datenpunkte.
+- **Geldfluss:** Verbundenes Sankey im Sure-Stil als Standard; bisheriges Pfeildiagramm als zweite, gespeicherte Option. Vertikale Smartphone-Ansicht, komplette Kategorienliste, centgenau ausgeglichene Geldströme, Fehlbeträge und Auswahl von Betrag/Anteil.
+- **Sichtbarkeit:** Augenschalter verbirgt Euro- und Prozentwerte als `****` auch in Diagrammen, Tooltips, nachgeladenen Ansichten und Geldfeldern. Auswahl gespeichert und zwischen Tabs synchronisiert; Originalwerte in Berechnungen, Speicherung und Exporten bleiben erhalten.
+- **Analyse und Performance:** Aktueller Monat einschließlich bekannter/geplanter Serientermine; historische Monate/Jahresanalyse bleiben bei Ist-Werten. Gebündelte Serien-/Ausnahme-/Kategorieabfragen, Split-Index und Wiederverwendung innerhalb von Leseanfragen. Dokumentierter weiterer Planungstest: 365 → 197 SQL-Abfragen bei 10.000 Buchungen.
+- **Qualität und Update:** Erweiterte englische Übersetzungen, Plausibilitäts-, Rechte-, Offline- und UI-Prüfungen. Automatische additive Migration von Schema 22 (v0.21.8) auf 28; direkter verschlüsselter Upgrade-Test. Dev.3–dev.6 benötigen keine weitere Migration.
+- **Veröffentlichung und Bereinigung:** Stabile Freigabe nach erfolgreichem CI, Multiarch-Docker-Build und Scout-Gates; Quellarchive mit SHA-256-Prüfsummen. Veraltete Einmalskripte entfernt, abgelöste Arbeitsbranches per Archiv-Tag gesichert und nach dem Release entfernt. Bestehende Release-Historie bleibt erhalten.
+
+### English
+
+- **Offline/status:** Persist new bookings, transfers, series, open items and payments before sending; replay once on reconnect with user/book isolation, lost-reply handling and session recovery. Live reachability/sync/pending count and a corrected light-mode indicator.
+- **Recurrence:** Shift individual occurrences across month/year boundaries with consistent journal, planning and forecasts; flexible calendar intervals, recurring transfers and series payees. Original identities prevent duplicate materialization.
+- **Open payments:** Payables/receivables, overdue status and partial payments; link existing cash or create one new booking. Allocation/edit guards, cancellation, deletion, permissions and idempotent replay preserve correct outstanding balances.
+- **CSV:** Filtered bookings across pagination, exact-cent split rows, and monthly/yearly fixed-cost plans respecting effective due dates. UTF-8 BOM, semicolons, decimal commas and formula-safe text.
+- **Mobile UI:** Collapsed booking, recurring and account cards; cutoff and month-end balances on closed account summaries. Responsive charts, touch/range/keyboard selection, complete dates and exact readouts.
+- **Cash flow/privacy:** Default Sure-inspired connected Sankey plus the saved classic option, mobile vertical layout and complete categories. Eye controls mask EUR/percent values across views, charts and forms without changing underlying data or exports.
+- **Analysis/performance:** Current-month planned entries included; historical/year analysis remains actual-only. Batched lookups, split index and per-request reuse; documented additional planning optimization from 365 to 197 SQL statements for 10,000 bookings.
+- **Quality/release:** Expanded translations and regression tests; real encrypted stable schema 22 → 28 migration. CI-gated stable release, multiarch Docker/Scout validation, source archives/checksums and archive-backed retirement of obsolete work branches/scripts.
+
+### Verification / Prüfung
+
+89 Python regression scripts, 39 JavaScript tests, 52 static security checks, compile/syntax checks, real encrypted migration, cleanup preservation tests and AMD64/ARM64 SQLCipher checks are part of this release. All previous prerelease notes remain below as historical detail.
+
 ## v0.21.9-dev.6 - 2026-09-17 (prerelease)
 
 ### Deutsch

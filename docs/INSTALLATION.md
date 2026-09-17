@@ -1,4 +1,4 @@
-# Installation / Deployment - v0.21.6
+# Installation / Deployment - v0.21.9
 
 ## Deutsch
 
@@ -121,6 +121,8 @@ docker compose up -d
 ```
 
 
+Das stabile Image heißt `21koblenz/haushaltpro:latest`; `:0.21.9` fixiert diesen Stand. Zum Wechsel vom Testkanal die bisherige `:dev`-Angabe im Compose-/Portainer-Stack ersetzen. Die automatische Migration führt von Schema 22 (v0.21.8) auf Schema 28. Für einen Rückwechsel auf die alte Version das vorherige Backup wiederherstellen. [Alle Änderungen](RELEASE-NOTES-v0.21.9.md).
+
 ### Entwicklung / lokaler Build aus dem Quellcode
 
 Die normale Compose-Datei zieht das veröffentlichte Docker-Hub-Image. Für Entwicklung oder einen lokalen Build aus dem Git-Checkout:
@@ -161,3 +163,7 @@ VPN is the preferred method for remote private access. Route the client into the
 Use `.env.public.example`, a concrete `ALLOWED_HOSTS`, a strong `PUBLIC_SETUP_TOKEN` and an HTTPS reverse proxy. Keep HaushaltPro itself bound to `127.0.0.1:8080`; expose only HTTPS/443 at the proxy.
 
 See `PUBLIC-DEPLOYMENT.md` for Caddy/nginx examples and public-mode security requirements.
+
+### Stable updates / leaving the test channel
+
+Use `21koblenz/haushaltpro:latest` or pin `:0.21.9`, then pull and recreate the container with its existing volume. Switching from `:dev` only requires changing the image tag in the stack. Back up first: v0.21.8 schema 22 is upgraded automatically to schema 28. Downgrading to v0.21.8 requires restoring the pre-update backup. See [release notes](RELEASE-NOTES-v0.21.9.md).

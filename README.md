@@ -1,8 +1,8 @@
 # HaushaltPro
 
-Stable: **v0.21.8** · Testversion / prerelease: **v0.21.9-dev.6**
+Stable: **v0.21.9** · Docker: `21koblenz/haushaltpro:latest` oder `:0.21.9`
 
-[Testversion und Grenzen / Dev setup and limitations](docs/OFFLINE-DEV.md) · [Release notes](docs/RELEASE-NOTES-v0.21.9-dev.6.md)
+[Änderungen / Release notes](docs/RELEASE-NOTES-v0.21.9.md) · [Offline-Nutzung / Offline use](docs/OFFLINE-DEV.md) · [Veröffentlichung / Release process](docs/RELEASING.md)
 
 [![License: AGPL v3+](https://img.shields.io/badge/License-AGPL_v3%2B-blue.svg)](LICENSE)
 [![Vibe Coding](https://img.shields.io/badge/development-Vibe%20Coding-orange.svg)](VIBE_CODING.md)
@@ -19,9 +19,10 @@ HaushaltPro verwaltet Finanzdaten auf dem eigenen Server. Konten, Buchungen, int
 ### Hauptfunktionen
 
 - Konten mit Startsaldo, Monatsanfang, Stichtags- und Monatsendstand; Stichtags- und Monatsendstand auch auf geschlossenen Karten
+- Offline-Erfassung neuer Einträge mit automatischer Synchronisierung und Serverstatus
 - Einnahmen, Ausgaben, Sparen und interne Transfers
 - Buchungen mit Kategorien, Empfängern, Tags, Notizen, Splits und Belegen
-- wiederkehrende Buchungen mit Serienversionen und Stichtagsänderungen
+- wiederkehrende Buchungen und Transfers mit freien Kalenderintervallen; einzelne Buchungstermine über Monats-/Jahresgrenzen verschieben
 - Budgets und Plan/Ist-Vergleich
 - 3/6/12-Monats-Prognosen, Jahresansicht und What-if-Szenarien
 - offene Zahlungen, Schulden und Forderungen mit Teilzahlungen und Buchungszuordnung
@@ -79,7 +80,7 @@ docker compose pull
 docker compose up -d
 ```
 
-Das Docker-Volume **nicht löschen**, wenn bestehende Daten erhalten bleiben sollen.
+Das Docker-Volume **nicht löschen**, wenn bestehende Daten erhalten bleiben sollen. v0.21.9 aktualisiert Datenbanken aus v0.21.8 automatisch von Schema 22 auf 28. Ein Rückwechsel auf v0.21.8 benötigt das vor dem Update erstellte Backup. Wer bisher `:dev` verwendet hat, kann für stabile Updates auf `:latest` oder den festen Tag `:0.21.9` wechseln.
 
 ### Tests / Plausibilität
 

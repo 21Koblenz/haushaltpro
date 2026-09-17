@@ -1,0 +1,126 @@
+name: Stable release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - app/main.py
+      - .github/workflows/stable-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stable-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate version and wait for this commit's CI
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(python -c 'import ast; t=ast.parse(open("app/main.py").read()); print(next(n.value.value for n in t.body if isinstance(n,ast.Assign) and any(isinstance(v,ast.Name) and v.id=="APP_VERSION" for v in n.targets)))')"
+          if [[ "$version" == *-dev.* ]]; then
+            echo "Development version: no stable release."
+            exit 0
+          fi
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test -s "docs/RELEASE-NOTES-v${version}.md"
+          for attempt in {1..60}; do
+            state="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --commit "$GITHUB_SHA" --event push --limit 1 --json status,conclusion --jq '.[0] | if . == null then "missing" elif .status == "completed" then .conclusion else .status end')"
+            if [[ "$state" == success ]]; then break; fi
+            case "$state" in failure|cancelled|timed_out|action_required|stale|skipped) echo "CI did not pass: $state"; exit 1;; esac
+            if [[ "$attempt" == 60 ]]; then echo "Timed out waiting for CI"; exit 1; fi
+            sleep 20
+          done
+          tag="v${version}"
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            test "$(git rev-parse "$tag^{commit}")" = "$GITHUB_SHA"
+          else
+            git tag "$tag" "$GITHUB_SHA"
+            git push origin "refs/tags/$tag"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  publish-image:
+    needs: prepare
+    if: needs.prepare.outputs.version != ''
+    uses: ./.github/workflows/docker-publish.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+    secrets: inherit
+    permissions:
+      contents: write
+
+  release:
+    needs: [prepare, publish-image]
+    if: needs.prepare.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Publish stable notes and verified source archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v${RELEASE_VERSION}"
+          test "$(git rev-parse "$tag^{commit}")" = "$GITHUB_SHA"
+          mkdir -p dist
+          git archive --format=tar --prefix="haushaltpro-${tag}/" "$GITHUB_SHA" | gzip -9 > "dist/haushaltpro-${tag}.tar.gz"
+          git archive --format=zip --prefix="haushaltpro-${tag}/" -o "dist/haushaltpro-${tag}.zip" "$GITHUB_SHA"
+          (cd dist && sha256sum "haushaltpro-${tag}.tar.gz" "haushaltpro-${tag}.zip" > "SHA256SUMS-${tag}.txt")
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --verify-tag --latest --title "HaushaltPro $tag" \
+              --notes-file "docs/RELEASE-NOTES-${tag}.md" \
+              "dist/haushaltpro-${tag}.tar.gz" "dist/haushaltpro-${tag}.zip" "dist/SHA256SUMS-${tag}.txt"
+          fi
+
+  cleanup:
+    needs: [prepare, release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Archive retired branches and align dev without overwriting new work
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          plan=".github/cleanup/v${RELEASE_VERSION}.json"
+          if [[ -f "$plan" ]]; then
+            python .github/scripts/archive-retired-branches.py "$plan" "$GITHUB_SHA"
+          fi
+          git fetch origin dev main
+          if [[ "$(git rev-parse origin/main)" == "$GITHUB_SHA" ]] && git merge-base --is-ancestor origin/dev "$GITHUB_SHA"; then
+            git push origin "$GITHUB_SHA:refs/heads/dev"
+          else
+            echo "New branch work detected; keeping dev unchanged."
+          fi

@@ -1,6 +1,6 @@
-# Offline-Sync – Dev-Test
+# Offline-Sync – Nutzung und Prüfung
 
-Diese Funktion ist für den `:dev`-Kanal vorgesehen und noch kein stabiles Release.
+Offline-Sync ist seit v0.21.9 im stabilen Release enthalten. Dieses Dokument beschreibt den Umfang und wiederholbare Prüfungen. Der Dateiname bleibt erhalten, damit bisherige Links funktionieren.
 
 ## Unterstützt
 
@@ -36,11 +36,11 @@ Aus Datenschutzgründen wird bewusst kein vollständiger unverschlüsselter Fina
 7. Auf die automatische Synchronisierung warten oder die Statusanzeige anklicken.
 8. Seite neu laden und prüfen, dass jeder Eintrag genau einmal vorhanden ist.
 
-Nicht offline gepuffert werden in dieser ersten Version unter anderem Datei-Uploads, Benutzer-/Rechteverwaltung, Backups/Restore sowie Bearbeiten/Löschen bestehender Datensätze.
+Nicht offline gepuffert werden derzeit unter anderem Datei-Uploads, Benutzer-/Rechteverwaltung, Backups/Restore sowie Bearbeiten/Löschen bestehender Datensätze.
 
-## v0.21.9-dev.6 testen
+## v0.21.9 prüfen
 
-Die vollständigen Update-Schritte stehen in den [Release Notes](RELEASE-NOTES-v0.21.9-dev.6.md). `main` bezeichnet Quellcode, `:dev` ein Docker-Image. Erst Pull/Neuerstellung des Containers installiert ein Update. Dieses Testrelease besitzt zusätzlich den festen Image-Tag `:0.21.9-dev.6` und den Git-Tag `v0.21.9-dev.6` auf dem Testbranch `dev`.
+Die vollständigen Update-Schritte stehen in den [Release Notes](RELEASE-NOTES-v0.21.9.md). `main` bezeichnet den stabilen Quellcode; `:latest` folgt stabilen Docker-Releases. `:0.21.9` und der Git-Tag `v0.21.9` fixieren dieses Release. `dev` bleibt der Testkanal. Erst Pull/Neuerstellung des Containers installiert ein Update.
 
 Zusätzliche Prüfungen:
 
@@ -55,4 +55,4 @@ Die Warteschlange wird erst nach erfolgreichem IndexedDB-Transaktionsabschluss a
 
 ## English test summary
 
-Load and sign in online before testing offline creation. Create new transactions/transfers/series during an outage, reconnect, and verify that each entry is created exactly once. Pending entries are not included in server-side totals until synchronization. User/book switches must not replay another user's queue. Move one 100 EUR monthly September occurrence to October 1: September contributes 0 EUR, October 200 EUR, November 100 EUR. Test another edit and a December-to-January move. Full offline cold start and offline edits/deletes are outside this prerelease; pending IndexedDB payloads remain unencrypted.
+Load and sign in online before testing offline creation. Create new transactions/transfers/series during an outage, reconnect, and verify that each entry is created exactly once. Pending entries are not included in server-side totals until synchronization. User/book switches must not replay another user's queue. Move one 100 EUR monthly September occurrence to October 1: September contributes 0 EUR, October 200 EUR, November 100 EUR. Test another edit and a December-to-January move. Full offline cold start and offline edits/deletes are outside this release; pending IndexedDB payloads remain unencrypted.

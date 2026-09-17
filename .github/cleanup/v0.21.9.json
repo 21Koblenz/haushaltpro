@@ -1,0 +1,37 @@
+{
+  "release": "v0.21.9",
+  "branches": [
+    {
+      "name": "fix/midmonth-opening-dashboard",
+      "sha": "d4967d78739c2b893d3b4b0f4a0c83a114aa77be"
+    },
+    {
+      "name": "fix/roles-password-responsive",
+      "sha": "5880612706e1fb9637c95ee514c3434f093b79d4"
+    },
+    {
+      "name": "release/v0.21.1-prep",
+      "sha": "373f08d75fc1ffbd4386519fc5982331db651cf6"
+    },
+    {
+      "name": "release/v0.21.7",
+      "sha": "cfcf7224e8c4e096174b0910bbbd832c1b73bd91"
+    },
+    {
+      "name": "security/publish-scout-gates",
+      "sha": "c56d38a674b4dadc25c3911cb337dfbf2dce749a"
+    },
+    {
+      "name": "security/remove-runtime-build-tools",
+      "sha": "d4565488b2930a0199cffa9370d26e20c11f1eec"
+    },
+    {
+      "name": "security/scout-hardening",
+      "sha": "912778a41436e25495c51726efe731b1e388840f"
+    },
+    {
+      "name": "security/scout-high-fixes",
+      "sha": "d24f36a9dd1d70ce928ca5bf73860189d2f86515"
+    }
+  ]
+}
